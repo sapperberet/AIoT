@@ -1,0 +1,368 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:glassmorphism/glassmorphism.dart';
+import 'package:iconsax/iconsax.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/theme/app_theme.dart';
+
+class CustomDrawer extends StatelessWidget {
+  const CustomDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.currentUser;
+    final userModel = authProvider.userModel;
+
+    return Drawer(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              
+              // User Profile Section
+              FadeInDown(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: GlassmorphicContainer(
+                    width: double.infinity,
+                    height: 180,
+                    borderRadius: 20,
+                    blur: 20,
+                    alignment: Alignment.center,
+                    border: 2,
+                    linearGradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.1),
+                        Colors.white.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderGradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Avatar
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.primaryGradient,
+                              boxShadow: AppTheme.glowShadow,
+                            ),
+                            child: user?.photoURL != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      user!.photoURL!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      userModel?.displayName?.substring(0, 1).toUpperCase() ??
+                                          user?.email?.substring(0, 1).toUpperCase() ??
+                                          'U',
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Name
+                          Text(
+                            userModel?.displayName ?? user?.displayName ?? 'User',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppTheme.lightText,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          
+                          const SizedBox(height: 4),
+                          
+                          // Email
+                          Text(
+                            user?.email ?? '',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.mutedText,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Menu Items
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: [
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 100),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.home_2,
+                        title: 'Home',
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 200),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.setting_2,
+                        title: 'Settings',
+                        onTap: () {
+                          Navigator.pop(context);
+                          // TODO: Navigate to settings
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 300),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.notification,
+                        title: 'Notifications',
+                        onTap: () {
+                          Navigator.pop(context);
+                          // TODO: Navigate to notifications
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 400),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.shield_security,
+                        title: 'Security',
+                        onTap: () {
+                          Navigator.pop(context);
+                          // TODO: Navigate to security
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 500),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.info_circle,
+                        title: 'About',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showAboutDialog(context);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Logout Button
+              FadeInUp(
+                delay: const Duration(milliseconds: 600),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: _buildLogoutButton(context, authProvider),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppTheme.mediumRadius,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              borderRadius: AppTheme.mediumRadius,
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient.scale(0.3),
+                    borderRadius: AppTheme.smallRadius,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppTheme.lightText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Iconsax.arrow_right_3,
+                  color: AppTheme.mutedText,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, AuthProvider authProvider) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.shade400,
+            Colors.red.shade600,
+          ],
+        ),
+        borderRadius: AppTheme.mediumRadius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () async {
+          await authProvider.signOut();
+          if (context.mounted) {
+            Navigator.of(context).pushReplacementNamed('/login');
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppTheme.mediumRadius,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Iconsax.logout, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(
+              'Logout',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.darkBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppTheme.mediumRadius,
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: AppTheme.smallRadius,
+              ),
+              child: const Icon(Iconsax.info_circle, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            const Text('About', style: TextStyle(color: AppTheme.lightText)),
+          ],
+        ),
+        content: const Text(
+          'Smart Home IoT Control\n\nVersion 1.0.0\n\nControl your smart home devices with ESP32 integration, real-time monitoring, and 3D visualization.',
+          style: TextStyle(color: AppTheme.mutedText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+extension GradientExtension on Gradient {
+  LinearGradient scale(double factor) {
+    if (this is LinearGradient) {
+      final linear = this as LinearGradient;
+      return LinearGradient(
+        colors: linear.colors.map((c) => c.withOpacity(factor)).toList(),
+        begin: linear.begin,
+        end: linear.end,
+      );
+    }
+    return const LinearGradient(colors: [Colors.transparent, Colors.transparent]);
+  }
+}

@@ -1,0 +1,66 @@
+name: smart_home_app
+description: A smart home IoT application with ESP32 integration and 3D home visualization
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.5.6
+
+  # MQTT for local ESP32 communication
+  mqtt_client: ^10.2.0
+
+  # State Management
+  provider: ^6.1.1
+  
+  # UI Components & Icons
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  google_fonts: ^6.1.0
+  iconsax: ^0.0.8
+  
+  # Animations
+  flutter_animate: ^4.3.0
+  animate_do: ^3.1.2
+  shimmer: ^3.0.0
+  lottie: ^2.7.0
+  
+  # Modern UI Effects
+  glassmorphism: ^3.0.0
+  flutter_staggered_animations: ^1.1.1
+  
+  # WebView for 3D visualization
+  webview_flutter: ^4.4.2
+  webview_flutter_web: ^0.2.2+4
+  
+  # Utilities
+  intl: ^0.18.1
+  shared_preferences: ^2.2.2
+  connectivity_plus: ^5.0.2
+  permission_handler: ^11.1.0
+  pin_code_fields: ^8.0.1
+  
+  # Logging
+  logger: ^2.0.2+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/3d/
+    - assets/icons/
+    - assets/web/

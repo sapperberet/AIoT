@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home 3D Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info">Click on rooms to control devices</div>
+    <div class="loading" id="loading">Loading 3D Model...</div>
+
+    <!-- Three.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        // Scene setup
+        let scene, camera, renderer, controls;
+        let homeModel;
+        let raycaster, mouse;
+        let roomMeshes = {};
+        let alarmMeshes = {};
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(10, 10, 10);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Raycaster for interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onMouseClick);
+
+            // Load model or create placeholder
+            loadHomeModel();
+
+            // Animation loop
+            animate();
+        }
+
+        function loadHomeModel() {
+            // Try to load glTF model if available
+            // For now, create a placeholder house structure
+            createPlaceholderHouse();
+            document.getElementById('loading').style.display = 'none';
+
+            /* Uncomment when you have a .glb model:
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'assets/3d/home_model.glb',
+                function(gltf) {
+                    homeModel = gltf.scene;
+                    scene.add(homeModel);
+                    
+                    // Extract room meshes for interaction
+                    homeModel.traverse((child) => {
+                        if (child.isMesh && child.name) {
+                            roomMeshes[child.name] = child;
+                            child.userData.originalColor = child.material.color.clone();
+                        }
+                    });
+                    
+                    document.getElementById('loading').style.display = 'none';
+                },
+                undefined,
+                function(error) {
+                    console.error('Error loading model:', error);
+                    createPlaceholderHouse();
+                    document.getElementById('loading').style.display = 'none';
+                }
+            );
+            */
+        }
+
+        function createPlaceholderHouse() {
+            // Create a simple house structure as placeholder
+            const rooms = [
+                { name: 'living_room', x: 0, z: 0, width: 6, depth: 6, color: 0x8ab4f8 },
+                { name: 'kitchen', x: 7, z: 0, width: 4, depth: 6, color: 0xfbc02d },
+                { name: 'bedroom', x: 0, z: 7, width: 5, depth: 5, color: 0xe1bee7 },
+                { name: 'garage', x: 7, z: 7, width: 4, depth: 5, color: 0x90a4ae },
+            ];
+
+            rooms.forEach(room => {
+                const geometry = new THREE.BoxGeometry(room.width, 3, room.depth);
+                const material = new THREE.MeshPhongMaterial({
+                    color: room.color,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                mesh.position.set(room.x, 1.5, room.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.name = room.name;
+                mesh.userData.originalColor = new THREE.Color(room.color);
+                
+                scene.add(mesh);
+                roomMeshes[room.name] = mesh;
+            });
+
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(20, 20);
+            scene.add(gridHelper);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Raycast
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(Object.values(roomMeshes));
+
+            if (intersects.length > 0) {
+                const clickedRoom = intersects[0].object;
+                
+                // Highlight the room briefly
+                const originalColor = clickedRoom.userData.originalColor.clone();
+                clickedRoom.material.color.setHex(0xffffff);
+                setTimeout(() => {
+                    clickedRoom.material.color.copy(originalColor);
+                }, 200);
+
+                // Send message to Flutter
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('tap:' + clickedRoom.name);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Function to update alarms from Flutter
+        function updateAlarms(alarmsJson) {
+            try {
+                const alarms = JSON.parse(alarmsJson).alarms;
+
+                // Clear previous alarm visualizations
+                Object.values(alarmMeshes).forEach(mesh => {
+                    scene.remove(mesh);
+                });
+                alarmMeshes = {};
+
+                // Reset all room colors
+                Object.values(roomMeshes).forEach(mesh => {
+                    mesh.material.color.copy(mesh.userData.originalColor);
+                    mesh.material.emissive.setHex(0x000000);
+                });
+
+                // Apply alarm visualizations
+                Object.entries(alarms).forEach(([section, alarm]) => {
+                    const roomMesh = roomMeshes[section];
+                    if (roomMesh) {
+                        // Change room color based on alarm severity
+                        const color = new THREE.Color(alarm.color);
+                        roomMesh.material.color.copy(color);
+                        roomMesh.material.emissive.copy(color);
+                        roomMesh.material.emissiveIntensity = 0.3;
+
+                        // Add pulsing effect
+                        let intensity = 0.3;
+                        let increasing = true;
+                        const pulseInterval = setInterval(() => {
+                            if (increasing) {
+                                intensity += 0.05;
+                                if (intensity >= 0.6) increasing = false;
+                            } else {
+                                intensity -= 0.05;
+                                if (intensity <= 0.3) increasing = true;
+                            }
+                            if (roomMesh.material) {
+                                roomMesh.material.emissiveIntensity = intensity;
+                            }
+                        }, 100);
+
+                        // Store interval for cleanup
+                        roomMesh.userData.pulseInterval = pulseInterval;
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating alarms:', error);
+            }
+        }
+
+        // Function to reset camera view
+        function resetCamera() {
+            camera.position.set(10, 10, 10);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        // Initialize the scene
+        init();
+    </script>
+</body>
+</html>
