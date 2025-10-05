@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _initializeDevices() async {
     final authProvider = context.read<AuthProvider>();
     final deviceProvider = context.read<DeviceProvider>();
-    
+
     if (authProvider.currentUser != null) {
       await deviceProvider.initialize(authProvider.currentUser!.uid);
     }
@@ -60,7 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: FadeInDown(
           child: ShaderMask(
-            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                AppTheme.primaryGradient.createShader(bounds),
             child: Text(
               AppLocalizations.of(context).t('app_title'),
               style: const TextStyle(
@@ -77,7 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return FadeInRight(
                 child: Container(
                   margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: deviceProvider.isConnectedToMqtt
                         ? LinearGradient(
@@ -104,7 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        deviceProvider.isConnectedToMqtt ? Iconsax.wifi : Iconsax.wifi_square,
+                        deviceProvider.isConnectedToMqtt
+                            ? Iconsax.wifi
+                            : Iconsax.wifi_square,
                         size: 16,
                         color: deviceProvider.isConnectedToMqtt
                             ? AppTheme.successColor
@@ -112,8 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        deviceProvider.isConnectedToMqtt 
-                            ? AppLocalizations.of(context).t('local') 
+                        deviceProvider.isConnectedToMqtt
+                            ? AppLocalizations.of(context).t('local')
                             : AppLocalizations.of(context).t('cloud'),
                         style: TextStyle(
                           fontSize: 12,

@@ -136,7 +136,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: [
           _buildFilterChip(loc.t('all'), null),
           const SizedBox(width: 8),
-          _buildFilterChip(loc.t('device_status'), NotificationType.deviceStatus),
+          _buildFilterChip(
+              loc.t('device_status'), NotificationType.deviceStatus),
           const SizedBox(width: 8),
           _buildFilterChip(loc.t('automation'), NotificationType.automation),
           const SizedBox(width: 8),
