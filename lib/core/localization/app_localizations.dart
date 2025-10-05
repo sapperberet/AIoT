@@ -114,10 +114,10 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'Please log in to view logs',
-      
+
       // Splash Screen
       'control_world': 'Control your world, effortlessly',
-      
+
       // Auth Screens
       'create_account': 'Create Account',
       'sign_in': 'Sign In',
@@ -138,7 +138,7 @@ class AppLocalizations {
       'enter_name': 'Please enter your name',
       'passwords_match': 'Passwords do not match',
       'enter_confirm_password': 'Please confirm your password',
-      
+
       // Language Names
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
@@ -245,10 +245,10 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'Bitte melden Sie sich an, um Protokolle anzuzeigen',
-      
+
       // Splash Screen
       'control_world': 'Steuern Sie Ihre Welt mühelos',
-      
+
       // Auth Screens
       'create_account': 'Konto erstellen',
       'sign_in': 'Anmelden',
@@ -269,7 +269,7 @@ class AppLocalizations {
       'enter_name': 'Bitte geben Sie Ihren Namen ein',
       'passwords_match': 'Passwörter stimmen nicht überein',
       'enter_confirm_password': 'Bitte bestätigen Sie Ihr Passwort',
-      
+
       // Language Names
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
@@ -374,10 +374,10 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'يرجى تسجيل الدخول لعرض السجلات',
-      
+
       // Splash Screen
       'control_world': 'تحكم في عالمك بسهولة',
-      
+
       // Auth Screens
       'create_account': 'إنشاء حساب',
       'sign_in': 'تسجيل الدخول',
@@ -398,7 +398,7 @@ class AppLocalizations {
       'enter_name': 'الرجاء إدخال اسمك',
       'passwords_match': 'كلمات المرور غير متطابقة',
       'enter_confirm_password': 'الرجاء تأكيد كلمة المرور',
-      
+
       // Language Names
       'language_english': 'English',
       'language_german': 'Deutsch (German)',

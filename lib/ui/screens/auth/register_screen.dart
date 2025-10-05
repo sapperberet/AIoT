@@ -31,7 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      
+
       final success = await authProvider.register(
         _emailController.text.trim(),
         _passwordController.text,
@@ -120,7 +120,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                         onPressed: () {
                           setState(() {
@@ -149,7 +151,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                          _obscureConfirmPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                         onPressed: () {
                           setState(() {

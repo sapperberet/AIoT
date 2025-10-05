@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      
+
       final success = await authProvider.signIn(
         _emailController.text.trim(),
         _passwordController.text,
@@ -103,7 +103,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                         onPressed: () {
                           setState(() {
