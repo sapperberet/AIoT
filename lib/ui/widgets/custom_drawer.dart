@@ -144,7 +144,7 @@ class CustomDrawer extends StatelessWidget {
                         title: 'Settings',
                         onTap: () {
                           Navigator.pop(context);
-                          // TODO: Navigate to settings
+                          Navigator.pushNamed(context, '/settings');
                         },
                       ),
                     ),
@@ -155,15 +155,42 @@ class CustomDrawer extends StatelessWidget {
                         context,
                         icon: Iconsax.notification,
                         title: 'Notifications',
+                        badge: '3',
                         onTap: () {
                           Navigator.pop(context);
-                          // TODO: Navigate to notifications
+                          Navigator.pushNamed(context, '/notifications');
                         },
                       ),
                     ),
                     
                     FadeInLeft(
                       delay: const Duration(milliseconds: 400),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.timer,
+                        title: 'Automations',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/automations');
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 500),
+                      child: _buildMenuItem(
+                        context,
+                        icon: Iconsax.flash_1,
+                        title: 'Energy Monitor',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/energy');
+                        },
+                      ),
+                    ),
+                    
+                    FadeInLeft(
+                      delay: const Duration(milliseconds: 600),
                       child: _buildMenuItem(
                         context,
                         icon: Iconsax.shield_security,
@@ -176,7 +203,7 @@ class CustomDrawer extends StatelessWidget {
                     ),
                     
                     FadeInLeft(
-                      delay: const Duration(milliseconds: 500),
+                      delay: const Duration(milliseconds: 700),
                       child: _buildMenuItem(
                         context,
                         icon: Iconsax.info_circle,
@@ -211,6 +238,7 @@ class CustomDrawer extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? badge,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -251,6 +279,24 @@ class CustomDrawer extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                if (badge != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Icon(
                   Iconsax.arrow_right_3,
                   color: AppTheme.mutedText,
