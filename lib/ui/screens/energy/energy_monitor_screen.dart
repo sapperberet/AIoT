@@ -30,7 +30,8 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
         ),
         title: FadeInDown(
           child: ShaderMask(
-            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                AppTheme.primaryGradient.createShader(bounds),
             child: const Text(
               'Energy Monitor',
               style: TextStyle(
@@ -126,7 +127,8 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+            color:
+                isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
           ),
         ),
       ),
@@ -202,14 +204,16 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppTheme.successColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.arrow_down, size: 14, color: Colors.white),
+                      const Icon(Iconsax.arrow_down,
+                          size: 14, color: Colors.white),
                       const SizedBox(width: 4),
                       const Text(
                         '12%',
@@ -294,10 +298,30 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
 
   Widget _buildDeviceBreakdownList() {
     final devices = [
-      {'name': 'Living Room Lights', 'consumption': 5.2, 'percentage': 21, 'icon': Iconsax.lamp},
-      {'name': 'Air Conditioner', 'consumption': 12.8, 'percentage': 52, 'icon': Iconsax.wind},
-      {'name': 'Refrigerator', 'consumption': 4.1, 'percentage': 17, 'icon': Iconsax.box},
-      {'name': 'TV', 'consumption': 2.4, 'percentage': 10, 'icon': Iconsax.monitor},
+      {
+        'name': 'Living Room Lights',
+        'consumption': 5.2,
+        'percentage': 21,
+        'icon': Iconsax.lamp
+      },
+      {
+        'name': 'Air Conditioner',
+        'consumption': 12.8,
+        'percentage': 52,
+        'icon': Iconsax.wind
+      },
+      {
+        'name': 'Refrigerator',
+        'consumption': 4.1,
+        'percentage': 17,
+        'icon': Iconsax.box
+      },
+      {
+        'name': 'TV',
+        'consumption': 2.4,
+        'percentage': 10,
+        'icon': Iconsax.monitor
+      },
     ];
 
     return Column(
@@ -367,7 +391,8 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                   child: LinearProgressIndicator(
                     value: percentage / 100,
                     backgroundColor: AppTheme.darkCard,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor),
                     minHeight: 6,
                   ),
                 ),

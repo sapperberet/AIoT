@@ -25,7 +25,7 @@ class CustomDrawer extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              
+
               // User Profile Section
               FadeInDown(
                 child: Padding(
@@ -74,8 +74,12 @@ class CustomDrawer extends StatelessWidget {
                                   )
                                 : Center(
                                     child: Text(
-                                      userModel?.displayName?.substring(0, 1).toUpperCase() ??
-                                          user?.email?.substring(0, 1).toUpperCase() ??
+                                      userModel?.displayName
+                                              ?.substring(0, 1)
+                                              .toUpperCase() ??
+                                          user?.email
+                                              ?.substring(0, 1)
+                                              .toUpperCase() ??
                                           'U',
                                       style: const TextStyle(
                                         fontSize: 32,
@@ -85,27 +89,33 @@ class CustomDrawer extends StatelessWidget {
                                     ),
                                   ),
                           ),
-                          
+
                           const SizedBox(height: 12),
-                          
+
                           // Name
                           Text(
-                            userModel?.displayName ?? user?.displayName ?? 'User',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppTheme.lightText,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            userModel?.displayName ??
+                                user?.displayName ??
+                                'User',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
                             textAlign: TextAlign.center,
                           ),
-                          
+
                           const SizedBox(height: 4),
-                          
+
                           // Email
                           Text(
                             user?.email ?? '',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.mutedText,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.mutedText,
+                                    ),
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -135,7 +145,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 200),
                       child: _buildMenuItem(
@@ -148,7 +157,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 300),
                       child: _buildMenuItem(
@@ -162,7 +170,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 400),
                       child: _buildMenuItem(
@@ -175,7 +182,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 500),
                       child: _buildMenuItem(
@@ -188,7 +194,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 600),
                       child: _buildMenuItem(
@@ -201,7 +206,6 @@ class CustomDrawer extends StatelessWidget {
                         },
                       ),
                     ),
-                    
                     FadeInLeft(
                       delay: const Duration(milliseconds: 700),
                       child: _buildMenuItem(
@@ -274,14 +278,15 @@ class CustomDrawer extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.lightText,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: AppTheme.lightText,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
                 const Spacer(),
                 if (badge != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(10),
@@ -352,9 +357,9 @@ class CustomDrawer extends StatelessWidget {
             Text(
               'Logout',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ],
         ),
@@ -409,6 +414,7 @@ extension GradientExtension on Gradient {
         end: linear.end,
       );
     }
-    return const LinearGradient(colors: [Colors.transparent, Colors.transparent]);
+    return const LinearGradient(
+        colors: [Colors.transparent, Colors.transparent]);
   }
 }

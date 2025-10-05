@@ -121,10 +121,10 @@ class AutomationProvider with ChangeNotifier {
   // Execute automation
   Future<void> executeAutomation(String id) async {
     final automation = _automations.firstWhere((a) => a.id == id);
-    
+
     // TODO: Implement automation execution logic
     debugPrint('Executing automation: ${automation.name}');
-    
+
     // Update last triggered time
     final index = _automations.indexWhere((a) => a.id == id);
     if (index != -1) {

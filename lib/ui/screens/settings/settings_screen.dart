@@ -29,7 +29,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         title: FadeInDown(
           child: ShaderMask(
-            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                AppTheme.primaryGradient.createShader(bounds),
             child: const Text(
               'Settings',
               style: TextStyle(
@@ -231,7 +232,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+              color: isSelected
+                  ? Colors.white
+                  : AppTheme.lightText.withOpacity(0.6),
             ),
             const SizedBox(width: 8),
             Text(
@@ -239,7 +242,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+                color: isSelected
+                    ? Colors.white
+                    : AppTheme.lightText.withOpacity(0.6),
               ),
             ),
           ],
@@ -261,7 +266,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildTextField(
           'Port',
           provider.mqttBrokerPort.toString(),
-          (value) => provider.updateMqttSettings(brokerPort: int.tryParse(value)),
+          (value) =>
+              provider.updateMqttSettings(brokerPort: int.tryParse(value)),
           icon: Iconsax.setting_2,
           keyboardType: TextInputType.number,
         ),
@@ -363,7 +369,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+              color: isSelected
+                  ? Colors.white
+                  : AppTheme.lightText.withOpacity(0.6),
               size: 24,
             ),
             const SizedBox(height: 8),
@@ -372,7 +380,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+                color: isSelected
+                    ? Colors.white
+                    : AppTheme.lightText.withOpacity(0.6),
               ),
             ),
           ],
@@ -399,7 +409,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSwitchTile(
               'Device Status Updates',
               settingsProvider.deviceStatusNotifications,
-              (value) => settingsProvider.toggleDeviceStatusNotifications(value),
+              (value) =>
+                  settingsProvider.toggleDeviceStatusNotifications(value),
               icon: Iconsax.status,
             ),
             _buildSwitchTile(
@@ -590,7 +601,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Icon(
                 icon,
                 size: 20,
-                color: isDestructive ? AppTheme.errorColor : AppTheme.primaryColor,
+                color:
+                    isDestructive ? AppTheme.errorColor : AppTheme.primaryColor,
               ),
             ),
             const SizedBox(width: 16),
@@ -603,7 +615,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: isDestructive ? AppTheme.errorColor : AppTheme.lightText,
+                      color: isDestructive
+                          ? AppTheme.errorColor
+                          : AppTheme.lightText,
                     ),
                   ),
                   if (subtitle.isNotEmpty) ...[
@@ -730,7 +744,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Select Language', style: TextStyle(color: AppTheme.lightText)),
+        title: const Text('Select Language',
+            style: TextStyle(color: AppTheme.lightText)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -760,12 +775,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showRefreshIntervalPicker(BuildContext context, SettingsProvider provider) {
+  void _showRefreshIntervalPicker(
+      BuildContext context, SettingsProvider provider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Data Refresh Interval', style: TextStyle(color: AppTheme.lightText)),
+        title: const Text('Data Refresh Interval',
+            style: TextStyle(color: AppTheme.lightText)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -816,7 +833,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Delete Account', style: TextStyle(color: AppTheme.errorColor)),
+        title: const Text('Delete Account',
+            style: TextStyle(color: AppTheme.errorColor)),
         content: const Text(
           'Are you sure you want to delete your account? This action cannot be undone.',
           style: TextStyle(color: AppTheme.lightText),
@@ -831,7 +849,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Delete account logic
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),

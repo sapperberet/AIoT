@@ -30,7 +30,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
         ),
         title: FadeInDown(
           child: ShaderMask(
-            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                AppTheme.primaryGradient.createShader(bounds),
             child: const Text(
               'Automations',
               style: TextStyle(
@@ -113,7 +114,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                 child: Icon(
                   Iconsax.timer,
                   size: 24,
-                  color: automation.isEnabled ? Colors.white : AppTheme.lightText.withOpacity(0.5),
+                  color: automation.isEnabled
+                      ? Colors.white
+                      : AppTheme.lightText.withOpacity(0.5),
                 ),
               ),
               const SizedBox(width: 16),
@@ -143,7 +146,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
               Switch(
                 value: automation.isEnabled,
                 onChanged: (value) {
-                  context.read<AutomationProvider>().toggleAutomation(automation.id);
+                  context
+                      .read<AutomationProvider>()
+                      .toggleAutomation(automation.id);
                 },
                 activeColor: AppTheme.primaryColor,
               ),
@@ -166,7 +171,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
             _buildInfoSection(
               'Conditions',
               Iconsax.setting_2,
-              automation.conditions.map((c) => _getConditionDescription(c)).toList(),
+              automation.conditions
+                  .map((c) => _getConditionDescription(c))
+                  .toList(),
             ),
           ],
 
@@ -205,7 +212,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _showEditAutomationDialog(context, automation),
+                  onPressed: () =>
+                      _showEditAutomationDialog(context, automation),
                   icon: const Icon(Iconsax.edit, size: 18),
                   label: const Text('Edit'),
                   style: OutlinedButton.styleFrom(
@@ -415,7 +423,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Delete Automation', style: TextStyle(color: AppTheme.errorColor)),
+        title: const Text('Delete Automation',
+            style: TextStyle(color: AppTheme.errorColor)),
         content: Text(
           'Are you sure you want to delete "${automation.name}"?',
           style: const TextStyle(color: AppTheme.lightText),
@@ -427,10 +436,13 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<AutomationProvider>().deleteAutomation(automation.id);
+              context
+                  .read<AutomationProvider>()
+                  .deleteAutomation(automation.id);
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),

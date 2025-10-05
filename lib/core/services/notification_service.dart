@@ -97,7 +97,8 @@ class NotificationService with ChangeNotifier {
       StreamController<AppNotification>.broadcast();
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
-  Stream<AppNotification> get notificationStream => _notificationStreamController.stream;
+  Stream<AppNotification> get notificationStream =>
+      _notificationStreamController.stream;
 
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
@@ -120,10 +121,10 @@ class NotificationService with ChangeNotifier {
 
     _notifications.insert(0, notification);
     _notificationStreamController.add(notification);
-    
+
     // Show local notification based on settings
     await _showLocalNotification(notification);
-    
+
     notifyListeners();
   }
 
@@ -178,7 +179,8 @@ class NotificationService with ChangeNotifier {
       title: 'Device ${isOnline ? 'Connected' : 'Disconnected'}',
       message: '$deviceName is now ${isOnline ? 'online' : 'offline'}',
       type: NotificationType.deviceStatus,
-      priority: isOnline ? NotificationPriority.low : NotificationPriority.medium,
+      priority:
+          isOnline ? NotificationPriority.low : NotificationPriority.medium,
       data: {'deviceName': deviceName, 'isOnline': isOnline},
     );
   }
@@ -205,7 +207,8 @@ class NotificationService with ChangeNotifier {
   }
 
   // Security notifications
-  void notifySecurityAlert(String message, {NotificationPriority priority = NotificationPriority.urgent}) {
+  void notifySecurityAlert(String message,
+      {NotificationPriority priority = NotificationPriority.urgent}) {
     addNotification(
       title: 'Security Alert',
       message: message,

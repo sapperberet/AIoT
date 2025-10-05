@@ -31,7 +31,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         title: FadeInDown(
           child: ShaderMask(
-            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                AppTheme.primaryGradient.createShader(bounds),
             child: const Text(
               'Notifications',
               style: TextStyle(
@@ -52,9 +53,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   value: 'mark_all_read',
                   child: Row(
                     children: [
-                      const Icon(Iconsax.tick_circle, color: AppTheme.primaryColor, size: 20),
+                      const Icon(Iconsax.tick_circle,
+                          color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 12),
-                      const Text('Mark all as read', style: TextStyle(color: AppTheme.lightText)),
+                      const Text('Mark all as read',
+                          style: TextStyle(color: AppTheme.lightText)),
                     ],
                   ),
                 ),
@@ -62,9 +65,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   value: 'clear_all',
                   child: Row(
                     children: [
-                      const Icon(Iconsax.trash, color: AppTheme.errorColor, size: 20),
+                      const Icon(Iconsax.trash,
+                          color: AppTheme.errorColor, size: 20),
                       const SizedBox(width: 12),
-                      const Text('Clear all', style: TextStyle(color: AppTheme.lightText)),
+                      const Text('Clear all',
+                          style: TextStyle(color: AppTheme.lightText)),
                     ],
                   ),
                 ),
@@ -94,7 +99,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 builder: (context, notificationService, child) {
                   final notifications = _selectedFilter == null
                       ? notificationService.notifications
-                      : notificationService.getNotificationsByType(_selectedFilter!);
+                      : notificationService
+                          .getNotificationsByType(_selectedFilter!);
 
                   if (notifications.isEmpty) {
                     return _buildEmptyState();
@@ -167,14 +173,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+            color:
+                isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, AppNotification notification) {
+  Widget _buildNotificationCard(
+      BuildContext context, AppNotification notification) {
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -265,7 +273,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             notification.title,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
+                              fontWeight: notification.isRead
+                                  ? FontWeight.w500
+                                  : FontWeight.bold,
                               color: AppTheme.lightText,
                             ),
                           ),
@@ -307,10 +317,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             color: AppTheme.lightText.withOpacity(0.5),
                           ),
                         ),
-                        if (notification.priority == NotificationPriority.urgent) ...[
+                        if (notification.priority ==
+                            NotificationPriority.urgent) ...[
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppTheme.errorColor.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(8),
@@ -436,7 +448,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _showNotificationDetails(BuildContext context, AppNotification notification) {
+  void _showNotificationDetails(
+      BuildContext context, AppNotification notification) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -495,7 +508,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('MMM d, yyyy - HH:mm').format(notification.timestamp),
+                  DateFormat('MMM d, yyyy - HH:mm')
+                      .format(notification.timestamp),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppTheme.lightText.withOpacity(0.5),
@@ -526,7 +540,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Clear All Notifications', style: TextStyle(color: AppTheme.lightText)),
+        title: const Text('Clear All Notifications',
+            style: TextStyle(color: AppTheme.lightText)),
         content: const Text(
           'Are you sure you want to clear all notifications? This action cannot be undone.',
           style: TextStyle(color: AppTheme.lightText),
@@ -541,7 +556,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               service.clearAll();
               Navigator.pop(context);
             },
-            child: const Text('Clear All', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Clear All',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
