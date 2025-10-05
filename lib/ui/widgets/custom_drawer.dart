@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 
 class CustomDrawer extends StatelessWidget {
@@ -131,94 +132,99 @@ class CustomDrawer extends StatelessWidget {
 
               // Menu Items
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 100),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.home_2,
-                        title: 'Home',
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 200),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.setting_2,
-                        title: 'Settings',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/settings');
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 300),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.notification,
-                        title: 'Notifications',
-                        badge: '3',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/notifications');
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 400),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.timer,
-                        title: 'Automations',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/automations');
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 500),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.flash_1,
-                        title: 'Energy Monitor',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/energy');
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 600),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.shield_security,
-                        title: 'Security',
-                        onTap: () {
-                          Navigator.pop(context);
-                          // TODO: Navigate to security
-                        },
-                      ),
-                    ),
-                    FadeInLeft(
-                      delay: const Duration(milliseconds: 700),
-                      child: _buildMenuItem(
-                        context,
-                        icon: Iconsax.info_circle,
-                        title: 'About',
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showAboutDialog(context);
-                        },
-                      ),
-                    ),
-                  ],
+                child: Builder(
+                  builder: (context) {
+                    final loc = AppLocalizations.of(context);
+                    return ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 100),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.home_2,
+                            title: loc.t('home'),
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 200),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.setting_2,
+                            title: loc.t('settings'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/settings');
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 300),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.notification,
+                            title: loc.t('notifications'),
+                            badge: '3',
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/notifications');
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 400),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.timer,
+                            title: loc.t('automations'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/automations');
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 500),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.flash_1,
+                            title: loc.t('energy_monitor'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/energy');
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 600),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.shield_security,
+                            title: loc.t('security'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // TODO: Navigate to security
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 700),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.info_circle,
+                            title: loc.t('about'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showAboutDialog(context);
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
 
@@ -275,14 +281,16 @@ class CustomDrawer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.lightText,
-                        fontWeight: FontWeight.w500,
-                      ),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppTheme.lightText,
+                          fontWeight: FontWeight.w500,
+                        ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
                 if (badge != null) ...[
                   Container(
                     padding:
@@ -316,6 +324,7 @@ class CustomDrawer extends StatelessWidget {
   }
 
   Widget _buildLogoutButton(BuildContext context, AuthProvider authProvider) {
+    final loc = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       height: 56,
@@ -355,7 +364,7 @@ class CustomDrawer extends StatelessWidget {
             const Icon(Iconsax.logout, color: Colors.white),
             const SizedBox(width: 12),
             Text(
-              'Logout',
+              loc.t('logout'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -368,6 +377,7 @@ class CustomDrawer extends StatelessWidget {
   }
 
   void _showAboutDialog(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -386,7 +396,8 @@ class CustomDrawer extends StatelessWidget {
               child: const Icon(Iconsax.info_circle, color: Colors.white),
             ),
             const SizedBox(width: 12),
-            const Text('About', style: TextStyle(color: AppTheme.lightText)),
+            Text(loc.t('about'),
+                style: const TextStyle(color: AppTheme.lightText)),
           ],
         ),
         content: const Text(

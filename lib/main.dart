@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/services/auth_service.dart';
 import 'core/services/mqtt_service.dart';
@@ -11,6 +12,7 @@ import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/automation_provider.dart';
+import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/screens/auth/modern_login_screen.dart';
@@ -89,12 +91,37 @@ class SmartHomeApp extends StatelessWidget {
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settingsProvider, child) {
+          // Map language code to Locale
+          Locale locale;
+          switch (settingsProvider.language) {
+            case 'de':
+              locale = const Locale('de');
+              break;
+            case 'ar':
+              locale = const Locale('ar');
+              break;
+            default:
+              locale = const Locale('en');
+          }
+
           return MaterialApp(
             title: 'Smart Home',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: settingsProvider.themeMode,
+            locale: locale,
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+              Locale('de'),
+              Locale('ar'),
+            ],
             home: const SplashScreen(),
             routes: {
               '/login': (context) => const ModernLoginScreen(),

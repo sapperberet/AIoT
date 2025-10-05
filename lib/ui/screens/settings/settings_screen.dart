@@ -457,12 +457,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             (value) => settingsProvider.toggleAutoConnect(value),
             icon: Iconsax.link,
           ),
-          _buildSwitchTile(
-            'Offline Mode',
-            settingsProvider.offlineMode,
-            (value) => settingsProvider.toggleOfflineMode(value),
-            icon: Iconsax.wifi_square,
-          ),
           _buildSettingTile(
             'Data Refresh Interval',
             '${settingsProvider.dataRefreshInterval} seconds',
@@ -750,9 +744,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildLanguageOption(context, 'English', 'en'),
-            _buildLanguageOption(context, 'Spanish', 'es'),
-            _buildLanguageOption(context, 'French', 'fr'),
-            _buildLanguageOption(context, 'German', 'de'),
+            _buildLanguageOption(context, 'Deutsch (German)', 'de'),
+            _buildLanguageOption(context, 'العربية (Arabic)', 'ar'),
           ],
         ),
       ),

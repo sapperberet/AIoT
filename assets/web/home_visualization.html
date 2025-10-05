@@ -218,7 +218,14 @@
         // Function to update alarms from Flutter
         function updateAlarms(alarmsJson) {
             try {
-                const alarms = JSON.parse(alarmsJson).alarms;
+                // Handle both string and object inputs
+                let alarmsData;
+                if (typeof alarmsJson === 'string') {
+                    alarmsData = JSON.parse(alarmsJson);
+                } else {
+                    alarmsData = alarmsJson;
+                }
+                const alarms = alarmsData.alarms || alarmsData;
 
                 // Clear previous alarm visualizations
                 Object.values(alarmMeshes).forEach(mesh => {

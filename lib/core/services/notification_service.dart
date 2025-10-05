@@ -96,6 +96,41 @@ class NotificationService with ChangeNotifier {
   final StreamController<AppNotification> _notificationStreamController =
       StreamController<AppNotification>.broadcast();
 
+  NotificationService() {
+    _initializeSampleNotifications();
+  }
+
+  void _initializeSampleNotifications() {
+    // Add sample notifications for demo
+    _notifications.addAll([
+      AppNotification(
+        id: '1',
+        title: 'Welcome to Smart Home',
+        message:
+            'Your smart home system is ready to use. Start by adding your first device.',
+        type: NotificationType.info,
+        priority: NotificationPriority.medium,
+        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      AppNotification(
+        id: '2',
+        title: 'Security Alert',
+        message: 'Motion detected at Front Door at 3:45 PM',
+        type: NotificationType.security,
+        priority: NotificationPriority.high,
+        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      AppNotification(
+        id: '3',
+        title: 'Automation Triggered',
+        message: 'Good Morning automation executed successfully',
+        type: NotificationType.automation,
+        priority: NotificationPriority.medium,
+        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
+      ),
+    ]);
+  }
+
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
   Stream<AppNotification> get notificationStream =>
       _notificationStreamController.stream;
