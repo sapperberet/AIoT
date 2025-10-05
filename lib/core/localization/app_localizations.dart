@@ -114,6 +114,35 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'Please log in to view logs',
+      
+      // Splash Screen
+      'control_world': 'Control your world, effortlessly',
+      
+      // Auth Screens
+      'create_account': 'Create Account',
+      'sign_in': 'Sign In',
+      'no_account': 'Don\'t have an account? Sign Up',
+      'have_account': 'Already have an account? Sign In',
+      'email': 'Email',
+      'password': 'Password',
+      'full_name': 'Full Name',
+      'confirm_password': 'Confirm Password',
+      'welcome_back': 'Welcome Back',
+      'sign_in_subtitle': 'Sign in to control your smart home',
+      'join_us': 'Join Us',
+      'create_account_subtitle': 'Create your smart home account',
+      'enter_email': 'Please enter your email',
+      'valid_email': 'Please enter a valid email',
+      'enter_password': 'Please enter your password',
+      'password_length': 'Password must be at least 6 characters',
+      'enter_name': 'Please enter your name',
+      'passwords_match': 'Passwords do not match',
+      'enter_confirm_password': 'Please confirm your password',
+      
+      // Language Names
+      'language_english': 'English',
+      'language_german': 'Deutsch (German)',
+      'language_arabic': 'العربية (Arabic)',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -216,6 +245,35 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'Bitte melden Sie sich an, um Protokolle anzuzeigen',
+      
+      // Splash Screen
+      'control_world': 'Steuern Sie Ihre Welt mühelos',
+      
+      // Auth Screens
+      'create_account': 'Konto erstellen',
+      'sign_in': 'Anmelden',
+      'no_account': 'Noch kein Konto? Registrieren',
+      'have_account': 'Haben Sie bereits ein Konto? Anmelden',
+      'email': 'E-Mail',
+      'password': 'Passwort',
+      'full_name': 'Vollständiger Name',
+      'confirm_password': 'Passwort bestätigen',
+      'welcome_back': 'Willkommen zurück',
+      'sign_in_subtitle': 'Melden Sie sich an, um Ihr Smart Home zu steuern',
+      'join_us': 'Registrieren Sie sich',
+      'create_account_subtitle': 'Erstellen Sie Ihr Smart-Home-Konto',
+      'enter_email': 'Bitte geben Sie Ihre E-Mail ein',
+      'valid_email': 'Bitte geben Sie eine gültige E-Mail ein',
+      'enter_password': 'Bitte geben Sie Ihr Passwort ein',
+      'password_length': 'Passwort muss mindestens 6 Zeichen lang sein',
+      'enter_name': 'Bitte geben Sie Ihren Namen ein',
+      'passwords_match': 'Passwörter stimmen nicht überein',
+      'enter_confirm_password': 'Bitte bestätigen Sie Ihr Passwort',
+      
+      // Language Names
+      'language_english': 'English',
+      'language_german': 'Deutsch (German)',
+      'language_arabic': 'العربية (Arabic)',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -316,6 +374,35 @@ class AppLocalizations {
 
       // Logs Tab
       'please_login': 'يرجى تسجيل الدخول لعرض السجلات',
+      
+      // Splash Screen
+      'control_world': 'تحكم في عالمك بسهولة',
+      
+      // Auth Screens
+      'create_account': 'إنشاء حساب',
+      'sign_in': 'تسجيل الدخول',
+      'no_account': 'ليس لديك حساب؟ سجل الآن',
+      'have_account': 'لديك حساب بالفعل؟ تسجيل الدخول',
+      'email': 'البريد الإلكتروني',
+      'password': 'كلمة المرور',
+      'full_name': 'الاسم الكامل',
+      'confirm_password': 'تأكيد كلمة المرور',
+      'welcome_back': 'مرحبًا بعودتك',
+      'sign_in_subtitle': 'قم بتسجيل الدخول للتحكم في منزلك الذكي',
+      'join_us': 'انضم إلينا',
+      'create_account_subtitle': 'أنشئ حساب منزلك الذكي',
+      'enter_email': 'الرجاء إدخال بريدك الإلكتروني',
+      'valid_email': 'الرجاء إدخال بريد إلكتروني صالح',
+      'enter_password': 'الرجاء إدخال كلمة المرور',
+      'password_length': 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل',
+      'enter_name': 'الرجاء إدخال اسمك',
+      'passwords_match': 'كلمات المرور غير متطابقة',
+      'enter_confirm_password': 'الرجاء تأكيد كلمة المرور',
+      
+      // Language Names
+      'language_english': 'English',
+      'language_german': 'Deutsch (German)',
+      'language_arabic': 'العربية (Arabic)',
     },
   };
 

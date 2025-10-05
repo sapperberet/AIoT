@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/localization/app_localizations.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -91,13 +92,18 @@ class _SplashScreenState extends State<SplashScreen> {
               FadeInUp(
                 duration: const Duration(milliseconds: 800),
                 delay: const Duration(milliseconds: 400),
-                child: const Text(
-                  'Control your world, effortlessly',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.mutedText,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final loc = AppLocalizations.of(context);
+                    return Text(
+                      loc.t('control_world'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppTheme.mutedText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
                 ),
               ),
 

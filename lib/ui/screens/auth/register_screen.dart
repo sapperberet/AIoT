@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -49,9 +50,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: Text(loc.t('create_account')),
       ),
       body: SafeArea(
         child: Center(
@@ -70,21 +72,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Join Smart Home',
+                    loc.t('join_us'),
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
+                    decoration: InputDecoration(
+                      labelText: loc.t('full_name'),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
+                        return loc.t('enter_name');
                       }
                       return null;
                     },
@@ -93,17 +95,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
+                    decoration: InputDecoration(
+                      labelText: loc.t('email'),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return loc.t('enter_email');
                       }
                       if (!value.contains('@')) {
-                        return 'Please enter a valid email';
+                        return loc.t('valid_email');
                       }
                       return null;
                     },
@@ -113,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: loc.t('password'),
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
@@ -129,10 +131,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a password';
+                        return loc.t('enter_password');
                       }
                       if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return loc.t('password_length');
                       }
                       return null;
                     },
@@ -142,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
                     decoration: InputDecoration(
-                      labelText: 'Confirm Password',
+                      labelText: loc.t('confirm_password'),
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
@@ -158,10 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
+                        return loc.t('enter_confirm_password');
                       }
                       if (value != _passwordController.text) {
-                        return 'Passwords do not match';
+                        return loc.t('passwords_match');
                       }
                       return null;
                     },
@@ -176,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.all(16),
                               ),
-                              child: const Text('Create Account'),
+                              child: Text(loc.t('create_account')),
                             );
                     },
                   ),

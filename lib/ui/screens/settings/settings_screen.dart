@@ -308,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           _buildSettingTile(
             loc.t('language'),
-            'English',
+            _getLanguageDisplayName(settingsProvider.language),
             Iconsax.language_square,
             onTap: () => _showLanguagePicker(context),
           ),
@@ -743,20 +743,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _getLanguageDisplayName(String languageCode) {
+    switch (languageCode) {
+      case 'de':
+        return 'Deutsch';
+      case 'ar':
+        return 'العربية';
+      default:
+        return 'English';
+    }
+  }
+
   void _showLanguagePicker(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     // Show language picker dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Select Language',
-            style: TextStyle(color: AppTheme.lightText)),
+        title: Text(loc.t('language'),
+            style: const TextStyle(color: AppTheme.lightText)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildLanguageOption(context, 'English', 'en'),
-            _buildLanguageOption(context, 'Deutsch (German)', 'de'),
-            _buildLanguageOption(context, 'العربية (Arabic)', 'ar'),
+            _buildLanguageOption(context, loc.t('language_english'), 'en'),
+            _buildLanguageOption(context, loc.t('language_german'), 'de'),
+            _buildLanguageOption(context, loc.t('language_arabic'), 'ar'),
           ],
         ),
       ),

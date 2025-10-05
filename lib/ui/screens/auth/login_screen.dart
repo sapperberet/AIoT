@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/localization/app_localizations.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -44,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -62,13 +64,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Welcome Back',
+                    loc.t('welcome_back'),
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in to control your smart home',
+                    loc.t('sign_in_subtitle'),
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -76,17 +78,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
+                    decoration: InputDecoration(
+                      labelText: loc.t('email'),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return loc.t('enter_email');
                       }
                       if (!value.contains('@')) {
-                        return 'Please enter a valid email';
+                        return loc.t('valid_email');
                       }
                       return null;
                     },
@@ -96,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: loc.t('password'),
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
@@ -112,10 +114,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return loc.t('enter_password');
                       }
                       if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return loc.t('password_length');
                       }
                       return null;
                     },
@@ -130,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.all(16),
                               ),
-                              child: const Text('Sign In'),
+                              child: Text(loc.t('sign_in')),
                             );
                     },
                   ),
@@ -143,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       );
                     },
-                    child: const Text('Don\'t have an account? Sign Up'),
+                    child: Text(loc.t('no_account')),
                   ),
                 ],
               ),
