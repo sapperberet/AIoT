@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/firestore_service.dart';
 import '../../../core/models/device_model.dart';
@@ -14,7 +15,7 @@ class LogsTab extends StatelessWidget {
     final firestoreService = context.read<FirestoreService>();
 
     if (authProvider.currentUser == null) {
-      return const Center(child: Text('Please log in to view logs'));
+      return Center(child: Text(AppLocalizations.of(context).t('please_login')));
     }
 
     return DefaultTabController(

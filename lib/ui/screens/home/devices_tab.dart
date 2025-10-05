@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -68,7 +69,7 @@ class DevicesTab extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'Active Alarms (${alarms.length})',
+                                  '${AppLocalizations.of(context).t('active_alarms')} (${alarms.length})',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.errorColor,
@@ -94,7 +95,7 @@ class DevicesTab extends StatelessWidget {
                                       ),
                                       TextButton(
                                         onPressed: () => deviceProvider.acknowledgeAlarm(alarm.id),
-                                        child: const Text('Clear'),
+                                        child: Text(AppLocalizations.of(context).t('clear')),
                                       ),
                                     ],
                                   ),
@@ -126,9 +127,9 @@ class DevicesTab extends StatelessWidget {
                                 child: const Icon(Iconsax.devices_1, size: 50, color: AppTheme.primaryColor),
                               ),
                               const SizedBox(height: 24),
-                              const Text(
-                                'No devices configured',
-                                style: TextStyle(
+                              Text(
+                                AppLocalizations.of(context).t('no_devices'),
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.lightText,
@@ -136,7 +137,7 @@ class DevicesTab extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Add your ESP32 devices to get started',
+                                AppLocalizations.of(context).t('add_devices_desc'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: AppTheme.mutedText,

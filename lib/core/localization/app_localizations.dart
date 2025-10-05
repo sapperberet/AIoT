@@ -103,6 +103,17 @@ class AppLocalizations {
       'error': 'Error',
       'success': 'Success',
       'seconds': 'seconds',
+      
+      // Devices Tab
+      'active_alarms': 'Active Alarms',
+      'clear': 'Clear',
+      'no_devices': 'No devices configured',
+      'add_devices_desc': 'Add your ESP32 devices to get started',
+      'control_lights': 'Control Lights',
+      'temperature': 'Temperature',
+      
+      // Logs Tab
+      'please_login': 'Please log in to view logs',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -194,6 +205,17 @@ class AppLocalizations {
       'error': 'Fehler',
       'success': 'Erfolg',
       'seconds': 'Sekunden',
+      
+      // Devices Tab
+      'active_alarms': 'Aktive Alarme',
+      'clear': 'Löschen',
+      'no_devices': 'Keine Geräte konfiguriert',
+      'add_devices_desc': 'Fügen Sie Ihre ESP32-Geräte hinzu, um zu beginnen',
+      'control_lights': 'Lichter steuern',
+      'temperature': 'Temperatur',
+      
+      // Logs Tab
+      'please_login': 'Bitte melden Sie sich an, um Protokolle anzuzeigen',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -283,6 +305,17 @@ class AppLocalizations {
       'error': 'خطأ',
       'success': 'نجاح',
       'seconds': 'ثواني',
+      
+      // Devices Tab
+      'active_alarms': 'التنبيهات النشطة',
+      'clear': 'مسح',
+      'no_devices': 'لا توجد أجهزة مكونة',
+      'add_devices_desc': 'أضف أجهزة ESP32 الخاصة بك للبدء',
+      'control_lights': 'التحكم بالإضاءة',
+      'temperature': 'درجة الحرارة',
+      
+      // Logs Tab
+      'please_login': 'يرجى تسجيل الدخول لعرض السجلات',
     },
   };
 

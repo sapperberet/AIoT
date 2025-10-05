@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/providers/home_visualization_provider.dart';
 
@@ -102,7 +103,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.lightbulb),
-              title: const Text('Control Lights'),
+              title: Text(AppLocalizations.of(context).t('control_lights')),
               trailing: Switch(
                 value: false,
                 onChanged: (value) {
@@ -112,7 +113,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
             ),
             ListTile(
               leading: const Icon(Icons.thermostat),
-              title: const Text('Temperature'),
+              title: Text(AppLocalizations.of(context).t('temperature')),
               subtitle: const Text('22°C'),
             ),
           ],
