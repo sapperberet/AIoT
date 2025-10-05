@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -33,9 +34,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: ShaderMask(
             shaderCallback: (bounds) =>
                 AppTheme.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Notifications',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).t('notifications'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -56,8 +57,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const Icon(Iconsax.tick_circle,
                           color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 12),
-                      const Text('Mark all as read',
-                          style: TextStyle(color: AppTheme.lightText)),
+                      Text(AppLocalizations.of(context).t('mark_all_read'),
+                          style: const TextStyle(color: AppTheme.lightText)),
                     ],
                   ),
                 ),
@@ -68,8 +69,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const Icon(Iconsax.trash,
                           color: AppTheme.errorColor, size: 20),
                       const SizedBox(width: 12),
-                      const Text('Clear all',
-                          style: TextStyle(color: AppTheme.lightText)),
+                      Text(AppLocalizations.of(context).t('clear_all'),
+                          style: const TextStyle(color: AppTheme.lightText)),
                     ],
                   ),
                 ),
@@ -127,20 +128,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildFilterChips() {
+    final loc = AppLocalizations.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          _buildFilterChip('All', null),
+          _buildFilterChip(loc.t('all'), null),
           const SizedBox(width: 8),
-          _buildFilterChip('Device Status', NotificationType.deviceStatus),
+          _buildFilterChip(loc.t('device_status'), NotificationType.deviceStatus),
           const SizedBox(width: 8),
-          _buildFilterChip('Automation', NotificationType.automation),
+          _buildFilterChip(loc.t('automation'), NotificationType.automation),
           const SizedBox(width: 8),
-          _buildFilterChip('Security', NotificationType.security),
+          _buildFilterChip(loc.t('security'), NotificationType.security),
           const SizedBox(width: 8),
-          _buildFilterChip('Info', NotificationType.info),
+          _buildFilterChip(loc.t('info'), NotificationType.info),
         ],
       ),
     );

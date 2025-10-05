@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 
 class EnergyMonitorScreen extends StatefulWidget {
@@ -32,9 +33,9 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
           child: ShaderMask(
             shaderCallback: (bounds) =>
                 AppTheme.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Energy Monitor',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).t('energy_monitor'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -84,17 +85,18 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
   }
 
   Widget _buildPeriodSelector() {
+    final loc = AppLocalizations.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildPeriodChip('Today'),
+          _buildPeriodChip(loc.t('today')),
           const SizedBox(width: 8),
-          _buildPeriodChip('Week'),
+          _buildPeriodChip(loc.t('week')),
           const SizedBox(width: 8),
-          _buildPeriodChip('Month'),
+          _buildPeriodChip(loc.t('month')),
           const SizedBox(width: 8),
-          _buildPeriodChip('Year'),
+          _buildPeriodChip(loc.t('year')),
         ],
       ),
     );

@@ -102,6 +102,7 @@ class AppLocalizations {
       'loading': 'Loading...',
       'error': 'Error',
       'success': 'Success',
+      'seconds': 'seconds',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -192,6 +193,7 @@ class AppLocalizations {
       'loading': 'Lädt...',
       'error': 'Fehler',
       'success': 'Erfolg',
+      'seconds': 'Sekunden',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -280,6 +282,7 @@ class AppLocalizations {
       'loading': 'جاري التحميل...',
       'error': 'خطأ',
       'success': 'نجاح',
+      'seconds': 'ثواني',
     },
   };
 

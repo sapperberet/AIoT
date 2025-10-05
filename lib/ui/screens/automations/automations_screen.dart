@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/automation_provider.dart';
 import '../../../core/models/automation_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -32,9 +33,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           child: ShaderMask(
             shaderCallback: (bounds) =>
                 AppTheme.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Automations',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).t('automations'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -72,7 +73,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           onPressed: () => _showCreateAutomationDialog(context),
           backgroundColor: AppTheme.primaryColor,
           icon: const Icon(Iconsax.add),
-          label: const Text('New Automation'),
+          label: Text(AppLocalizations.of(context).t('create_automation')),
         ),
       ),
     );

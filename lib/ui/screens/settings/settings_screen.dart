@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -16,6 +17,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: AppTheme.darkBackground,
       appBar: AppBar(
@@ -31,9 +34,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ShaderMask(
             shaderCallback: (bounds) =>
                 AppTheme.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Settings',
-              style: TextStyle(
+            child: Text(
+              loc.t('settings'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -158,12 +161,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildConnectionModeSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
 
     return FadeInUp(
       delay: const Duration(milliseconds: 200),
       child: _buildSection(
-        'Connection Mode',
+        loc.t('connection_mode'),
         [
           _buildSegmentedControl(
             settingsProvider.connectionMode,
@@ -182,6 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ConnectionMode currentMode,
     Function(ConnectionMode) onChanged,
   ) {
+    final loc = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -192,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Expanded(
             child: _buildSegmentButton(
-              'Cloud',
+              loc.t('cloud'),
               Iconsax.cloud,
               currentMode == ConnectionMode.cloud,
               () => onChanged(ConnectionMode.cloud),
@@ -201,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 4),
           Expanded(
             child: _buildSegmentButton(
-              'Local (ESP32)',
+              '${loc.t('local')} (ESP32)',
               Iconsax.wifi,
               currentMode == ConnectionMode.local,
               () => onChanged(ConnectionMode.local),
@@ -291,17 +296,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAppearanceSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
 
     return FadeInUp(
       delay: const Duration(milliseconds: 300),
       child: _buildSection(
-        'Appearance',
+        loc.t('appearance'),
         [
           _buildThemeSelector(settingsProvider),
           const SizedBox(height: 12),
           _buildSettingTile(
-            'Language',
+            loc.t('language'),
             'English',
             Iconsax.language_square,
             onTap: () => _showLanguagePicker(context),
@@ -312,11 +318,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildThemeSelector(SettingsProvider provider) {
+    final loc = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
           child: _buildThemeOption(
-            'Light',
+            loc.t('light'),
             Iconsax.sun_1,
             provider.themeMode == ThemeMode.light,
             () => provider.setThemeMode(ThemeMode.light),
@@ -325,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildThemeOption(
-            'Dark',
+            loc.t('dark'),
             Iconsax.moon,
             provider.themeMode == ThemeMode.dark,
             () => provider.setThemeMode(ThemeMode.dark),
@@ -334,7 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildThemeOption(
-            'System',
+            loc.t('system'),
             Iconsax.mobile,
             provider.themeMode == ThemeMode.system,
             () => provider.setThemeMode(ThemeMode.system),
@@ -392,47 +399,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildNotificationsSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
 
     return FadeInUp(
       delay: const Duration(milliseconds: 400),
       child: _buildSection(
-        'Notifications',
+        loc.t('notification_settings'),
         [
           _buildSwitchTile(
-            'Enable Notifications',
+            loc.t('enable_notifications'),
             settingsProvider.enableNotifications,
             (value) => settingsProvider.toggleNotifications(value),
             icon: Iconsax.notification,
           ),
           if (settingsProvider.enableNotifications) ...[
             _buildSwitchTile(
-              'Device Status Updates',
+              loc.t('device_status_notifications'),
               settingsProvider.deviceStatusNotifications,
               (value) =>
                   settingsProvider.toggleDeviceStatusNotifications(value),
               icon: Iconsax.status,
             ),
             _buildSwitchTile(
-              'Automation Alerts',
+              loc.t('automation_notifications'),
               settingsProvider.automationNotifications,
               (value) => settingsProvider.toggleAutomationNotifications(value),
               icon: Iconsax.timer,
             ),
             _buildSwitchTile(
-              'Security Alerts',
+              loc.t('security_alerts'),
               settingsProvider.securityAlerts,
               (value) => settingsProvider.toggleSecurityAlerts(value),
               icon: Iconsax.shield_tick,
             ),
             _buildSwitchTile(
-              'Sound',
+              loc.t('sound'),
               settingsProvider.soundEnabled,
               (value) => settingsProvider.toggleSound(value),
               icon: Iconsax.volume_high,
             ),
             _buildSwitchTile(
-              'Vibration',
+              loc.t('vibration'),
               settingsProvider.vibrationEnabled,
               (value) => settingsProvider.toggleVibration(value),
               icon: Iconsax.mobile,
@@ -444,22 +452,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAppPreferencesSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
 
     return FadeInUp(
       delay: const Duration(milliseconds: 500),
       child: _buildSection(
-        'App Preferences',
+        loc.t('app_preferences'),
         [
           _buildSwitchTile(
-            'Auto-Connect on Launch',
+            loc.t('auto_connect'),
             settingsProvider.autoConnect,
             (value) => settingsProvider.toggleAutoConnect(value),
             icon: Iconsax.link,
           ),
           _buildSettingTile(
-            'Data Refresh Interval',
-            '${settingsProvider.dataRefreshInterval} seconds',
+            loc.t('data_refresh_interval'),
+            '${settingsProvider.dataRefreshInterval} ${loc.t('seconds')}',
             Iconsax.refresh,
             onTap: () => _showRefreshIntervalPicker(context, settingsProvider),
           ),
@@ -469,25 +478,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAccountSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return FadeInUp(
       delay: const Duration(milliseconds: 600),
       child: _buildSection(
-        'Account',
+        loc.t('account'),
         [
           _buildSettingTile(
-            'Change Password',
+            loc.t('change_password'),
             '',
             Iconsax.lock,
             onTap: () => _changePassword(context),
           ),
           _buildSettingTile(
-            'Privacy & Security',
+            loc.t('privacy'),
             '',
             Iconsax.shield_tick,
             onTap: () => _showPrivacySettings(context),
           ),
           _buildSettingTile(
-            'Delete Account',
+            loc.t('delete_account'),
             '',
             Iconsax.trash,
             onTap: () => _deleteAccount(context),
@@ -499,13 +509,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAboutSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return FadeInUp(
       delay: const Duration(milliseconds: 700),
       child: _buildSection(
-        'About',
+        loc.t('about'),
         [
           _buildSettingTile(
-            'Version',
+            loc.t('version'),
             '1.0.0',
             Iconsax.info_circle,
           ),
@@ -522,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _showPrivacyPolicy(context),
           ),
           _buildSettingTile(
-            'Help & Support',
+            loc.t('help_support'),
             '',
             Iconsax.message_question,
             onTap: () => _showSupport(context),

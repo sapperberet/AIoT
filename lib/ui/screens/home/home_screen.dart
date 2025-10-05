@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -60,9 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
         title: FadeInDown(
           child: ShaderMask(
             shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Smart Home',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).t('app_title'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -111,7 +112,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        deviceProvider.isConnectedToMqtt ? 'Local' : 'Cloud',
+                        deviceProvider.isConnectedToMqtt 
+                            ? AppLocalizations.of(context).t('local') 
+                            : AppLocalizations.of(context).t('cloud'),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -158,21 +161,21 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
           indicatorColor: AppTheme.primaryColor.withOpacity(0.2),
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Iconsax.home),
-              selectedIcon: Icon(Iconsax.home_15),
-              label: 'Devices',
+              icon: const Icon(Iconsax.home),
+              selectedIcon: const Icon(Iconsax.home_15),
+              label: AppLocalizations.of(context).t('devices'),
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.box),
-              selectedIcon: Icon(Iconsax.box5),
-              label: 'Visualization',
+              icon: const Icon(Iconsax.box),
+              selectedIcon: const Icon(Iconsax.box5),
+              label: AppLocalizations.of(context).t('visualization'),
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.document_text),
-              selectedIcon: Icon(Iconsax.document_text_15),
-              label: 'Logs',
+              icon: const Icon(Iconsax.document_text),
+              selectedIcon: const Icon(Iconsax.document_text_15),
+              label: AppLocalizations.of(context).t('logs'),
             ),
           ],
         ),
