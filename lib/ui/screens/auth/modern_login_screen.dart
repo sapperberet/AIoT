@@ -5,7 +5,6 @@ import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import 'modern_register_screen.dart';
 import 'email_verification_screen.dart';
 
 class ModernLoginScreen extends StatefulWidget {
@@ -44,25 +43,50 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      
-      final success = await authProvider.signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
 
-      if (success && mounted) {
-        // Check if email is verified
-        if (authProvider.currentUser?.emailVerified == false) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const EmailVerificationScreen(),
-            ),
-          );
+      try {
+        debugPrint('Starting login...');
+        final success = await authProvider.signIn(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+
+        debugPrint('Login success: $success');
+
+        if (!mounted) return;
+
+        if (success) {
+          // Add a small delay to ensure Firebase auth state is fully updated
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          if (!mounted) return;
+
+          // Check if email is verified
+          final user = authProvider.currentUser;
+          debugPrint(
+              'User: ${user?.email}, Email verified: ${user?.emailVerified}');
+
+          if (user != null && !user.emailVerified) {
+            debugPrint('Navigate to email verification screen');
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const EmailVerificationScreen(),
+              ),
+            );
+          } else {
+            debugPrint('Navigate to /home');
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
         } else {
-          Navigator.of(context).pushReplacementNamed('/home');
+          debugPrint('Login failed: ${authProvider.errorMessage}');
+          if (authProvider.errorMessage != null) {
+            _showErrorSnackbar(authProvider.errorMessage!);
+          }
         }
-      } else if (mounted && authProvider.errorMessage != null) {
-        _showErrorSnackbar(authProvider.errorMessage!);
+      } catch (e) {
+        debugPrint('Login error: $e');
+        if (!mounted) return;
+        _showErrorSnackbar('Login failed. Please try again.');
       }
     }
   }
@@ -99,10 +123,10 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                
+
                 // Animated Logo/Icon
                 FadeInDown(
-                  duration: const Duration(milliseconds: 800),
+                  duration: const Duration(milliseconds: 400),
                   child: Container(
                     width: 120,
                     height: 120,
@@ -123,22 +147,24 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                 // Welcome Text
                 FadeInDown(
-                  delay: const Duration(milliseconds: 200),
+                  delay: const Duration(milliseconds: 100),
+                  duration: const Duration(milliseconds: 400),
                   child: Column(
                     children: [
                       Text(
                         'Welcome Back',
-                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                          color: AppTheme.lightText,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.displayMedium?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Sign in to control your smart home',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.mutedText,
-                        ),
+                              color: AppTheme.mutedText,
+                            ),
                       ),
                     ],
                   ),
@@ -148,7 +174,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                 // Login Form Card
                 FadeInUp(
-                  delay: const Duration(milliseconds: 400),
+                  delay: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 400),
                   child: GlassmorphicContainer(
                     width: double.infinity,
                     height: 420,
@@ -205,7 +232,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                               obscureText: _obscurePassword,
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Iconsax.eye_slash : Iconsax.eye,
+                                  _obscurePassword
+                                      ? Iconsax.eye_slash
+                                      : Iconsax.eye,
                                   color: AppTheme.mutedText,
                                 ),
                                 onPressed: () {
@@ -227,48 +256,36 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                             const SizedBox(height: 16),
 
-                            // Remember Me & Forgot Password
+                            // Remember Me
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: Checkbox(
-                                        value: _rememberMe,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _rememberMe = value ?? false;
-                                          });
-                                        },
-                                        fillColor: MaterialStateProperty.all(
-                                          AppTheme.primaryColor,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                      ),
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _rememberMe = value ?? false;
+                                      });
+                                    },
+                                    fillColor: MaterialStateProperty.all(
+                                      AppTheme.primaryColor,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Remember me',
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    // TODO: Implement forgot password
-                                  },
-                                  child: Text(
-                                    'Forgot Password?',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w600,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Remember me',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppTheme.lightText,
+                                      ),
                                 ),
                               ],
                             ),
@@ -295,106 +312,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                 const SizedBox(height: 32),
 
-                // Divider
-                FadeInUp(
-                  delay: const Duration(milliseconds: 600),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          color: AppTheme.mutedText.withOpacity(0.3),
-                          thickness: 1,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          color: AppTheme.mutedText.withOpacity(0.3),
-                          thickness: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Social Login Buttons
-                FadeInUp(
-                  delay: const Duration(milliseconds: 800),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSocialButton(
-                        icon: Iconsax.security_user,
-                        onPressed: () {
-                          // TODO: Implement Google Sign In
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      _buildSocialButton(
-                        icon: Iconsax.play,
-                        onPressed: () {
-                          // TODO: Implement Apple Sign In
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Sign Up Link
-                FadeInUp(
-                  delay: const Duration(milliseconds: 1000),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.mutedText,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            PageRouteBuilder(
-                              pageBuilder: (context, animation, secondaryAnimation) =>
-                                  const ModernRegisterScreen(),
-                              transitionsBuilder:
-                                  (context, animation, secondaryAnimation, child) {
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: SlideTransition(
-                                    position: Tween<Offset>(
-                                      begin: const Offset(1, 0),
-                                      end: Offset.zero,
-                                    ).animate(animation),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Sign Up',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -489,36 +407,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
             color: Colors.white,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return GlassmorphicContainer(
-      width: 60,
-      height: 60,
-      borderRadius: 16,
-      blur: 10,
-      alignment: Alignment.center,
-      border: 2,
-      linearGradient: LinearGradient(
-        colors: [
-          Colors.white.withOpacity(0.1),
-          Colors.white.withOpacity(0.05),
-        ],
-      ),
-      borderGradient: LinearGradient(
-        colors: [
-          Colors.white.withOpacity(0.2),
-          Colors.white.withOpacity(0.1),
-        ],
-      ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, color: AppTheme.lightText, size: 28),
       ),
     );
   }

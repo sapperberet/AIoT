@@ -14,15 +14,25 @@ import 'ui/screens/auth/modern_login_screen.dart';
 import 'ui/screens/auth/modern_register_screen.dart';
 import 'ui/screens/auth/email_verification_screen.dart';
 import 'ui/screens/home/home_screen.dart';
-import 'core/config/firebase_options.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase (only if not already initialized)
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      // Firebase already initialized, continue
+      debugPrint('Firebase already initialized');
+    } else {
+      // Re-throw other errors
+      rethrow;
+    }
+  }
 
   runApp(const SmartHomeApp());
 }

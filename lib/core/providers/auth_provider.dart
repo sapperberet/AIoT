@@ -47,16 +47,45 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Sign in - don't capture UserCredential to avoid type cast error
       await _authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Get current user directly from auth instance
+      _currentUser = _authService.currentUser;
+
+      // Load user data from Firestore
+      if (_currentUser != null) {
+        await _loadUserData();
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
+      // If error contains type cast, try getting user anyway (it may have succeeded)
+      if (e.toString().contains('PigeonUserDetails') ||
+          e.toString().contains('type cast')) {
+        debugPrint(
+            'Type cast error caught, checking if login succeeded anyway...');
+        _currentUser = _authService.currentUser;
+
+        if (_currentUser != null) {
+          // Login actually succeeded despite the error
+          debugPrint('Login succeeded! User: ${_currentUser?.email}');
+          await _loadUserData();
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
+
       _errorMessage = e.toString();
       _isLoading = false;
+      _currentUser = null;
+      _userModel = null;
       notifyListeners();
       return false;
     }
@@ -69,17 +98,46 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Register - don't capture UserCredential to avoid type cast error
       await _authService.registerWithEmailAndPassword(
         email: email,
         password: password,
         displayName: displayName,
       );
+
+      // Get current user directly from auth instance
+      _currentUser = _authService.currentUser;
+
+      // Load user data from Firestore
+      if (_currentUser != null) {
+        await _loadUserData();
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
+      // If error contains type cast, try getting user anyway (it may have succeeded)
+      if (e.toString().contains('PigeonUserDetails') ||
+          e.toString().contains('type cast')) {
+        debugPrint(
+            'Type cast error caught, checking if registration succeeded anyway...');
+        _currentUser = _authService.currentUser;
+
+        if (_currentUser != null) {
+          // Registration actually succeeded despite the error
+          debugPrint('Registration succeeded! User: ${_currentUser?.email}');
+          await _loadUserData();
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
+
       _errorMessage = e.toString();
       _isLoading = false;
+      _currentUser = null;
+      _userModel = null;
       notifyListeners();
       return false;
     }
@@ -100,9 +158,24 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> reloadUser() async {
     if (_currentUser != null) {
-      await _currentUser!.reload();
-      _currentUser = FirebaseAuth.instance.currentUser;
-      notifyListeners();
+      try {
+        await _currentUser!.reload();
+        _currentUser = FirebaseAuth.instance.currentUser;
+        notifyListeners();
+      } catch (e) {
+        // Catch the type cast error during reload, but still update user
+        if (e.toString().contains('PigeonUserInfo') ||
+            e.toString().contains('type cast')) {
+          debugPrint(
+              'Type cast error during reload, refreshing user anyway...');
+          // Reload failed due to bug, but we can still get the current user
+          _currentUser = FirebaseAuth.instance.currentUser;
+          notifyListeners();
+        } else {
+          // Re-throw other errors
+          rethrow;
+        }
+      }
     }
   }
 

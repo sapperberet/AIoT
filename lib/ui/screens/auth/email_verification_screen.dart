@@ -11,7 +11,8 @@ class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  State<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
@@ -54,7 +55,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Future<void> _sendVerificationEmail() async {
     final authProvider = context.read<AuthProvider>();
     await authProvider.sendEmailVerification();
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -63,7 +64,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               const Icon(Iconsax.sms, color: Colors.white),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Verification email sent to ${authProvider.currentUser?.email}'),
+                child: Text(
+                    'Verification email sent to ${authProvider.currentUser?.email}'),
               ),
             ],
           ),
@@ -78,14 +80,19 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   void _checkEmailVerification() {
     Timer.periodic(const Duration(seconds: 3), (timer) async {
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.reloadUser();
-      
-      if (authProvider.currentUser?.emailVerified == true) {
-        timer.cancel();
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
+      try {
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.reloadUser();
+
+        if (authProvider.currentUser?.emailVerified == true) {
+          timer.cancel();
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
         }
+      } catch (e) {
+        // If reload fails, user can manually check by tapping "Continue"
+        debugPrint('Error checking email verification: $e');
       }
     });
   }
@@ -106,7 +113,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                
+
                 // Email Icon Animation
                 FadeInDown(
                   child: Container(
@@ -134,27 +141,29 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     children: [
                       Text(
                         'Verify Your Email',
-                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                          color: AppTheme.lightText,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.displayMedium?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'We sent a verification link to',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.mutedText,
-                        ),
+                              color: AppTheme.mutedText,
+                            ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         authProvider.currentUser?.email ?? '',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -200,26 +209,35 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           const SizedBox(height: 24),
                           Text(
                             'Check Your Email',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: AppTheme.lightText,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             'Click the verification link in your email to activate your account.',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.mutedText,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: AppTheme.mutedText,
+                                ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 32),
                           if (!_canResend)
                             Text(
                               'Resend in $_countdown seconds',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.mutedText,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: AppTheme.mutedText,
+                                  ),
                             ),
                         ],
                       ),
@@ -258,14 +276,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Iconsax.arrow_left, color: AppTheme.primaryColor, size: 20),
+                        Icon(Iconsax.arrow_left,
+                            color: AppTheme.primaryColor, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Back to Login',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ],
                     ),
