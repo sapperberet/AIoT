@@ -15,7 +15,8 @@ class LogsTab extends StatelessWidget {
     final firestoreService = context.read<FirestoreService>();
 
     if (authProvider.currentUser == null) {
-      return Center(child: Text(AppLocalizations.of(context).t('please_login')));
+      return Center(
+          child: Text(AppLocalizations.of(context).t('please_login')));
     }
 
     return DefaultTabController(
@@ -31,8 +32,10 @@ class LogsTab extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                _buildAlarmsLog(context, authProvider.currentUser!.uid, firestoreService),
-                _buildEventsLog(context, authProvider.currentUser!.uid, firestoreService),
+                _buildAlarmsLog(
+                    context, authProvider.currentUser!.uid, firestoreService),
+                _buildEventsLog(
+                    context, authProvider.currentUser!.uid, firestoreService),
               ],
             ),
           ),
@@ -41,7 +44,8 @@ class LogsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildAlarmsLog(BuildContext context, String userId, FirestoreService firestoreService) {
+  Widget _buildAlarmsLog(
+      BuildContext context, String userId, FirestoreService firestoreService) {
     return StreamBuilder<List<AlarmEvent>>(
       stream: firestoreService.getAlarmsStream(userId),
       builder: (context, snapshot) {
@@ -116,7 +120,8 @@ class LogsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildEventsLog(BuildContext context, String userId, FirestoreService firestoreService) {
+  Widget _buildEventsLog(
+      BuildContext context, String userId, FirestoreService firestoreService) {
     return StreamBuilder<QuerySnapshot>(
       stream: firestoreService.getLogsStream(userId, limit: 100),
       builder: (context, snapshot) {
@@ -141,7 +146,8 @@ class LogsTab extends StatelessWidget {
             final log = logs[index].data() as Map<String, dynamic>;
             final event = log['event'] as String;
             final data = log['data'] as Map<String, dynamic>? ?? {};
-            final timestamp = (log['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final timestamp =
+                (log['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
 
             return ListTile(
               dense: true,
@@ -180,7 +186,7 @@ class LogsTab extends StatelessWidget {
   String _formatTimestamp(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inSeconds < 60) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

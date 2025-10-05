@@ -50,14 +50,14 @@ class _VisualizationTabState extends State<VisualizationTab> {
   void _listenToAlarms() {
     final deviceProvider = context.read<DeviceProvider>();
     final vizProvider = context.read<HomeVisualizationProvider>();
-    
+
     // Listen to alarm changes and update visualization
     deviceProvider.addListener(() {
       final alarms = deviceProvider.activeAlarms;
-      
+
       // Clear all previous visual alarms
       vizProvider.clearAllVisualAlarms();
-      
+
       // Add new visual alarms
       for (var alarm in alarms) {
         vizProvider.triggerVisualAlarm(
@@ -66,7 +66,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
           alarm.severity,
         );
       }
-      
+
       // Send update to JavaScript
       _updateVisualization(vizProvider.getVisualizationCommand());
     });

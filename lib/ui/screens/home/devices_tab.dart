@@ -65,7 +65,8 @@ class DevicesTab extends StatelessWidget {
                                     color: AppTheme.errorColor,
                                     borderRadius: AppTheme.smallRadius,
                                   ),
-                                  child: const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
+                                  child: const Icon(Iconsax.warning_2,
+                                      color: Colors.white, size: 20),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
@@ -81,25 +82,36 @@ class DevicesTab extends StatelessWidget {
                             const SizedBox(height: 12),
                             Expanded(
                               child: ListView(
-                                children: alarms.take(2).map((alarm) => Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      Icon(Iconsax.danger, color: AppTheme.errorColor, size: 16),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          '${alarm.type} in ${alarm.location}',
-                                          style: const TextStyle(color: AppTheme.lightText),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => deviceProvider.acknowledgeAlarm(alarm.id),
-                                        child: Text(AppLocalizations.of(context).t('clear')),
-                                      ),
-                                    ],
-                                  ),
-                                )).toList(),
+                                children: alarms
+                                    .take(2)
+                                    .map((alarm) => Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 4),
+                                          child: Row(
+                                            children: [
+                                              Icon(Iconsax.danger,
+                                                  color: AppTheme.errorColor,
+                                                  size: 16),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  '${alarm.type} in ${alarm.location}',
+                                                  style: const TextStyle(
+                                                      color:
+                                                          AppTheme.lightText),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => deviceProvider
+                                                    .acknowledgeAlarm(alarm.id),
+                                                child: Text(
+                                                    AppLocalizations.of(context)
+                                                        .t('clear')),
+                                              ),
+                                            ],
+                                          ),
+                                        ))
+                                    .toList(),
                               ),
                             ),
                           ],
@@ -108,7 +120,7 @@ class DevicesTab extends StatelessWidget {
                     ),
                   ),
                 ),
-              
+
               // Devices List
               Expanded(
                 child: devices.isEmpty
@@ -124,7 +136,8 @@ class DevicesTab extends StatelessWidget {
                                   shape: BoxShape.circle,
                                   gradient: AppTheme.primaryGradient.scale(0.3),
                                 ),
-                                child: const Icon(Iconsax.devices_1, size: 50, color: AppTheme.primaryColor),
+                                child: const Icon(Iconsax.devices_1,
+                                    size: 50, color: AppTheme.primaryColor),
                               ),
                               const SizedBox(height: 24),
                               Text(
@@ -137,7 +150,8 @@ class DevicesTab extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                AppLocalizations.of(context).t('add_devices_desc'),
+                                AppLocalizations.of(context)
+                                    .t('add_devices_desc'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: AppTheme.mutedText,
@@ -185,7 +199,8 @@ extension GradientExtension on Gradient {
         end: linear.end,
       );
     }
-    return const LinearGradient(colors: [Colors.transparent, Colors.transparent]);
+    return const LinearGradient(
+        colors: [Colors.transparent, Colors.transparent]);
   }
 }
 
@@ -199,7 +214,7 @@ class ModernDeviceCard extends StatelessWidget {
     final deviceProvider = context.read<DeviceProvider>();
     final gradient = _getDeviceGradient(device.type);
     final icon = _getDeviceIcon(device.type);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
@@ -286,7 +301,8 @@ class ModernDeviceCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: device.status == DeviceStatus.online
                                   ? AppTheme.successColor.withOpacity(0.2)
@@ -294,7 +310,9 @@ class ModernDeviceCard extends StatelessWidget {
                               borderRadius: AppTheme.smallRadius,
                             ),
                             child: Text(
-                              device.status == DeviceStatus.online ? 'Online' : 'Offline',
+                              device.status == DeviceStatus.online
+                                  ? 'Online'
+                                  : 'Offline',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -324,7 +342,8 @@ class ModernDeviceCard extends StatelessWidget {
                 else if (device.type == DeviceType.lock)
                   _buildLockIcon(device)
                 else
-                  const Icon(Iconsax.arrow_right_3, color: AppTheme.mutedText, size: 20),
+                  const Icon(Iconsax.arrow_right_3,
+                      color: AppTheme.mutedText, size: 20),
               ],
             ),
           ),
@@ -364,8 +383,10 @@ class ModernDeviceCard extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         gradient: isLocked
-            ? LinearGradient(colors: [Colors.green.shade400, Colors.green.shade600])
-            : LinearGradient(colors: [Colors.orange.shade400, Colors.orange.shade600]),
+            ? LinearGradient(
+                colors: [Colors.green.shade400, Colors.green.shade600])
+            : LinearGradient(
+                colors: [Colors.orange.shade400, Colors.orange.shade600]),
         borderRadius: AppTheme.smallRadius,
       ),
       child: Icon(
@@ -381,15 +402,20 @@ class ModernDeviceCard extends StatelessWidget {
       case DeviceType.light:
         return AppTheme.accentGradient;
       case DeviceType.alarm:
-        return LinearGradient(colors: [Colors.red.shade400, Colors.red.shade600]);
+        return LinearGradient(
+            colors: [Colors.red.shade400, Colors.red.shade600]);
       case DeviceType.sensor:
-        return LinearGradient(colors: [Colors.blue.shade400, Colors.blue.shade600]);
+        return LinearGradient(
+            colors: [Colors.blue.shade400, Colors.blue.shade600]);
       case DeviceType.camera:
-        return LinearGradient(colors: [Colors.purple.shade400, Colors.purple.shade600]);
+        return LinearGradient(
+            colors: [Colors.purple.shade400, Colors.purple.shade600]);
       case DeviceType.thermostat:
-        return LinearGradient(colors: [Colors.orange.shade400, Colors.orange.shade600]);
+        return LinearGradient(
+            colors: [Colors.orange.shade400, Colors.orange.shade600]);
       case DeviceType.lock:
-        return LinearGradient(colors: [Colors.green.shade400, Colors.green.shade600]);
+        return LinearGradient(
+            colors: [Colors.green.shade400, Colors.green.shade600]);
     }
   }
 
@@ -413,7 +439,7 @@ class ModernDeviceCard extends StatelessWidget {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inSeconds < 60) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {
@@ -528,4 +554,3 @@ class ModernDeviceCard extends StatelessWidget {
     );
   }
 }
-
