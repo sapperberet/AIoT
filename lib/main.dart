@@ -105,6 +105,7 @@ class SmartHomeApp extends StatelessWidget {
           }
 
           return MaterialApp(
+            key: ValueKey(settingsProvider.language), // Force rebuild on language change
             title: 'Smart Home',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
