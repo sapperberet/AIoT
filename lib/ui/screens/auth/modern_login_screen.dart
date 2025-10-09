@@ -21,6 +21,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _showEmailPasswordForm = false; // Only show if enabled in settings
   late AnimationController _controller;
 
   @override
@@ -161,7 +162,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sign in to control your smart home',
+                        'Sign in with face recognition',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.mutedText,
                             ),
@@ -172,7 +173,177 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                 const SizedBox(height: 48),
 
-                // Login Form Card
+                // Primary: Face Authentication Button
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 400),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/face-auth'),
+                    child: GlassmorphicContainer(
+                      width: double.infinity,
+                      height: 120,
+                      borderRadius: 24,
+                      blur: 20,
+                      alignment: Alignment.center,
+                      border: 2,
+                      linearGradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.15),
+                          Colors.white.withOpacity(0.1),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderGradient: LinearGradient(
+                        colors: [
+                          AppTheme.accentColor.withOpacity(0.6),
+                          AppTheme.primaryColor.withOpacity(0.6),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.accentColor.withOpacity(0.9),
+                                  AppTheme.primaryColor.withOpacity(0.9),
+                                ],
+                              ),
+                              boxShadow: AppTheme.glowShadow,
+                            ),
+                            child: const Icon(
+                              Iconsax.security_user,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Sign in with Face Recognition',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Quick & Secure',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.mutedText,
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Divider with "Advanced Options"
+                FadeInUp(
+                  delay: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 400),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.white.withOpacity(0.3),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Advanced Options',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.mutedText,
+                                  ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.3),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Optional: Email/Password Toggle Button
+                if (!_showEmailPasswordForm)
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 400),
+                    duration: const Duration(milliseconds: 400),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showEmailPasswordForm = true;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: AppTheme.mediumRadius,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Iconsax.key,
+                              color: AppTheme.mutedText,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Sign in with Email & Password',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.lightText,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Email/Password Login Form (only shown when toggled)
+                if (_showEmailPasswordForm)
                 FadeInUp(
                   delay: const Duration(milliseconds: 200),
                   duration: const Duration(milliseconds: 400),
@@ -311,6 +482,119 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                 ),
 
                 const SizedBox(height: 32),
+
+                // OR Divider
+                FadeInUp(
+                  delay: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 400),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.white.withOpacity(0.3),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'OR',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.mutedText,
+                                  ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.3),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Face Authentication Button
+                FadeInUp(
+                  delay: const Duration(milliseconds: 400),
+                  duration: const Duration(milliseconds: 400),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/face-auth'),
+                    child: GlassmorphicContainer(
+                      width: double.infinity,
+                      height: 70,
+                      borderRadius: 20,
+                      blur: 20,
+                      alignment: Alignment.center,
+                      border: 2,
+                      linearGradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.1),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderGradient: LinearGradient(
+                        colors: [
+                          AppTheme.accentColor.withOpacity(0.5),
+                          AppTheme.primaryColor.withOpacity(0.5),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.accentColor.withOpacity(0.8),
+                                  AppTheme.primaryColor.withOpacity(0.8),
+                                ],
+                              ),
+                            ),
+                            child: const Icon(
+                              Iconsax.security_user,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            'Sign in with Face Recognition',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.lightText,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 24),
               ],

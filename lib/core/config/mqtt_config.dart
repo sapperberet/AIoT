@@ -2,7 +2,7 @@
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
   static const String localBrokerAddress =
-      '192.168.1.100'; // TODO: Replace with your local broker IP
+      '192.168.1.7'; // Your computer's IP address
   static const int localBrokerPort = 1883;
   static const String localClientId = 'smart_home_app';
 
@@ -36,6 +36,16 @@ class MqttConfig {
   static const String fireAlarmTopic = 'home/+/fire_alarm';
   static const String motionAlarmTopic = 'home/+/motion';
   static const String doorAlarmTopic = 'home/+/door';
+
+  // Face Recognition Authentication Topics
+  static const String faceAuthRequestTopic = '$topicPrefix/auth/face/request';
+  static const String faceAuthResponseTopic = '$topicPrefix/auth/face/response';
+  static const String faceAuthStatusTopic = '$topicPrefix/auth/face/status';
+  static const String faceAuthBeaconTopic = '$topicPrefix/auth/beacon';
+
+  // Beacon discovery settings
+  static const int beaconPort = 18830;
+  static const String beaconServiceName = 'face-broker';
 
   // Keep alive and reconnection
   static const int keepAlivePeriod = 60;

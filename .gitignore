@@ -93,7 +93,10 @@ coverage/
 **/ios/Flutter/flutter_assets/
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/ServiceDefinitions.json
+grad_project_backend-main/
 **/ios/Runner/GeneratedPluginRegistrant.*
+
+# Backend folde
 
 # Android
 **/android/**/gradle-wrapper.jar

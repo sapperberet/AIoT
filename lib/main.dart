@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/services/auth_service.dart';
 import 'core/services/mqtt_service.dart';
+import 'core/services/face_auth_service.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/providers/auth_provider.dart';
@@ -18,6 +19,7 @@ import 'ui/screens/splash_screen.dart';
 import 'ui/screens/auth/modern_login_screen.dart';
 import 'ui/screens/auth/modern_register_screen.dart';
 import 'ui/screens/auth/email_verification_screen.dart';
+import 'ui/screens/auth/face_auth_screen.dart';
 import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
@@ -60,6 +62,11 @@ class SmartHomeApp extends StatelessWidget {
         Provider<MqttService>(
           create: (_) => MqttService(),
         ),
+        Provider<FaceAuthService>(
+          create: (context) => FaceAuthService(
+            mqttService: context.read<MqttService>(),
+          ),
+        ),
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
@@ -68,6 +75,7 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             authService: context.read<AuthService>(),
+            faceAuthService: context.read<FaceAuthService>(),
           ),
         ),
         ChangeNotifierProvider<DeviceProvider>(
@@ -80,7 +88,10 @@ class SmartHomeApp extends StatelessWidget {
           create: (_) => HomeVisualizationProvider(),
         ),
         ChangeNotifierProvider<SettingsProvider>(
-          create: (_) => SettingsProvider(),
+          create: (context) => SettingsProvider(
+            firestoreService: context.read<FirestoreService>(),
+            authService: context.read<AuthService>(),
+          ),
         ),
         ChangeNotifierProvider<NotificationService>(
           create: (_) => NotificationService(),
@@ -129,6 +140,7 @@ class SmartHomeApp extends StatelessWidget {
               '/login': (context) => const ModernLoginScreen(),
               '/register': (context) => const ModernRegisterScreen(),
               '/verify-email': (context) => const EmailVerificationScreen(),
+              '/face-auth': (context) => const FaceAuthScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
               '/notifications': (context) => const NotificationsScreen(),

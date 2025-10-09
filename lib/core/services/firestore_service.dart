@@ -194,4 +194,88 @@ class FirestoreService {
         .limit(limit)
         .snapshots();
   }
+
+  // Get user settings
+  Future<Map<String, dynamic>?> getUserSettings(String userId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('preferences')
+          .get();
+
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      _logger.e('Error getting user settings: $e');
+      return null;
+    }
+  }
+
+  // Save user settings
+  Future<void> saveUserSettings(
+    String userId,
+    Map<String, dynamic> settings,
+  ) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('preferences')
+          .set(settings, SetOptions(merge: true));
+      _logger.i('User settings saved for: $userId');
+    } catch (e) {
+      _logger.e('Error saving user settings: $e');
+      rethrow;
+    }
+  }
+
+  // Save automation rules
+  Future<void> saveAutomationRules(
+    String userId,
+    List<Map<String, dynamic>> rules,
+  ) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('automations')
+          .set({
+        'rules': rules,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      _logger.i('Automation rules saved for: $userId');
+    } catch (e) {
+      _logger.e('Error saving automation rules: $e');
+      rethrow;
+    }
+  }
+
+  // Get automation rules
+  Future<List<Map<String, dynamic>>> getAutomationRules(String userId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('automations')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data['rules'] != null) {
+          return List<Map<String, dynamic>>.from(data['rules']);
+        }
+      }
+      return [];
+    } catch (e) {
+      _logger.e('Error getting automation rules: $e');
+      return [];
+    }
+  }
 }
