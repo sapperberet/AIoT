@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/mqtt_service.dart';
 import 'core/services/face_auth_service.dart';
+import 'core/services/face_auth_http_service.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/providers/auth_provider.dart';
@@ -67,6 +68,9 @@ class SmartHomeApp extends StatelessWidget {
             mqttService: context.read<MqttService>(),
           ),
         ),
+        Provider<FaceAuthHttpService>(
+          create: (_) => FaceAuthHttpService(),
+        ),
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
@@ -76,6 +80,7 @@ class SmartHomeApp extends StatelessWidget {
           create: (context) => AuthProvider(
             authService: context.read<AuthService>(),
             faceAuthService: context.read<FaceAuthService>(),
+            faceAuthHttpService: context.read<FaceAuthHttpService>(),
           ),
         ),
         ChangeNotifierProvider<DeviceProvider>(

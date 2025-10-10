@@ -21,6 +21,9 @@ dependencies:
   # MQTT for local ESP32 communication
   mqtt_client: ^10.2.0
 
+  # HTTP client for REST API calls
+  http: ^1.1.0
+
   # State Management
   provider: ^6.1.1
   

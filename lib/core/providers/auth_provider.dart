@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/face_auth_service.dart';
+import '../services/face_auth_http_service.dart';
 import '../models/user_model.dart';
 import '../models/face_auth_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   final FaceAuthService? _faceAuthService;
+  final FaceAuthHttpService? _faceAuthHttpService;
 
   User? _currentUser;
   UserModel? _userModel;
@@ -22,8 +24,10 @@ class AuthProvider with ChangeNotifier {
   AuthProvider({
     required AuthService authService,
     FaceAuthService? faceAuthService,
+    FaceAuthHttpService? faceAuthHttpService,
   })  : _authService = authService,
-        _faceAuthService = faceAuthService {
+        _faceAuthService = faceAuthService,
+        _faceAuthHttpService = faceAuthHttpService {
     _init();
   }
 
@@ -37,7 +41,8 @@ class AuthProvider with ChangeNotifier {
   FaceAuthStatus get faceAuthStatus => _faceAuthStatus;
   FaceAuthBeacon? get discoveredBeacon => _discoveredBeacon;
   String? get faceAuthMessage => _faceAuthMessage;
-  bool get isFaceAuthAvailable => _faceAuthService != null;
+  bool get isFaceAuthAvailable =>
+      _faceAuthService != null || _faceAuthHttpService != null;
 
   void _init() {
     _authService.authStateChanges.listen((User? user) {
@@ -59,6 +64,20 @@ class AuthProvider with ChangeNotifier {
       });
 
       _faceAuthService!.beaconStream.listen((beacon) {
+        _discoveredBeacon = beacon;
+        notifyListeners();
+      });
+    }
+
+    // Initialize HTTP-based face auth listeners if available
+    if (_faceAuthHttpService != null) {
+      _faceAuthHttpService!.statusStream.listen((status) {
+        _faceAuthStatus = status;
+        _updateFaceAuthMessage(status);
+        notifyListeners();
+      });
+
+      _faceAuthHttpService!.beaconStream.listen((beacon) {
         _discoveredBeacon = beacon;
         notifyListeners();
       });
@@ -235,9 +254,9 @@ class AuthProvider with ChangeNotifier {
 
   // === Face Authentication Methods ===
 
-  /// Discover face recognition beacon
+  /// Discover face recognition beacon (supports both MQTT and HTTP services)
   Future<bool> discoverFaceAuthBeacon() async {
-    if (_faceAuthService == null) {
+    if (_faceAuthService == null && _faceAuthHttpService == null) {
       _faceAuthMessage = 'Face authentication service not available';
       return false;
     }
@@ -247,7 +266,14 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final beacon = await _faceAuthService!.discoverBeacon();
+      FaceAuthBeacon? beacon;
+
+      // Prefer HTTP service (new Docker backend)
+      if (_faceAuthHttpService != null) {
+        beacon = await _faceAuthHttpService!.discoverBeacon();
+      } else if (_faceAuthService != null) {
+        beacon = await _faceAuthService!.discoverBeacon();
+      }
 
       _isLoading = false;
 
@@ -269,9 +295,9 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Connect to face recognition broker
+  /// Connect to face recognition broker/service
   Future<bool> connectToFaceBroker() async {
-    if (_faceAuthService == null) {
+    if (_faceAuthService == null && _faceAuthHttpService == null) {
       _faceAuthMessage = 'Face authentication service not available';
       return false;
     }
@@ -286,9 +312,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final connected = await _faceAuthService!.connectToFaceBroker(
-        beacon: _discoveredBeacon,
-      );
+      bool connected = false;
+
+      // Prefer HTTP service (new Docker backend)
+      if (_faceAuthHttpService != null) {
+        connected = await _faceAuthHttpService!.connectToFaceService(
+          beacon: _discoveredBeacon,
+        );
+      } else if (_faceAuthService != null) {
+        connected = await _faceAuthService!.connectToFaceBroker(
+          beacon: _discoveredBeacon,
+        );
+      }
 
       _isLoading = false;
 
@@ -311,7 +346,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Authenticate using face recognition
   Future<bool> authenticateWithFace({String? userId}) async {
-    if (_faceAuthService == null) {
+    if (_faceAuthService == null && _faceAuthHttpService == null) {
       _faceAuthMessage = 'Face authentication service not available';
       return false;
     }
@@ -321,13 +356,26 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _faceAuthService!.requestFaceAuth(
-        userId: userId,
-        metadata: {
-          'timestamp': DateTime.now().toIso8601String(),
-          'app_version': '1.0.0',
-        },
-      );
+      FaceAuthResponse? response;
+
+      // Prefer HTTP service (new Docker backend)
+      if (_faceAuthHttpService != null) {
+        response = await _faceAuthHttpService!.requestFaceAuth(
+          userId: userId,
+          metadata: {
+            'timestamp': DateTime.now().toIso8601String(),
+            'app_version': '1.0.0',
+          },
+        );
+      } else if (_faceAuthService != null) {
+        response = await _faceAuthService!.requestFaceAuth(
+          userId: userId,
+          metadata: {
+            'timestamp': DateTime.now().toIso8601String(),
+            'app_version': '1.0.0',
+          },
+        );
+      }
 
       _isLoading = false;
 
@@ -360,6 +408,7 @@ class AuthProvider with ChangeNotifier {
   /// Cancel face authentication
   void cancelFaceAuth() {
     _faceAuthService?.cancelAuth();
+    _faceAuthHttpService?.cancelAuth();
     _faceAuthStatus = FaceAuthStatus.idle;
     _faceAuthMessage = null;
     _isLoading = false;
@@ -369,6 +418,7 @@ class AuthProvider with ChangeNotifier {
   /// Reset face auth state
   void resetFaceAuth() {
     _faceAuthService?.reset();
+    _faceAuthHttpService?.reset();
     _faceAuthStatus = FaceAuthStatus.idle;
     _discoveredBeacon = null;
     _faceAuthMessage = null;
