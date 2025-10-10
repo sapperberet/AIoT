@@ -18,7 +18,7 @@ class DevicesTab extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
-    
+
     return Consumer<DeviceProvider>(
       builder: (context, deviceProvider, child) {
         final devices = deviceProvider.devices;
@@ -26,16 +26,16 @@ class DevicesTab extends StatelessWidget {
 
         return Container(
           decoration: BoxDecoration(
-            gradient: isDark 
-              ? AppTheme.backgroundGradient
-              : LinearGradient(
-                  colors: [
-                    AppTheme.lightBackground,
-                    AppTheme.lightSurface,
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+            gradient: isDark
+                ? AppTheme.backgroundGradient
+                : LinearGradient(
+                    colors: [
+                      AppTheme.lightBackground,
+                      AppTheme.lightSurface,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
           ),
           child: Column(
             children: [
@@ -246,14 +246,14 @@ class ModernDeviceCard extends StatelessWidget {
           border: 2,
           linearGradient: LinearGradient(
             colors: isDark
-              ? [
-                  Colors.white.withOpacity(0.1),
-                  Colors.white.withOpacity(0.05),
-                ]
-              : [
-                  Colors.white.withOpacity(0.9),
-                  Colors.white.withOpacity(0.7),
-                ],
+                ? [
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.05),
+                  ]
+                : [
+                    Colors.white.withOpacity(0.9),
+                    Colors.white.withOpacity(0.7),
+                  ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

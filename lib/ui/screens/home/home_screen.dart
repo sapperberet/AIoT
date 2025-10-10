@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
-    
+
     final List<Widget> tabs = [
       const DevicesTab(),
       const VisualizationTab(),
