@@ -139,6 +139,47 @@ class AppLocalizations {
       'passwords_match': 'Passwords do not match',
       'enter_confirm_password': 'Please confirm your password',
 
+      // Face Authentication
+      'face_auth_title': 'Face Recognition',
+      'face_auth_subtitle': 'Secure and fast authentication',
+      'sign_in_with_face': 'Sign in with Face Recognition',
+      'discovering': 'Discovering service...',
+      'connecting': 'Connecting...',
+      'requesting_scan': 'Requesting scan...',
+      'initializing': 'Initializing camera...',
+      'scanning': 'Look at the Camera',
+      'scanning_subtitle': 'Position your face in front of the camera',
+      'processing': 'Processing...',
+      'processing_subtitle': 'Verifying your identity',
+      'auth_success': 'Success!',
+      'auth_success_subtitle': 'Authentication successful',
+      'auth_failed': 'Failed',
+      'auth_failed_subtitle': 'Face not recognized',
+      'auth_timeout': 'Timeout',
+      'auth_timeout_subtitle': 'Request timed out. Please try again.',
+      'auth_error': 'Error',
+      'auth_error_subtitle': 'An error occurred',
+      'try_again': 'Try Again',
+      'beacon_info': 'Beacon Information',
+      'service_name': 'Service',
+      'ip_address': 'IP Address',
+      'port': 'Port',
+      'discovered_at': 'Discovered',
+      'authentication_failed': 'Authentication Failed',
+      'please_try_again': 'Please try again or use email/password.',
+
+      // Login Screen
+      'authenticate_with_face': 'Authenticate with face recognition',
+      'tap_to_authenticate': 'Tap to Authenticate',
+      'two_factor_info':
+          'Face recognition is required. Configure additional security layer (email/password) in Settings after login.',
+
+      // Layer 2 Authentication
+      'second_layer_auth': 'Second Layer Authentication',
+      'face_success_verify': 'Face recognition successful ✓\nVerify your email and password to continue',
+      'verify_credentials': 'Verify Credentials',
+      'verifying': 'Verifying...',
+
       // Language Names
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
@@ -270,6 +311,47 @@ class AppLocalizations {
       'passwords_match': 'Passwörter stimmen nicht überein',
       'enter_confirm_password': 'Bitte bestätigen Sie Ihr Passwort',
 
+      // Face Authentication
+      'face_auth_title': 'Gesichtserkennung',
+      'face_auth_subtitle': 'Sichere und schnelle Authentifizierung',
+      'sign_in_with_face': 'Mit Gesichtserkennung anmelden',
+      'discovering': 'Dienst wird gesucht...',
+      'connecting': 'Verbinde...',
+      'requesting_scan': 'Scan wird angefordert...',
+      'initializing': 'Kamera wird initialisiert...',
+      'scanning': 'Schauen Sie in die Kamera',
+      'scanning_subtitle': 'Positionieren Sie Ihr Gesicht vor der Kamera',
+      'processing': 'Verarbeitung...',
+      'processing_subtitle': 'Ihre Identität wird überprüft',
+      'auth_success': 'Erfolg!',
+      'auth_success_subtitle': 'Authentifizierung erfolgreich',
+      'auth_failed': 'Fehlgeschlagen',
+      'auth_failed_subtitle': 'Gesicht nicht erkannt',
+      'auth_timeout': 'Zeitüberschreitung',
+      'auth_timeout_subtitle': 'Anfrage zeitüberschritten. Bitte versuchen Sie es erneut.',
+      'auth_error': 'Fehler',
+      'auth_error_subtitle': 'Ein Fehler ist aufgetreten',
+      'try_again': 'Erneut versuchen',
+      'beacon_info': 'Beacon-Informationen',
+      'service_name': 'Dienst',
+      'ip_address': 'IP-Adresse',
+      'port': 'Port',
+      'discovered_at': 'Entdeckt',
+      'authentication_failed': 'Authentifizierung fehlgeschlagen',
+      'please_try_again': 'Bitte versuchen Sie es erneut oder verwenden Sie E-Mail/Passwort.',
+
+      // Login Screen
+      'authenticate_with_face': 'Mit Gesichtserkennung authentifizieren',
+      'tap_to_authenticate': 'Zum Authentifizieren tippen',
+      'two_factor_info':
+          'Gesichtserkennung ist erforderlich. Konfigurieren Sie nach der Anmeldung eine zusätzliche Sicherheitsebene (E-Mail/Passwort) in den Einstellungen.',
+
+      // Layer 2 Authentication
+      'second_layer_auth': 'Zweite Authentifizierungsebene',
+      'face_success_verify': 'Gesichtserkennung erfolgreich ✓\nBestätigen Sie Ihre E-Mail und Passwort, um fortzufahren',
+      'verify_credentials': 'Anmeldedaten überprüfen',
+      'verifying': 'Überprüfung läuft...',
+
       // Language Names
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
@@ -398,6 +480,47 @@ class AppLocalizations {
       'enter_name': 'الرجاء إدخال اسمك',
       'passwords_match': 'كلمات المرور غير متطابقة',
       'enter_confirm_password': 'الرجاء تأكيد كلمة المرور',
+
+      // Face Authentication
+      'face_auth_title': 'التعرف على الوجه',
+      'face_auth_subtitle': 'مصادقة آمنة وسريعة',
+      'sign_in_with_face': 'تسجيل الدخول بالتعرف على الوجه',
+      'discovering': 'جاري اكتشاف الخدمة...',
+      'connecting': 'جاري الاتصال...',
+      'requesting_scan': 'طلب المسح...',
+      'initializing': 'جاري تشغيل الكاميرا...',
+      'scanning': 'انظر إلى الكاميرا',
+      'scanning_subtitle': 'ضع وجهك أمام الكاميرا',
+      'processing': 'جاري المعالجة...',
+      'processing_subtitle': 'التحقق من هويتك',
+      'auth_success': 'نجاح!',
+      'auth_success_subtitle': 'تمت المصادقة بنجاح',
+      'auth_failed': 'فشل',
+      'auth_failed_subtitle': 'لم يتم التعرف على الوجه',
+      'auth_timeout': 'انتهت المهلة',
+      'auth_timeout_subtitle': 'انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.',
+      'auth_error': 'خطأ',
+      'auth_error_subtitle': 'حدث خطأ',
+      'try_again': 'حاول مرة أخرى',
+      'beacon_info': 'معلومات البيكون',
+      'service_name': 'الخدمة',
+      'ip_address': 'عنوان IP',
+      'port': 'المنفذ',
+      'discovered_at': 'اكتشف في',
+      'authentication_failed': 'فشلت المصادقة',
+      'please_try_again': 'يرجى المحاولة مرة أخرى أو استخدام البريد الإلكتروني/كلمة المرور.',
+
+      // Login Screen
+      'authenticate_with_face': 'المصادقة بالتعرف على الوجه',
+      'tap_to_authenticate': 'اضغط للمصادقة',
+      'two_factor_info':
+          'التعرف على الوجه مطلوب. يمكنك تكوين طبقة أمان إضافية (بريد إلكتروني/كلمة مرور) في الإعدادات بعد تسجيل الدخول.',
+
+      // Layer 2 Authentication
+      'second_layer_auth': 'المصادقة الثانية',
+      'face_success_verify': 'نجح التعرف على الوجه ✓\nتحقق من بريدك الإلكتروني وكلمة المرور للمتابعة',
+      'verify_credentials': 'التحقق من بيانات الاعتماد',
+      'verifying': 'جاري التحقق...',
 
       // Language Names
       'language_english': 'English',

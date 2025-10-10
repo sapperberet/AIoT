@@ -16,6 +16,7 @@ dist/
 # IDEs
 .vscode/
 *.iml
+*.md
 
 # Local artifacts created during history cleanup
 repo-mirror.git/

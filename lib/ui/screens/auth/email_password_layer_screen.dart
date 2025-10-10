@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 
 /// Email/Password Layer 2 Authentication Screen
 /// This screen is shown AFTER successful face authentication
@@ -78,6 +79,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
   void _showErrorDialog(String title, String message) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final loc = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -107,7 +109,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(loc.translate('ok')),
           ),
           TextButton(
             onPressed: () {
@@ -115,7 +117,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
               _emailController.clear();
               _passwordController.clear();
             },
-            child: const Text('Try Again'),
+            child: Text(loc.translate('try_again')),
           ),
         ],
       ),
@@ -127,6 +129,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
+    final loc = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -193,9 +196,9 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                       ShaderMask(
                         shaderCallback: (bounds) =>
                             AppTheme.primaryGradient.createShader(bounds),
-                        child: const Text(
-                          'Second Layer Authentication',
-                          style: TextStyle(
+                        child: Text(
+                          loc.translate('second_layer_auth'),
+                          style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -207,7 +210,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
 
                       // Subtitle
                       Text(
-                        'Face recognition successful ✓\nVerify your email and password to continue',
+                        loc.translate('face_success_verify'),
                         style: TextStyle(
                           fontSize: 15,
                           color: textColor.withOpacity(0.7),
@@ -230,16 +233,16 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                         // Email Field
                         _buildTextField(
                           controller: _emailController,
-                          label: 'Email',
-                          hint: 'Enter your email',
+                          label: loc.translate('email'),
+                          hint: loc.translate('email_hint'),
                           icon: Iconsax.sms,
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
+                              return loc.translate('enter_email');
                             }
                             if (!value.contains('@')) {
-                              return 'Please enter a valid email';
+                              return loc.translate('valid_email');
                             }
                             return null;
                           },
@@ -250,8 +253,8 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                         // Password Field
                         _buildTextField(
                           controller: _passwordController,
-                          label: 'Password',
-                          hint: 'Enter your password',
+                          label: loc.translate('password'),
+                          hint: loc.translate('password_hint'),
                           icon: Iconsax.lock,
                           obscureText: _obscurePassword,
                           suffixIcon: IconButton(
@@ -268,10 +271,10 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your password';
+                              return loc.translate('enter_password');
                             }
                             if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
+                              return loc.translate('password_length');
                             }
                             return null;
                           },
@@ -302,9 +305,9 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                                           Colors.white),
                                     ),
                                   )
-                                : const Text(
-                                    'Verify & Continue',
-                                    style: TextStyle(
+                                : Text(
+                                    loc.translate('verify_credentials'),
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,

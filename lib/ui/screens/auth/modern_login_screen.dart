@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class ModernLoginScreen extends StatefulWidget {
   const ModernLoginScreen({super.key});
@@ -36,7 +37,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
     final isDark = theme.brightness == Brightness.dark;
     final backgroundColor = theme.scaffoldBackgroundColor;
     final textColor = theme.colorScheme.onBackground;
-    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final loc = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -91,7 +92,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                   child: Column(
                     children: [
                       Text(
-                        'Welcome Back',
+                        loc.translate('welcome_back'),
                         style:
                             Theme.of(context).textTheme.displayMedium?.copyWith(
                                   color: textColor,
@@ -100,7 +101,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Authenticate with face recognition',
+                        loc.translate('authenticate_with_face'),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: isDark
                                   ? AppTheme.mutedText
@@ -172,7 +173,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Face Recognition',
+                            loc.translate('face_auth_title'),
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -185,7 +186,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Tap to Authenticate',
+                            loc.translate('tap_to_authenticate'),
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: isDark
@@ -228,7 +229,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Face recognition is required. Configure additional security layer (email/password) in Settings after login.',
+                            loc.translate('two_factor_info'),
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: textColor.withOpacity(0.8),

@@ -7,6 +7,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/face_auth_model.dart';
 import '../../../core/services/auth_audio_service.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class FaceAuthScreen extends StatefulWidget {
   const FaceAuthScreen({super.key});
@@ -51,9 +52,15 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
         if (newStatus == FaceAuthStatus.scanning) {
           // User should look at camera
           _audioService.playLookAtCamera();
+        } else if (newStatus == FaceAuthStatus.success) {
+          // Face recognized successfully
+          _audioService.playSuccess();
         }
       }
       _previousStatus = newStatus;
+      
+      // Check if we need to navigate after status change
+      _checkAuthStatusAndNavigate(newStatus);
     }
   }
 
@@ -81,36 +88,43 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
 
   Future<void> _authenticateWithFace() async {
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.authenticateWithFace();
+    
+    // Start the authentication process
+    authProvider.authenticateWithFace();
+    
+    // Wait for status to change to either success or failed
+    // The status is updated through the stream listener in auth_provider
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // The navigation will be handled by the status change listener in initState
+    // which monitors faceAuthStatus and calls the navigation logic
+  }
 
-    if (mounted) {
-      if (success) {
-        // Check if audio is enabled in settings
+  void _checkAuthStatusAndNavigate(FaceAuthStatus status) async {
+    if (status == FaceAuthStatus.success) {
+      // Wait a moment for the success sound to play
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (mounted) {
+        // Check if Layer 2 (Email/Password) is enabled in settings
         final settingsProvider = context.read<SettingsProvider>();
-        if (settingsProvider.enableAuthAudio) {
-          // Play success sound
-          await _audioService.playSuccess();
-        }
 
-        // Layer 1 (Face Authentication) SUCCESSFUL ✓
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          // Check if Layer 2 (Email/Password) is enabled in settings
-
-          if (settingsProvider.enableEmailPasswordAuth) {
-            // Layer 2 is ENABLED - Navigate to email/password screen
-            debugPrint(
-                '🔐 Layer 1 complete. Proceeding to Layer 2 (Email/Password)...');
-            Navigator.of(context).pushReplacementNamed('/auth/email-password');
-          } else {
-            // Layer 2 is DISABLED - Navigate directly to home
-            debugPrint(
-                '✅ Layer 1 complete. Layer 2 disabled. Navigating to home...');
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
+        if (settingsProvider.enableEmailPasswordAuth) {
+          // Layer 2 is ENABLED - Navigate to email/password screen
+          debugPrint(
+              '🔐 Layer 1 complete. Proceeding to Layer 2 (Email/Password)...');
+          Navigator.of(context).pushReplacementNamed('/auth/email-password');
+        } else {
+          // Layer 2 is DISABLED - Navigate directly to home
+          debugPrint(
+              '✅ Layer 1 complete. Layer 2 disabled. Navigating to home...');
+          Navigator.of(context).pushReplacementNamed('/home');
         }
-      } else {
-        // Show error and allow retry
+      }
+    } else if (status == FaceAuthStatus.failed || status == FaceAuthStatus.error) {
+      // Show error dialog on failure
+      if (mounted) {
+        final authProvider = context.read<AuthProvider>();
         _showErrorDialog(
             authProvider.faceAuthMessage ?? 'Authentication failed');
       }
@@ -143,6 +157,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final loc = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -170,7 +185,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Face Authentication',
+                      loc.translate('face_auth_title'),
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -322,54 +337,55 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   Widget _buildStatusMessage(ThemeData theme, AuthProvider authProvider) {
     final status = authProvider.faceAuthStatus;
     final message = authProvider.faceAuthMessage;
+    final loc = AppLocalizations.of(context);
 
     String title;
     String? subtitle;
 
     switch (status) {
       case FaceAuthStatus.idle:
-        title = 'Ready to Authenticate';
-        subtitle = 'Tap the button below to start';
+        title = loc.translate('face_auth_title');
+        subtitle = loc.translate('face_auth_subtitle');
         break;
       case FaceAuthStatus.discovering:
-        title = 'Discovering...';
-        subtitle = 'Searching for face recognition system';
+        title = loc.translate('discovering');
+        subtitle = loc.translate('face_auth_subtitle');
         break;
       case FaceAuthStatus.connecting:
-        title = 'Connecting...';
-        subtitle = 'Establishing connection';
+        title = loc.translate('connecting');
+        subtitle = loc.translate('connecting');
         break;
       case FaceAuthStatus.requestingScan:
-        title = 'Requesting Scan from Camera please Wait...';
-        subtitle = 'This usually takes about 20~30 seconds...';
+        title = loc.translate('requesting_scan');
+        subtitle = message ?? loc.translate('initializing');
         break;
       case FaceAuthStatus.initializing:
-        title = 'Initializing Camera...';
-        subtitle = 'Please wait, preparing camera system (~30s)';
+        title = loc.translate('initializing');
+        subtitle = message ?? loc.translate('initializing');
         break;
       case FaceAuthStatus.scanning:
-        title = 'Look at the Camera';
-        subtitle = 'Position your face in front of the camera';
+        title = loc.translate('scanning');
+        subtitle = loc.translate('scanning_subtitle');
         break;
       case FaceAuthStatus.processing:
-        title = 'Processing...';
-        subtitle = 'Verifying your identity';
+        title = loc.translate('processing');
+        subtitle = loc.translate('processing_subtitle');
         break;
       case FaceAuthStatus.success:
-        title = 'Success!';
-        subtitle = message ?? 'Authentication successful';
+        title = loc.translate('auth_success');
+        subtitle = message ?? loc.translate('auth_success_subtitle');
         break;
       case FaceAuthStatus.failed:
-        title = 'Failed';
-        subtitle = message ?? 'Face not recognized';
+        title = loc.translate('auth_failed');
+        subtitle = message ?? loc.translate('auth_failed_subtitle');
         break;
       case FaceAuthStatus.timeout:
-        title = 'Timeout';
-        subtitle = 'Request timed out. Please try again.';
+        title = loc.translate('auth_timeout');
+        subtitle = loc.translate('auth_timeout_subtitle');
         break;
       case FaceAuthStatus.error:
-        title = 'Error';
-        subtitle = message ?? 'An error occurred';
+        title = loc.translate('auth_error');
+        subtitle = message ?? loc.translate('auth_error_subtitle');
         break;
     }
 
@@ -401,22 +417,23 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   ) {
     final isLoading = authProvider.isLoading;
     final hasBeacon = authProvider.discoveredBeacon != null;
+    final loc = AppLocalizations.of(context);
 
     String buttonText;
     VoidCallback? onPressed;
 
     if (!hasBeacon) {
-      buttonText = 'Scan for System';
+      buttonText = loc.translate('discovering');
       onPressed = isLoading ? null : _startDiscovery;
     } else if (status == FaceAuthStatus.idle ||
         status == FaceAuthStatus.failed) {
-      buttonText = 'Authenticate with Face';
+      buttonText = loc.translate('sign_in_with_face');
       onPressed = isLoading ? null : _authenticateWithFace;
     } else if (status == FaceAuthStatus.success) {
       // SUCCESS - No button needed, auto-navigating
       return const SizedBox.shrink();
     } else {
-      buttonText = 'Cancel';
+      buttonText = loc.translate('cancel');
       onPressed = () {
         authProvider.cancelFaceAuth();
       };
@@ -453,6 +470,8 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   }
 
   Widget _buildBeaconInfo(ThemeData theme, FaceAuthBeacon beacon) {
+    final loc = AppLocalizations.of(context);
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -474,7 +493,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                'System Connected',
+                loc.translate('beacon_info'),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.primary,
@@ -483,9 +502,9 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
             ],
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(theme, 'Name', beacon.name),
-          _buildInfoRow(theme, 'IP Address', beacon.ip),
-          _buildInfoRow(theme, 'Port', beacon.port.toString()),
+          _buildInfoRow(theme, loc.translate('service_name'), beacon.name),
+          _buildInfoRow(theme, loc.translate('ip_address'), beacon.ip),
+          _buildInfoRow(theme, loc.translate('port'), beacon.port.toString()),
         ],
       ),
     );
