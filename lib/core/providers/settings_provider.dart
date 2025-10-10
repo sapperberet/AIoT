@@ -24,7 +24,7 @@ class SettingsProvider with ChangeNotifier {
   void _init() async {
     // Load settings from local storage first
     await _loadFromLocalStorage();
-    
+
     // Listen to auth changes to load user-specific settings
     _authService?.authStateChanges.listen((user) {
       if (user != null && user.uid != _currentUserId) {
@@ -309,7 +309,7 @@ class SettingsProvider with ChangeNotifier {
   Future<void> saveSettings() async {
     // Always save to local storage
     await _saveToLocalStorage();
-    
+
     // Also save to Firestore if user is logged in
     if (_currentUserId != null && _firestoreService != null) {
       try {
@@ -345,37 +345,41 @@ class SettingsProvider with ChangeNotifier {
   Future<void> _loadFromLocalStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       final themeModeStr = prefs.getString('themeMode');
       if (themeModeStr != null) {
         _themeMode = _parseThemeMode(themeModeStr);
       }
-      
+
       final connectionModeStr = prefs.getString('connectionMode');
       if (connectionModeStr != null) {
         _connectionMode = _parseConnectionMode(connectionModeStr);
       }
-      
+
       _language = prefs.getString('language') ?? 'en';
       _enableNotifications = prefs.getBool('enableNotifications') ?? true;
-      _deviceStatusNotifications = prefs.getBool('deviceStatusNotifications') ?? true;
-      _automationNotifications = prefs.getBool('automationNotifications') ?? true;
+      _deviceStatusNotifications =
+          prefs.getBool('deviceStatusNotifications') ?? true;
+      _automationNotifications =
+          prefs.getBool('automationNotifications') ?? true;
       _securityAlerts = prefs.getBool('securityAlerts') ?? true;
       _soundEnabled = prefs.getBool('soundEnabled') ?? true;
       _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
       _autoConnect = prefs.getBool('autoConnect') ?? true;
       _offlineMode = prefs.getBool('offlineMode') ?? false;
       _dataRefreshInterval = prefs.getInt('dataRefreshInterval') ?? 5;
-      
-      _mqttBrokerAddress = prefs.getString('mqttBrokerAddress') ?? '192.168.1.100';
+
+      _mqttBrokerAddress =
+          prefs.getString('mqttBrokerAddress') ?? '192.168.1.100';
       _mqttBrokerPort = prefs.getInt('mqttBrokerPort') ?? 1883;
       _mqttUsername = prefs.getString('mqttUsername') ?? '';
       _mqttPassword = prefs.getString('mqttPassword') ?? '';
-      
-      _enableEmailPasswordAuth = prefs.getBool('enableEmailPasswordAuth') ?? false;
+
+      _enableEmailPasswordAuth =
+          prefs.getBool('enableEmailPasswordAuth') ?? false;
       _userEmail = prefs.getString('userEmail') ?? '';
       _userPassword = prefs.getString('userPassword') ?? '';
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading settings from local storage: $e');
@@ -386,12 +390,13 @@ class SettingsProvider with ChangeNotifier {
   Future<void> _saveToLocalStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setString('themeMode', _themeMode.name);
       await prefs.setString('connectionMode', _connectionMode.name);
       await prefs.setString('language', _language);
       await prefs.setBool('enableNotifications', _enableNotifications);
-      await prefs.setBool('deviceStatusNotifications', _deviceStatusNotifications);
+      await prefs.setBool(
+          'deviceStatusNotifications', _deviceStatusNotifications);
       await prefs.setBool('automationNotifications', _automationNotifications);
       await prefs.setBool('securityAlerts', _securityAlerts);
       await prefs.setBool('soundEnabled', _soundEnabled);
@@ -399,12 +404,12 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('autoConnect', _autoConnect);
       await prefs.setBool('offlineMode', _offlineMode);
       await prefs.setInt('dataRefreshInterval', _dataRefreshInterval);
-      
+
       await prefs.setString('mqttBrokerAddress', _mqttBrokerAddress);
       await prefs.setInt('mqttBrokerPort', _mqttBrokerPort);
       await prefs.setString('mqttUsername', _mqttUsername);
       await prefs.setString('mqttPassword', _mqttPassword);
-      
+
       await prefs.setBool('enableEmailPasswordAuth', _enableEmailPasswordAuth);
       await prefs.setString('userEmail', _userEmail);
       await prefs.setString('userPassword', _userPassword);
