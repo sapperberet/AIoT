@@ -16,6 +16,11 @@ dist/
 # IDEs
 .vscode/
 *.iml
+
+# Local artifacts created during history cleanup
+repo-mirror.git/
+tools/
+aiot_backup_before_filter.bundle
 # .gitignore
 
 # Miscellaneous
