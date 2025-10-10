@@ -23,16 +23,16 @@ class CustomDrawer extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
-          gradient: isDark 
-            ? AppTheme.backgroundGradient
-            : LinearGradient(
-                colors: [
-                  AppTheme.lightBackground,
-                  AppTheme.lightSurface,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          gradient: isDark
+              ? AppTheme.backgroundGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightBackground,
+                    AppTheme.lightSurface,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
         ),
         child: SafeArea(
           child: Column(
@@ -52,14 +52,14 @@ class CustomDrawer extends StatelessWidget {
                     border: 2,
                     linearGradient: LinearGradient(
                       colors: isDark
-                        ? [
-                            Colors.white.withOpacity(0.1),
-                            Colors.white.withOpacity(0.05),
-                          ]
-                        : [
-                            Colors.white.withOpacity(0.95),
-                            Colors.white.withOpacity(0.85),
-                          ],
+                          ? [
+                              Colors.white.withOpacity(0.1),
+                              Colors.white.withOpacity(0.05),
+                            ]
+                          : [
+                              Colors.white.withOpacity(0.95),
+                              Colors.white.withOpacity(0.85),
+                            ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -120,7 +120,7 @@ class CustomDrawer extends StatelessWidget {
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(
-                                  color: AppTheme.lightText,
+                                  color: textColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                             textAlign: TextAlign.center,
@@ -133,7 +133,7 @@ class CustomDrawer extends StatelessWidget {
                             user?.email ?? '',
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.mutedText,
+                                      color: textColor.withOpacity(0.7),
                                     ),
                             textAlign: TextAlign.center,
                             maxLines: 1,
@@ -220,18 +220,6 @@ class CustomDrawer extends StatelessWidget {
                           delay: const Duration(milliseconds: 600),
                           child: _buildMenuItem(
                             context,
-                            icon: Iconsax.shield_security,
-                            title: loc.t('security'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              // TODO: Navigate to security
-                            },
-                          ),
-                        ),
-                        FadeInLeft(
-                          delay: const Duration(milliseconds: 700),
-                          child: _buildMenuItem(
-                            context,
                             icon: Iconsax.info_circle,
                             title: loc.t('about'),
                             onTap: () {
@@ -268,6 +256,10 @@ class CustomDrawer extends StatelessWidget {
     required VoidCallback onTap,
     String? badge,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -280,7 +272,9 @@ class CustomDrawer extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: AppTheme.mediumRadius,
               border: Border.all(
-                color: Colors.white.withOpacity(0.1),
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.1),
               ),
             ),
             child: Row(
@@ -303,7 +297,7 @@ class CustomDrawer extends StatelessWidget {
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.lightText,
+                          color: textColor,
                           fontWeight: FontWeight.w500,
                         ),
                     overflow: TextOverflow.ellipsis,
@@ -330,7 +324,7 @@ class CustomDrawer extends StatelessWidget {
                 ],
                 Icon(
                   Iconsax.arrow_right_3,
-                  color: AppTheme.mutedText,
+                  color: textColor.withOpacity(0.5),
                   size: 18,
                 ),
               ],
@@ -396,10 +390,15 @@ class CustomDrawer extends StatelessWidget {
 
   void _showAboutDialog(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         shape: RoundedRectangleBorder(
           borderRadius: AppTheme.mediumRadius,
         ),
@@ -414,18 +413,20 @@ class CustomDrawer extends StatelessWidget {
               child: const Icon(Iconsax.info_circle, color: Colors.white),
             ),
             const SizedBox(width: 12),
-            Text(loc.t('about'),
-                style: const TextStyle(color: AppTheme.lightText)),
+            Text(loc.t('about'), style: TextStyle(color: textColor)),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Smart Home IoT Control\n\nVersion 1.0.0\n\nControl your smart home devices with ESP32 integration, real-time monitoring, and 3D visualization.',
-          style: TextStyle(color: AppTheme.mutedText),
+          style: TextStyle(color: textColor.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(
+              'Close',
+              style: TextStyle(color: AppTheme.primaryColor),
+            ),
           ),
         ],
       ),

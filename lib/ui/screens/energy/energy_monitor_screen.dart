@@ -18,14 +18,18 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: FadeInLeft(
           child: IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: AppTheme.lightText),
+            icon: Icon(Iconsax.arrow_left, color: textColor),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -104,6 +108,9 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
 
   Widget _buildPeriodChip(String period) {
     final isSelected = _selectedPeriod == period;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return GestureDetector(
       onTap: () {
@@ -115,12 +122,13 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           gradient: isSelected ? AppTheme.primaryGradient : null,
-          color: isSelected ? null : AppTheme.darkCard,
+          color: isSelected
+              ? null
+              : (isDark ? AppTheme.darkCard : AppTheme.lightSurface),
           borderRadius: AppTheme.mediumRadius,
           border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor
-                : AppTheme.lightText.withOpacity(0.1),
+            color:
+                isSelected ? AppTheme.primaryColor : textColor.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -129,8 +137,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color:
-                isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+            color: isSelected ? Colors.white : textColor.withOpacity(0.6),
           ),
         ),
       ),
@@ -245,13 +252,24 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
   }
 
   Widget _buildConsumptionChart() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return FadeInUp(
       delay: const Duration(milliseconds: 200),
       child: Container(
         height: 200,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: AppTheme.cardGradient,
+          gradient: isDark
+              ? AppTheme.cardGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightSurface,
+                    AppTheme.lightSurface.withOpacity(0.8),
+                  ],
+                ),
           borderRadius: AppTheme.largeRadius,
           border: Border.all(
             color: AppTheme.primaryColor.withOpacity(0.3),
@@ -261,12 +279,12 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Consumption Chart',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -276,7 +294,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                   'Chart visualization coming soon',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppTheme.lightText.withOpacity(0.5),
+                    color: textColor.withOpacity(0.5),
                   ),
                 ),
               ),
@@ -288,12 +306,15 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppTheme.lightText,
+        color: textColor,
       ),
     );
   }
@@ -435,6 +456,10 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
   }
 
   Widget _buildCostEstimateCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return FadeInUp(
       delay: const Duration(milliseconds: 500),
       child: Container(
@@ -443,7 +468,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
           gradient: LinearGradient(
             colors: [
               AppTheme.successColor.withOpacity(0.2),
-              AppTheme.darkCard,
+              isDark ? AppTheme.darkCard : AppTheme.lightSurface,
             ],
           ),
           borderRadius: AppTheme.largeRadius,
@@ -475,16 +500,16 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                     'Estimated Cost',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.lightText.withOpacity(0.7),
+                      color: textColor.withOpacity(0.7),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     '\$3.68',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.lightText,
+                      color: textColor,
                     ),
                   ),
                 ],
@@ -492,7 +517,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
             ),
             Icon(
               Iconsax.arrow_right_3,
-              color: AppTheme.lightText.withOpacity(0.4),
+              color: textColor.withOpacity(0.4),
             ),
           ],
         ),
@@ -501,6 +526,10 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
   }
 
   Widget _buildEnergyTips() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     final tips = [
       {
         'title': 'Peak Hours',
@@ -529,10 +558,17 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: AppTheme.cardGradient,
+              gradient: isDark
+                  ? AppTheme.cardGradient
+                  : LinearGradient(
+                      colors: [
+                        AppTheme.lightSurface,
+                        AppTheme.lightSurface.withOpacity(0.8),
+                      ],
+                    ),
               borderRadius: AppTheme.largeRadius,
               border: Border.all(
-                color: AppTheme.lightText.withOpacity(0.1),
+                color: textColor.withOpacity(0.1),
                 width: 1,
               ),
             ),
@@ -557,10 +593,10 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                     children: [
                       Text(
                         tip['title'] as String,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.lightText,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -568,7 +604,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                         tip['description'] as String,
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.lightText.withOpacity(0.6),
+                          color: textColor.withOpacity(0.6),
                         ),
                       ),
                     ],

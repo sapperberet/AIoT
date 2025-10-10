@@ -57,6 +57,7 @@ class SettingsProvider with ChangeNotifier {
     _enableEmailPasswordAuth = false;
     _userEmail = '';
     _userPassword = '';
+    _enableAuthAudio = true;
     notifyListeners();
   }
 
@@ -111,10 +112,12 @@ class SettingsProvider with ChangeNotifier {
   bool _enableEmailPasswordAuth = false; // Default: OFF (only face auth)
   String _userEmail = '';
   String _userPassword = '';
+  bool _enableAuthAudio = true; // Default: ON (audio notifications during auth)
 
   bool get enableEmailPasswordAuth => _enableEmailPasswordAuth;
   String get userEmail => _userEmail;
   String get userPassword => _userPassword;
+  bool get enableAuthAudio => _enableAuthAudio;
 
   // Change theme
   void setThemeMode(ThemeMode mode) {
@@ -225,6 +228,13 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
+  // Toggle authentication audio notifications
+  void toggleAuthAudio(bool value) {
+    _enableAuthAudio = value;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
   // Load settings from storage
   Future<void> loadSettings() async {
     // First, try to load from Firestore if user is logged in
@@ -265,6 +275,7 @@ class SettingsProvider with ChangeNotifier {
               userSettings['enableEmailPasswordAuth'] as bool? ?? false;
           _userEmail = userSettings['userEmail'] as String? ?? '';
           _userPassword = userSettings['userPassword'] as String? ?? '';
+          _enableAuthAudio = userSettings['enableAuthAudio'] as bool? ?? true;
 
           notifyListeners();
           // Also save to local storage for offline access
@@ -333,6 +344,7 @@ class SettingsProvider with ChangeNotifier {
           'enableEmailPasswordAuth': _enableEmailPasswordAuth,
           'userEmail': _userEmail,
           'userPassword': _userPassword,
+          'enableAuthAudio': _enableAuthAudio,
           'updatedAt': DateTime.now().toIso8601String(),
         });
       } catch (e) {
@@ -379,6 +391,7 @@ class SettingsProvider with ChangeNotifier {
           prefs.getBool('enableEmailPasswordAuth') ?? false;
       _userEmail = prefs.getString('userEmail') ?? '';
       _userPassword = prefs.getString('userPassword') ?? '';
+      _enableAuthAudio = prefs.getBool('enableAuthAudio') ?? true;
 
       notifyListeners();
     } catch (e) {
@@ -413,6 +426,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('enableEmailPasswordAuth', _enableEmailPasswordAuth);
       await prefs.setString('userEmail', _userEmail);
       await prefs.setString('userPassword', _userPassword);
+      await prefs.setBool('enableAuthAudio', _enableAuthAudio);
     } catch (e) {
       debugPrint('Error saving settings to local storage: $e');
     }

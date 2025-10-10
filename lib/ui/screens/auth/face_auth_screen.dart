@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/face_auth_model.dart';
+import '../../../core/services/auth_audio_service.dart';
 
 class FaceAuthScreen extends StatefulWidget {
   const FaceAuthScreen({super.key});
@@ -17,6 +18,8 @@ class FaceAuthScreen extends StatefulWidget {
 class _FaceAuthScreenState extends State<FaceAuthScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  final AuthAudioService _audioService = AuthAudioService();
+  FaceAuthStatus? _previousStatus;
 
   @override
   void initState() {
@@ -35,7 +38,23 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _audioService.stop(); // Stop any playing audio
     super.dispose();
+  }
+
+  // Play audio based on status changes
+  void _handleStatusChange(FaceAuthStatus newStatus) {
+    if (_previousStatus != newStatus) {
+      // Check if audio is enabled in settings
+      final settingsProvider = context.read<SettingsProvider>();
+      if (settingsProvider.enableAuthAudio) {
+        if (newStatus == FaceAuthStatus.scanning) {
+          // User should look at camera
+          _audioService.playLookAtCamera();
+        }
+      }
+      _previousStatus = newStatus;
+    }
   }
 
   Future<void> _startDiscovery() async {
@@ -66,11 +85,17 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
 
     if (mounted) {
       if (success) {
+        // Check if audio is enabled in settings
+        final settingsProvider = context.read<SettingsProvider>();
+        if (settingsProvider.enableAuthAudio) {
+          // Play success sound
+          await _audioService.playSuccess();
+        }
+
         // Layer 1 (Face Authentication) SUCCESSFUL ✓
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           // Check if Layer 2 (Email/Password) is enabled in settings
-          final settingsProvider = context.read<SettingsProvider>();
 
           if (settingsProvider.enableEmailPasswordAuth) {
             // Layer 2 is ENABLED - Navigate to email/password screen
@@ -178,6 +203,9 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
     AuthProvider authProvider,
   ) {
     final status = authProvider.faceAuthStatus;
+
+    // Handle audio notifications based on status changes
+    _handleStatusChange(status);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),

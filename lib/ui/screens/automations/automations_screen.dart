@@ -18,14 +18,18 @@ class AutomationsScreen extends StatefulWidget {
 class _AutomationsScreenState extends State<AutomationsScreen> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: FadeInLeft(
           child: IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: AppTheme.lightText),
+            icon: Icon(Iconsax.arrow_left, color: textColor),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -80,16 +84,27 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   Widget _buildAutomationCard(BuildContext context, Automation automation) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
+        gradient: isDark
+            ? AppTheme.cardGradient
+            : LinearGradient(
+                colors: [
+                  AppTheme.lightSurface,
+                  AppTheme.lightSurface.withOpacity(0.8),
+                ],
+              ),
         borderRadius: AppTheme.largeRadius,
         border: Border.all(
           color: automation.isEnabled
               ? AppTheme.primaryColor.withOpacity(0.3)
-              : AppTheme.lightText.withOpacity(0.1),
+              : textColor.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -106,8 +121,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                       ? AppTheme.primaryGradient
                       : LinearGradient(
                           colors: [
-                            AppTheme.lightText.withOpacity(0.3),
-                            AppTheme.lightText.withOpacity(0.1),
+                            textColor.withOpacity(0.3),
+                            textColor.withOpacity(0.1),
                           ],
                         ),
                   borderRadius: AppTheme.smallRadius,
@@ -117,7 +132,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                   size: 24,
                   color: automation.isEnabled
                       ? Colors.white
-                      : AppTheme.lightText.withOpacity(0.5),
+                      : textColor.withOpacity(0.5),
                 ),
               ),
               const SizedBox(width: 16),
@@ -127,10 +142,10 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                   children: [
                     Text(
                       automation.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.lightText,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -138,7 +153,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                       automation.description,
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.lightText.withOpacity(0.6),
+                        color: textColor.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -157,7 +172,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           ),
 
           const SizedBox(height: 16),
-          const Divider(color: AppTheme.lightText, height: 1),
+          Divider(color: textColor.withOpacity(0.1), height: 1),
           const SizedBox(height: 16),
 
           // Triggers
@@ -192,14 +207,14 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                 Icon(
                   Iconsax.clock,
                   size: 14,
-                  color: AppTheme.lightText.withOpacity(0.5),
+                  color: textColor.withOpacity(0.5),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Last triggered: ${DateFormat('MMM d, HH:mm').format(automation.lastTriggered!)}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.lightText.withOpacity(0.5),
+                    color: textColor.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -212,41 +227,107 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _showEditAutomationDialog(context, automation),
-                  icon: const Icon(Iconsax.edit, size: 18),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: const BorderSide(color: AppTheme.primaryColor),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: AppTheme.mediumRadius,
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.5),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () =>
+                          _showEditAutomationDialog(context, automation),
                       borderRadius: AppTheme.mediumRadius,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Iconsax.edit,
+                              size: 18,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Edit',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _runAutomation(context, automation),
-                  icon: const Icon(Iconsax.play, size: 18),
-                  label: const Text('Run Now'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: AppTheme.mediumRadius,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _runAutomation(context, automation),
                       borderRadius: AppTheme.mediumRadius,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Iconsax.play_circle5,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Run Now',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              IconButton(
-                onPressed: () => _deleteAutomation(context, automation),
-                icon: const Icon(Iconsax.trash),
-                color: AppTheme.errorColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.errorColor.withOpacity(0.1),
+                  borderRadius: AppTheme.smallRadius,
+                  border: Border.all(
+                    color: AppTheme.errorColor.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: IconButton(
+                  onPressed: () => _deleteAutomation(context, automation),
+                  icon: const Icon(Iconsax.trash),
+                  color: AppTheme.errorColor,
+                  iconSize: 20,
+                ),
               ),
             ],
           ),
@@ -256,6 +337,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   Widget _buildInfoSection(String title, IconData icon, List<String> items) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -269,10 +353,10 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
           ],
@@ -286,7 +370,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                     width: 4,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppTheme.lightText.withOpacity(0.5),
+                      color: textColor.withOpacity(0.5),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -296,7 +380,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                       item,
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppTheme.lightText.withOpacity(0.7),
+                        color: textColor.withOpacity(0.7),
                       ),
                     ),
                   ),
@@ -308,6 +392,9 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return Center(
       child: FadeIn(
         child: Column(
@@ -326,12 +413,12 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'No automations',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -339,7 +426,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
               'Create your first automation to get started',
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.lightText.withOpacity(0.6),
+                color: textColor.withOpacity(0.6),
               ),
             ),
           ],
@@ -392,19 +479,25 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   void _showCreateAutomationDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Automation creation coming soon!'),
-        backgroundColor: AppTheme.darkCard,
+      SnackBar(
+        content: const Text('Automation creation coming soon!'),
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
       ),
     );
   }
 
   void _showEditAutomationDialog(BuildContext context, Automation automation) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Edit automation: ${automation.name}'),
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
       ),
     );
   }
@@ -420,20 +513,24 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   void _deleteAutomation(BuildContext context, Automation automation) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
         title: const Text('Delete Automation',
             style: TextStyle(color: AppTheme.errorColor)),
         content: Text(
           'Are you sure you want to delete "${automation.name}"?',
-          style: const TextStyle(color: AppTheme.lightText),
+          style: TextStyle(color: textColor),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: textColor)),
           ),
           TextButton(
             onPressed: () {

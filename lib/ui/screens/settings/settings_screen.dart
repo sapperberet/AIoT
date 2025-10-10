@@ -95,13 +95,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildProfileSection(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.currentUser;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return FadeInUp(
       delay: const Duration(milliseconds: 100),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: AppTheme.cardGradient,
+          gradient: isDark
+              ? AppTheme.cardGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightSurface,
+                    AppTheme.lightSurface.withOpacity(0.8),
+                  ],
+                ),
           borderRadius: AppTheme.largeRadius,
           border: Border.all(
             color: AppTheme.primaryColor.withOpacity(0.3),
@@ -137,10 +147,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     user?.displayName ?? 'User',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.lightText,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -148,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     user?.email ?? '',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.lightText.withOpacity(0.6),
+                      color: textColor.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -173,6 +183,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         TextEditingController(text: settingsProvider.userEmail);
     final _passwordController =
         TextEditingController(text: settingsProvider.userPassword);
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
 
     return FadeInUp(
       delay: const Duration(milliseconds: 150),
@@ -203,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Face recognition is required for login. Add email/password as a second layer of protection.',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.lightText.withOpacity(0.8),
+                      color: textColor.withOpacity(0.8),
                     ),
                   ),
                 ),
@@ -218,7 +230,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
             settingsProvider.enableEmailPasswordAuth,
             (value) => settingsProvider.toggleEmailPasswordAuth(value),
             icon: Iconsax.key,
-          ), // Email/Password fields (only shown when enabled)
+          ),
+
+          const SizedBox(height: 16),
+
+          // Enable Authentication Audio Toggle
+          _buildSwitchTile(
+            'Authentication Audio',
+            settingsProvider.enableAuthAudio,
+            (value) => settingsProvider.toggleAuthAudio(value),
+            icon: Iconsax.volume_high,
+          ),
+
+          // Audio info
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(top: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentColor.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: AppTheme.accentColor.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.music,
+                  color: AppTheme.accentColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Play audio notifications during face authentication (e.g., "Look at camera", success sound)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textColor.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Email/Password fields (only shown when enabled)
           if (settingsProvider.enableEmailPasswordAuth) ...[
             const SizedBox(height: 16),
             _buildTextField(
@@ -661,6 +718,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSection(String title, List<Widget> children) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -668,17 +729,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppTheme.lightText,
+              color: textColor,
             ),
           ),
         ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: AppTheme.cardGradient,
+            gradient: isDark
+                ? AppTheme.cardGradient
+                : LinearGradient(
+                    colors: [
+                      AppTheme.lightSurface,
+                      AppTheme.lightSurface.withOpacity(0.8),
+                    ],
+                  ),
             borderRadius: AppTheme.largeRadius,
             border: Border.all(
               color: AppTheme.primaryColor.withOpacity(0.3),
@@ -700,6 +768,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     VoidCallback? onTap,
     bool isDestructive = false,
   }) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return InkWell(
       onTap: onTap,
       borderRadius: AppTheme.mediumRadius,
@@ -737,9 +808,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: isDestructive
-                          ? AppTheme.errorColor
-                          : AppTheme.lightText,
+                      color: isDestructive ? AppTheme.errorColor : textColor,
                     ),
                   ),
                   if (subtitle.isNotEmpty) ...[
@@ -748,7 +817,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle,
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppTheme.lightText.withOpacity(0.6),
+                        color: textColor.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -759,7 +828,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icon(
                 Iconsax.arrow_right_3,
                 size: 20,
-                color: AppTheme.lightText.withOpacity(0.4),
+                color: textColor.withOpacity(0.4),
               ),
           ],
         ),
@@ -773,6 +842,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Function(bool) onChanged, {
     required IconData icon,
   }) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -793,10 +865,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
           ),
@@ -818,18 +890,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     TextInputType? keyboardType,
     bool obscureText = false,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return TextField(
       controller: TextEditingController(text: initialValue),
       onChanged: onChanged,
       keyboardType: keyboardType,
       obscureText: obscureText,
-      style: const TextStyle(color: AppTheme.lightText),
+      style: TextStyle(color: textColor),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: AppTheme.lightText.withOpacity(0.6)),
+        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
         prefixIcon: Icon(icon, color: AppTheme.primaryColor),
         filled: true,
-        fillColor: AppTheme.darkCard,
+        fillColor:
+            isDark ? AppTheme.darkCard : AppTheme.lightSurface.withOpacity(0.5),
         border: OutlineInputBorder(
           borderRadius: AppTheme.mediumRadius,
           borderSide: BorderSide.none,
@@ -837,7 +914,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: AppTheme.mediumRadius,
           borderSide: BorderSide(
-            color: AppTheme.lightText.withOpacity(0.1),
+            color: textColor.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -873,13 +950,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showLanguagePicker(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     // Show language picker dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        title: Text(loc.t('language'),
-            style: const TextStyle(color: AppTheme.lightText)),
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
+        title: Text(loc.t('language'), style: TextStyle(color: textColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -895,9 +975,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildLanguageOption(BuildContext context, String name, String code) {
     final settingsProvider = context.watch<SettingsProvider>();
     final isSelected = settingsProvider.language == code;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
 
     return ListTile(
-      title: Text(name, style: const TextStyle(color: AppTheme.lightText)),
+      title: Text(name, style: TextStyle(color: textColor)),
       trailing: isSelected
           ? const Icon(Iconsax.tick_circle5, color: AppTheme.primaryColor)
           : null,
@@ -910,12 +992,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showRefreshIntervalPicker(
       BuildContext context, SettingsProvider provider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        title: const Text('Data Refresh Interval',
-            style: TextStyle(color: AppTheme.lightText)),
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
+        title:
+            Text('Data Refresh Interval', style: TextStyle(color: textColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -936,9 +1022,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     int seconds,
   ) {
     final isSelected = provider.dataRefreshInterval == seconds;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
 
     return ListTile(
-      title: Text(label, style: const TextStyle(color: AppTheme.lightText)),
+      title: Text(label, style: TextStyle(color: textColor)),
       trailing: isSelected
           ? const Icon(Iconsax.tick_circle5, color: AppTheme.primaryColor)
           : null,

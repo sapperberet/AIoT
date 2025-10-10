@@ -54,6 +54,9 @@ dependencies:
   
   # Logging
   logger: ^2.0.2+1
+  
+  # Audio Player
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -67,3 +70,4 @@ flutter:
     - assets/3d/
     - assets/icons/
     - assets/web/
+    - assets/Audio/

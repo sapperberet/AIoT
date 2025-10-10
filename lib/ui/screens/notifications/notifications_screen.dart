@@ -19,14 +19,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: FadeInLeft(
           child: IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: AppTheme.lightText),
+            icon: Icon(Iconsax.arrow_left, color: textColor),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -47,8 +51,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         actions: [
           FadeInRight(
             child: PopupMenuButton<String>(
-              icon: const Icon(Iconsax.more, color: AppTheme.lightText),
-              color: AppTheme.darkCard,
+              icon: Icon(Iconsax.more, color: textColor),
+              color: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'mark_all_read',
@@ -58,7 +62,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 12),
                       Text(AppLocalizations.of(context).t('mark_all_read'),
-                          style: const TextStyle(color: AppTheme.lightText)),
+                          style: TextStyle(color: textColor)),
                     ],
                   ),
                 ),
@@ -70,7 +74,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: AppTheme.errorColor, size: 20),
                       const SizedBox(width: 12),
                       Text(AppLocalizations.of(context).t('clear_all'),
-                          style: const TextStyle(color: AppTheme.lightText)),
+                          style: TextStyle(color: textColor)),
                     ],
                   ),
                 ),
@@ -151,6 +155,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildFilterChip(String label, NotificationType? type) {
     final isSelected = _selectedFilter == type;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return GestureDetector(
       onTap: () {
@@ -162,12 +169,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: isSelected ? AppTheme.primaryGradient : null,
-          color: isSelected ? null : AppTheme.darkCard,
+          color: isSelected
+              ? null
+              : (isDark ? AppTheme.darkCard : AppTheme.lightSurface),
           borderRadius: AppTheme.mediumRadius,
           border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor
-                : AppTheme.lightText.withOpacity(0.1),
+            color:
+                isSelected ? AppTheme.primaryColor : textColor.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -176,8 +184,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color:
-                isSelected ? Colors.white : AppTheme.lightText.withOpacity(0.6),
+            color: isSelected ? Colors.white : textColor.withOpacity(0.6),
           ),
         ),
       ),
@@ -186,6 +193,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildNotificationCard(
       BuildContext context, AppNotification notification) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -194,7 +205,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Notification deleted'),
-            backgroundColor: AppTheme.darkCard,
+            backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Undo',
@@ -231,17 +242,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: notification.isRead
-                ? AppTheme.cardGradient
+                ? (isDark
+                    ? AppTheme.cardGradient
+                    : LinearGradient(
+                        colors: [
+                          AppTheme.lightSurface,
+                          AppTheme.lightSurface.withOpacity(0.8),
+                        ],
+                      ))
                 : LinearGradient(
                     colors: [
                       AppTheme.primaryColor.withOpacity(0.1),
-                      AppTheme.darkCard,
+                      isDark ? AppTheme.darkCard : AppTheme.lightSurface,
                     ],
                   ),
             borderRadius: AppTheme.largeRadius,
             border: Border.all(
               color: notification.isRead
-                  ? AppTheme.lightText.withOpacity(0.1)
+                  ? textColor.withOpacity(0.1)
                   : AppTheme.primaryColor.withOpacity(0.3),
               width: 1,
             ),
@@ -279,7 +297,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontWeight: notification.isRead
                                   ? FontWeight.w500
                                   : FontWeight.bold,
-                              color: AppTheme.lightText,
+                              color: textColor,
                             ),
                           ),
                         ),
@@ -299,7 +317,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       notification.message,
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.lightText.withOpacity(0.7),
+                        color: textColor.withOpacity(0.7),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -310,14 +328,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Icon(
                           Iconsax.clock,
                           size: 14,
-                          color: AppTheme.lightText.withOpacity(0.5),
+                          color: textColor.withOpacity(0.5),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _formatTimestamp(notification.timestamp),
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.lightText.withOpacity(0.5),
+                            color: textColor.withOpacity(0.5),
                           ),
                         ),
                         if (notification.priority ==
@@ -353,6 +371,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+
     return Center(
       child: FadeIn(
         child: Column(
@@ -371,12 +392,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'No notifications',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -384,7 +405,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               'You\'re all caught up!',
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.lightText.withOpacity(0.6),
+                color: textColor.withOpacity(0.6),
               ),
             ),
           ],
@@ -453,14 +474,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _showNotificationDetails(
       BuildContext context, AppNotification notification) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          gradient: AppTheme.cardGradient,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppTheme.cardGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightSurface,
+                    AppTheme.lightSurface.withOpacity(0.8),
+                  ],
+                ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -484,10 +516,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Expanded(
                   child: Text(
                     notification.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.lightText,
+                      color: textColor,
                     ),
                   ),
                 ),
@@ -498,7 +530,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               notification.message,
               style: TextStyle(
                 fontSize: 16,
-                color: AppTheme.lightText.withOpacity(0.8),
+                color: textColor.withOpacity(0.8),
               ),
             ),
             const SizedBox(height: 16),

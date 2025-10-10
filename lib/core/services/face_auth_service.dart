@@ -47,7 +47,7 @@ class FaceAuthService {
       Duration(seconds: 27); // Camera initialization
   static const Duration _authResponseTimeout = Duration(
       seconds:
-          60); // Total time for camera init + scanning + response (backend can take 30-40s + network delays)
+          50); // Total time for camera init + scanning + response (backend can take 30-40s + network delays)
 
   FaceAuthService({required MqttService mqttService})
       : _mqttService = mqttService {
