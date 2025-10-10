@@ -76,10 +76,13 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
   }
 
   void _showErrorDialog(String title, String message) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -89,13 +92,17 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
             const SizedBox(width: 12),
             Text(
               title,
-              style: const TextStyle(color: AppTheme.lightText),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ],
         ),
         content: Text(
           message,
-          style: TextStyle(color: AppTheme.lightText.withOpacity(0.8)),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface.withOpacity(0.8),
+          ),
         ),
         actions: [
           TextButton(
@@ -117,17 +124,26 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+    
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryColor.withOpacity(0.1),
-              AppTheme.accentColor.withOpacity(0.1),
-            ],
+            colors: isDark 
+              ? [
+                  AppTheme.primaryColor.withOpacity(0.1),
+                  AppTheme.accentColor.withOpacity(0.1),
+                ]
+              : [
+                  AppTheme.primaryColor.withOpacity(0.05),
+                  AppTheme.accentColor.withOpacity(0.05),
+                ],
           ),
         ),
         child: SafeArea(
@@ -194,7 +210,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                         'Face recognition successful ✓\nVerify your email and password to continue',
                         style: TextStyle(
                           fontSize: 15,
-                          color: AppTheme.lightText.withOpacity(0.7),
+                          color: textColor.withOpacity(0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -243,7 +259,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                               _obscurePassword
                                   ? Iconsax.eye_slash
                                   : Iconsax.eye,
-                              color: AppTheme.lightText.withOpacity(0.5),
+                              color: textColor.withOpacity(0.5),
                             ),
                             onPressed: () {
                               setState(
@@ -309,7 +325,9 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: isDark 
+                        ? AppTheme.primaryColor.withOpacity(0.1)
+                        : AppTheme.primaryColor.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: AppTheme.primaryColor.withOpacity(0.3),
@@ -328,7 +346,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                             'These credentials were set up in your Settings for additional security.',
                             style: TextStyle(
                               fontSize: 13,
-                              color: AppTheme.lightText.withOpacity(0.7),
+                              color: textColor.withOpacity(0.7),
                             ),
                           ),
                         ),
@@ -354,9 +372,17 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+    
     return Container(
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
+        gradient: isDark 
+          ? AppTheme.cardGradient 
+          : LinearGradient(
+              colors: [AppTheme.lightCard, AppTheme.lightSurface],
+            ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppTheme.primaryColor.withOpacity(0.2),
@@ -367,15 +393,15 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
         obscureText: obscureText,
         keyboardType: keyboardType,
         validator: validator,
-        style: const TextStyle(color: AppTheme.lightText),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
           labelStyle: TextStyle(
-            color: AppTheme.lightText.withOpacity(0.6),
+            color: textColor.withOpacity(0.6),
           ),
           hintStyle: TextStyle(
-            color: AppTheme.lightText.withOpacity(0.3),
+            color: textColor.withOpacity(0.3),
           ),
           prefixIcon: Icon(icon, color: AppTheme.primaryColor),
           suffixIcon: suffixIcon,
