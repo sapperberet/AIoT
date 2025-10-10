@@ -1,3 +1,21 @@
+# Ignore Python virtual environments
+grad_project_backend-main/venv/
+
+# Common Python ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+
+# IDEs
+.vscode/
+*.iml
 # .gitignore
 
 # Miscellaneous
