@@ -11,9 +11,11 @@
 **File: `lib/core/providers/settings_provider.dart`**
 
 Changed three locations:
-- Initial `_themeMode` declaration: `ThemeMode.dark` → `ThemeMode.light`
-- `_resetToDefaults()` method: `ThemeMode.dark` → `ThemeMode.light`
-- `_parseThemeMode()` default return: `ThemeMode.dark` → `ThemeMode.light`
+- Initial `_themeMode` declaration: `ThemeMode.dark` → `ThemeMode.dark` *(Changed back to dark as default)*
+- `_resetToDefaults()` method: `ThemeMode.dark` → `ThemeMode.dark`
+- `_parseThemeMode()` default return: `ThemeMode.dark` → `ThemeMode.dark`
+
+**Note**: Default theme is now **DARK** for new installations, matching the app's original design.
 
 ### 2. Added Local Persistence with SharedPreferences
 **File: `lib/core/providers/settings_provider.dart`**
@@ -66,7 +68,7 @@ All the following settings now persist locally:
 1. **Settings Persist Across Sessions**: All settings are saved to device storage and restored on app restart
 2. **Works Offline**: Settings are saved locally, no internet required
 3. **Cloud Sync**: When logged in, settings sync to Firestore for multi-device access
-4. **Light Theme by Default**: App now starts with a light theme instead of dark
+4. **Dark Theme by Default**: App now starts with a dark theme for new installations (matches original design)
 5. **Immediate Theme Changes**: Theme changes apply instantly and persist
 
 ## How to Test

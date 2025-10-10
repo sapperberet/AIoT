@@ -44,7 +44,7 @@ class FaceAuthService {
   // Timeouts
   static const Duration _beaconDiscoveryTimeout = Duration(seconds: 2);
   static const Duration _cameraInitTimeout =
-      Duration(seconds: 22); // Camera initialization
+      Duration(seconds: 27); // Camera initialization
   static const Duration _authResponseTimeout = Duration(
       seconds:
           60); // Total time for camera init + scanning + response (backend can take 30-40s + network delays)

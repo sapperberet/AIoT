@@ -37,7 +37,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+    
     final List<Widget> tabs = [
       const DevicesTab(),
       const VisualizationTab(),
@@ -45,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: const CustomDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -53,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
         leading: Builder(
           builder: (context) => FadeInLeft(
             child: IconButton(
-              icon: const Icon(Iconsax.menu, color: AppTheme.lightText),
+              icon: Icon(Iconsax.menu, color: textColor),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
@@ -142,8 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppTheme.darkBackground,
-              AppTheme.darkBackground.withOpacity(0.95),
+              theme.scaffoldBackgroundColor,
+              theme.scaffoldBackgroundColor.withOpacity(0.95),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,

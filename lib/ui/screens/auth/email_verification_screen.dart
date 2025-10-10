@@ -110,16 +110,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          gradient: isDark 
-            ? AppTheme.backgroundGradient 
-            : LinearGradient(
-                colors: [
-                  AppTheme.lightBackground,
-                  AppTheme.lightSurface,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          gradient: isDark
+              ? AppTheme.backgroundGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightBackground,
+                    AppTheme.lightSurface,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -167,9 +167,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       Text(
                         'We sent a verification link to',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark 
-                                ? AppTheme.mutedText 
-                                : textColor.withOpacity(0.6),
+                              color: isDark
+                                  ? AppTheme.mutedText
+                                  : textColor.withOpacity(0.6),
                             ),
                         textAlign: TextAlign.center,
                       ),
@@ -230,9 +230,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                 .textTheme
                                 .titleLarge
                                 ?.copyWith(
-                                  color: isDark 
-                                    ? AppTheme.lightText 
-                                    : AppTheme.darkText,
+                                  color: isDark
+                                      ? AppTheme.lightText
+                                      : AppTheme.darkText,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -243,9 +243,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(
-                                  color: isDark 
-                                    ? AppTheme.mutedText 
-                                    : textColor.withOpacity(0.6),
+                                  color: isDark
+                                      ? AppTheme.mutedText
+                                      : textColor.withOpacity(0.6),
                                 ),
                             textAlign: TextAlign.center,
                           ),

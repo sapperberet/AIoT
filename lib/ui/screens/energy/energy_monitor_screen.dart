@@ -349,14 +349,19 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
     int percentage,
     IconData icon,
   ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
+        gradient: isDark ? AppTheme.cardGradient : null,
+        color: isDark ? null : theme.cardTheme.color,
         borderRadius: AppTheme.largeRadius,
         border: Border.all(
-          color: AppTheme.lightText.withOpacity(0.1),
+          color: textColor.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -381,10 +386,10 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: AppTheme.lightText,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -392,7 +397,8 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
                     value: percentage / 100,
-                    backgroundColor: AppTheme.darkCard,
+                    backgroundColor:
+                        isDark ? AppTheme.darkCard : AppTheme.lightCard,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                         AppTheme.primaryColor),
                     minHeight: 6,
@@ -407,10 +413,10 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
             children: [
               Text(
                 '${consumption.toStringAsFixed(1)} kWh',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.lightText,
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 4),
@@ -418,7 +424,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                 '$percentage%',
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppTheme.lightText.withOpacity(0.6),
+                  color: textColor.withOpacity(0.6),
                 ),
               ),
             ],

@@ -46,11 +46,19 @@ class LogsTab extends StatelessWidget {
 
   Widget _buildAlarmsLog(
       BuildContext context, String userId, FirestoreService firestoreService) {
+    final theme = Theme.of(context);
+
     return StreamBuilder<List<AlarmEvent>>(
       stream: firestoreService.getAlarmsStream(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
+            ),
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -122,11 +130,19 @@ class LogsTab extends StatelessWidget {
 
   Widget _buildEventsLog(
       BuildContext context, String userId, FirestoreService firestoreService) {
+    final theme = Theme.of(context);
+
     return StreamBuilder<QuerySnapshot>(
       stream: firestoreService.getLogsStream(userId, limit: 100),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
+            ),
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {

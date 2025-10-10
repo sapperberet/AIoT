@@ -36,6 +36,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -118,8 +120,11 @@ class _SplashScreenState extends State<SplashScreen> {
                   height: 50,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.brightness == Brightness.dark
+                          ? AppTheme.primaryColor
+                          : AppTheme.primaryColor,
+                    ),
                   ),
                 ),
               ),

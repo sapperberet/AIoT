@@ -38,7 +38,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   void _resetToDefaults() {
-    _themeMode = ThemeMode.light;
+    _themeMode = ThemeMode.dark;
     _connectionMode = ConnectionMode.cloud;
     _mqttBrokerAddress = '192.168.1.100';
     _mqttBrokerPort = 1883;
@@ -61,7 +61,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   // Theme settings
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
   ThemeMode get themeMode => _themeMode;
 
   // Connection mode
@@ -290,7 +290,7 @@ class SettingsProvider with ChangeNotifier {
       case 'system':
         return ThemeMode.system;
       default:
-        return ThemeMode.light;
+        return ThemeMode.dark;
     }
   }
 

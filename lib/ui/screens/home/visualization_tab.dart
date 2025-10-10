@@ -124,12 +124,18 @@ class _VisualizationTabState extends State<VisualizationTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Stack(
       children: [
         WebViewWidget(controller: _webViewController),
         if (_isLoading)
-          const Center(
-            child: CircularProgressIndicator(),
+          Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
+            ),
           ),
         Positioned(
           bottom: 16,

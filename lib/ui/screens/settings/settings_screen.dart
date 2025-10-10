@@ -18,15 +18,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: FadeInLeft(
           child: IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: AppTheme.lightText),
+            icon: Icon(Iconsax.arrow_left, color: textColor),
             onPressed: () => Navigator.pop(context),
           ),
         ),

@@ -78,7 +78,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
   void _showErrorDialog(String title, String message) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -127,7 +127,7 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Container(
@@ -135,15 +135,15 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark 
-              ? [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.accentColor.withOpacity(0.1),
-                ]
-              : [
-                  AppTheme.primaryColor.withOpacity(0.05),
-                  AppTheme.accentColor.withOpacity(0.05),
-                ],
+            colors: isDark
+                ? [
+                    AppTheme.primaryColor.withOpacity(0.1),
+                    AppTheme.accentColor.withOpacity(0.1),
+                  ]
+                : [
+                    AppTheme.primaryColor.withOpacity(0.05),
+                    AppTheme.accentColor.withOpacity(0.05),
+                  ],
           ),
         ),
         child: SafeArea(
@@ -325,9 +325,9 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark 
-                        ? AppTheme.primaryColor.withOpacity(0.1)
-                        : AppTheme.primaryColor.withOpacity(0.05),
+                      color: isDark
+                          ? AppTheme.primaryColor.withOpacity(0.1)
+                          : AppTheme.primaryColor.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: AppTheme.primaryColor.withOpacity(0.3),
@@ -375,14 +375,14 @@ class _EmailPasswordLayerScreenState extends State<EmailPasswordLayerScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
-    
+
     return Container(
       decoration: BoxDecoration(
-        gradient: isDark 
-          ? AppTheme.cardGradient 
-          : LinearGradient(
-              colors: [AppTheme.lightCard, AppTheme.lightSurface],
-            ),
+        gradient: isDark
+            ? AppTheme.cardGradient
+            : LinearGradient(
+                colors: [AppTheme.lightCard, AppTheme.lightSurface],
+              ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppTheme.primaryColor.withOpacity(0.2),

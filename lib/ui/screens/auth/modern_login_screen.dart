@@ -37,23 +37,23 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
     final backgroundColor = theme.scaffoldBackgroundColor;
     final textColor = theme.colorScheme.onBackground;
     final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
-    
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          gradient: isDark 
-            ? AppTheme.backgroundGradient 
-            : LinearGradient(
-                colors: [
-                  AppTheme.lightBackground,
-                  AppTheme.lightSurface,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          gradient: isDark
+              ? AppTheme.backgroundGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightBackground,
+                    AppTheme.lightSurface,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -102,9 +102,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       Text(
                         'Authenticate with face recognition',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark 
-                                ? AppTheme.mutedText 
-                                : textColor.withOpacity(0.6),
+                              color: isDark
+                                  ? AppTheme.mutedText
+                                  : textColor.withOpacity(0.6),
                             ),
                       ),
                     ],
@@ -131,14 +131,14 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       border: 2,
                       linearGradient: LinearGradient(
                         colors: isDark
-                          ? [
-                              Colors.white.withOpacity(0.15),
-                              Colors.white.withOpacity(0.1),
-                            ]
-                          : [
-                              Colors.white.withOpacity(0.9),
-                              Colors.white.withOpacity(0.7),
-                            ],
+                            ? [
+                                Colors.white.withOpacity(0.15),
+                                Colors.white.withOpacity(0.1),
+                              ]
+                            : [
+                                Colors.white.withOpacity(0.9),
+                                Colors.white.withOpacity(0.7),
+                              ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -177,9 +177,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(
-                                  color: isDark 
-                                    ? AppTheme.lightText 
-                                    : AppTheme.darkText,
+                                  color: isDark
+                                      ? AppTheme.lightText
+                                      : AppTheme.darkText,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -188,9 +188,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                             'Tap to Authenticate',
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: isDark 
-                                        ? AppTheme.mutedText 
-                                        : AppTheme.darkText.withOpacity(0.6),
+                                      color: isDark
+                                          ? AppTheme.mutedText
+                                          : AppTheme.darkText.withOpacity(0.6),
                                       fontSize: 12,
                                     ),
                           ),
@@ -209,9 +209,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark 
-                        ? AppTheme.primaryColor.withOpacity(0.1)
-                        : AppTheme.primaryColor.withOpacity(0.05),
+                      color: isDark
+                          ? AppTheme.primaryColor.withOpacity(0.1)
+                          : AppTheme.primaryColor.withOpacity(0.05),
                       borderRadius: AppTheme.mediumRadius,
                       border: Border.all(
                         color: AppTheme.primaryColor.withOpacity(0.3),
@@ -229,13 +229,11 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                         Expanded(
                           child: Text(
                             'Face recognition is required. Configure additional security layer (email/password) in Settings after login.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: textColor.withOpacity(0.8),
-                                  fontSize: 12,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: textColor.withOpacity(0.8),
+                                      fontSize: 12,
+                                    ),
                           ),
                         ),
                       ],

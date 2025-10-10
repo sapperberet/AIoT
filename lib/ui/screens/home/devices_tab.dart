@@ -15,14 +15,27 @@ class DevicesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+    
     return Consumer<DeviceProvider>(
       builder: (context, deviceProvider, child) {
         final devices = deviceProvider.devices;
         final alarms = deviceProvider.activeAlarms;
 
         return Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.backgroundGradient,
+          decoration: BoxDecoration(
+            gradient: isDark 
+              ? AppTheme.backgroundGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightBackground,
+                    AppTheme.lightSurface,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
           ),
           child: Column(
             children: [
@@ -96,9 +109,8 @@ class DevicesTab extends StatelessWidget {
                                               Expanded(
                                                 child: Text(
                                                   '${alarm.type} in ${alarm.location}',
-                                                  style: const TextStyle(
-                                                      color:
-                                                          AppTheme.lightText),
+                                                  style: TextStyle(
+                                                      color: textColor),
                                                 ),
                                               ),
                                               TextButton(
@@ -142,10 +154,10 @@ class DevicesTab extends StatelessWidget {
                               const SizedBox(height: 24),
                               Text(
                                 AppLocalizations.of(context).t('no_devices'),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.lightText,
+                                  color: textColor,
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -214,6 +226,9 @@ class ModernDeviceCard extends StatelessWidget {
     final deviceProvider = context.read<DeviceProvider>();
     final gradient = _getDeviceGradient(device.type);
     final icon = _getDeviceIcon(device.type);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -230,10 +245,15 @@ class ModernDeviceCard extends StatelessWidget {
           alignment: Alignment.center,
           border: 2,
           linearGradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.1),
-              Colors.white.withOpacity(0.05),
-            ],
+            colors: isDark
+              ? [
+                  Colors.white.withOpacity(0.1),
+                  Colors.white.withOpacity(0.05),
+                ]
+              : [
+                  Colors.white.withOpacity(0.9),
+                  Colors.white.withOpacity(0.7),
+                ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -275,10 +295,10 @@ class ModernDeviceCard extends StatelessWidget {
                     children: [
                       Text(
                         device.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.lightText,
+                          color: textColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
