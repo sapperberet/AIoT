@@ -57,6 +57,9 @@ migrate_working_dir/
 .pub/
 /build/
 
+/grad_project_backend-main(New)/
+/grad_project_backend-main(old)/
+
 # Symbolication related
 app.*.symbols
 
