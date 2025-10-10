@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 
@@ -20,7 +21,10 @@ class SettingsProvider with ChangeNotifier {
     _init();
   }
 
-  void _init() {
+  void _init() async {
+    // Load settings from local storage first
+    await _loadFromLocalStorage();
+    
     // Listen to auth changes to load user-specific settings
     _authService?.authStateChanges.listen((user) {
       if (user != null && user.uid != _currentUserId) {
@@ -28,14 +32,13 @@ class SettingsProvider with ChangeNotifier {
         loadSettings();
       } else if (user == null) {
         _currentUserId = null;
-        // Reset to defaults when logged out
-        _resetToDefaults();
+        // Keep local settings when logged out (don't reset)
       }
     });
   }
 
   void _resetToDefaults() {
-    _themeMode = ThemeMode.dark;
+    _themeMode = ThemeMode.light;
     _connectionMode = ConnectionMode.cloud;
     _mqttBrokerAddress = '192.168.1.100';
     _mqttBrokerPort = 1883;
@@ -58,7 +61,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   // Theme settings
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
 
   // Connection mode
@@ -222,8 +225,9 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
-  // Load settings from storage (to be implemented with SharedPreferences)
+  // Load settings from storage
   Future<void> loadSettings() async {
+    // First, try to load from Firestore if user is logged in
     if (_currentUserId != null && _firestoreService != null) {
       try {
         // Load user settings from Firestore
@@ -263,10 +267,17 @@ class SettingsProvider with ChangeNotifier {
           _userPassword = userSettings['userPassword'] as String? ?? '';
 
           notifyListeners();
+          // Also save to local storage for offline access
+          await _saveToLocalStorage();
         }
       } catch (e) {
         debugPrint('Error loading settings from Firestore: $e');
+        // Fall back to local storage
+        await _loadFromLocalStorage();
       }
+    } else {
+      // Load from local storage if not logged in
+      await _loadFromLocalStorage();
     }
   }
 
@@ -279,7 +290,7 @@ class SettingsProvider with ChangeNotifier {
       case 'system':
         return ThemeMode.system;
       default:
-        return ThemeMode.dark;
+        return ThemeMode.light;
     }
   }
 
@@ -296,6 +307,10 @@ class SettingsProvider with ChangeNotifier {
 
   // Save settings to storage
   Future<void> saveSettings() async {
+    // Always save to local storage
+    await _saveToLocalStorage();
+    
+    // Also save to Firestore if user is logged in
     if (_currentUserId != null && _firestoreService != null) {
       try {
         await _firestoreService!.saveUserSettings(_currentUserId!, {
@@ -323,6 +338,78 @@ class SettingsProvider with ChangeNotifier {
       } catch (e) {
         debugPrint('Error saving settings to Firestore: $e');
       }
+    }
+  }
+
+  // Load settings from SharedPreferences
+  Future<void> _loadFromLocalStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final themeModeStr = prefs.getString('themeMode');
+      if (themeModeStr != null) {
+        _themeMode = _parseThemeMode(themeModeStr);
+      }
+      
+      final connectionModeStr = prefs.getString('connectionMode');
+      if (connectionModeStr != null) {
+        _connectionMode = _parseConnectionMode(connectionModeStr);
+      }
+      
+      _language = prefs.getString('language') ?? 'en';
+      _enableNotifications = prefs.getBool('enableNotifications') ?? true;
+      _deviceStatusNotifications = prefs.getBool('deviceStatusNotifications') ?? true;
+      _automationNotifications = prefs.getBool('automationNotifications') ?? true;
+      _securityAlerts = prefs.getBool('securityAlerts') ?? true;
+      _soundEnabled = prefs.getBool('soundEnabled') ?? true;
+      _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
+      _autoConnect = prefs.getBool('autoConnect') ?? true;
+      _offlineMode = prefs.getBool('offlineMode') ?? false;
+      _dataRefreshInterval = prefs.getInt('dataRefreshInterval') ?? 5;
+      
+      _mqttBrokerAddress = prefs.getString('mqttBrokerAddress') ?? '192.168.1.100';
+      _mqttBrokerPort = prefs.getInt('mqttBrokerPort') ?? 1883;
+      _mqttUsername = prefs.getString('mqttUsername') ?? '';
+      _mqttPassword = prefs.getString('mqttPassword') ?? '';
+      
+      _enableEmailPasswordAuth = prefs.getBool('enableEmailPasswordAuth') ?? false;
+      _userEmail = prefs.getString('userEmail') ?? '';
+      _userPassword = prefs.getString('userPassword') ?? '';
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading settings from local storage: $e');
+    }
+  }
+
+  // Save settings to SharedPreferences
+  Future<void> _saveToLocalStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      await prefs.setString('themeMode', _themeMode.name);
+      await prefs.setString('connectionMode', _connectionMode.name);
+      await prefs.setString('language', _language);
+      await prefs.setBool('enableNotifications', _enableNotifications);
+      await prefs.setBool('deviceStatusNotifications', _deviceStatusNotifications);
+      await prefs.setBool('automationNotifications', _automationNotifications);
+      await prefs.setBool('securityAlerts', _securityAlerts);
+      await prefs.setBool('soundEnabled', _soundEnabled);
+      await prefs.setBool('vibrationEnabled', _vibrationEnabled);
+      await prefs.setBool('autoConnect', _autoConnect);
+      await prefs.setBool('offlineMode', _offlineMode);
+      await prefs.setInt('dataRefreshInterval', _dataRefreshInterval);
+      
+      await prefs.setString('mqttBrokerAddress', _mqttBrokerAddress);
+      await prefs.setInt('mqttBrokerPort', _mqttBrokerPort);
+      await prefs.setString('mqttUsername', _mqttUsername);
+      await prefs.setString('mqttPassword', _mqttPassword);
+      
+      await prefs.setBool('enableEmailPasswordAuth', _enableEmailPasswordAuth);
+      await prefs.setString('userEmail', _userEmail);
+      await prefs.setString('userPassword', _userPassword);
+    } catch (e) {
+      debugPrint('Error saving settings to local storage: $e');
     }
   }
 }

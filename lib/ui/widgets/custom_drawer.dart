@@ -33,7 +33,7 @@ class CustomDrawer extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: GlassmorphicContainer(
                     width: double.infinity,
-                    height: 180,
+                    height: 185,
                     borderRadius: 20,
                     blur: 20,
                     alignment: Alignment.center,
@@ -56,6 +56,7 @@ class CustomDrawer extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Avatar
                           Container(
