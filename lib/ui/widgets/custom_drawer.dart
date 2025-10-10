@@ -15,12 +15,24 @@ class CustomDrawer extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.currentUser;
     final userModel = authProvider.userModel;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
 
     return Drawer(
       backgroundColor: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark 
+            ? AppTheme.backgroundGradient
+            : LinearGradient(
+                colors: [
+                  AppTheme.lightBackground,
+                  AppTheme.lightSurface,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
         ),
         child: SafeArea(
           child: Column(
@@ -39,10 +51,15 @@ class CustomDrawer extends StatelessWidget {
                     alignment: Alignment.center,
                     border: 2,
                     linearGradient: LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.1),
-                        Colors.white.withOpacity(0.05),
-                      ],
+                      colors: isDark
+                        ? [
+                            Colors.white.withOpacity(0.1),
+                            Colors.white.withOpacity(0.05),
+                          ]
+                        : [
+                            Colors.white.withOpacity(0.95),
+                            Colors.white.withOpacity(0.85),
+                          ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
