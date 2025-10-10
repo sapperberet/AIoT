@@ -17,9 +17,9 @@ import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/screens/auth/modern_login_screen.dart';
-import 'ui/screens/auth/modern_register_screen.dart';
 import 'ui/screens/auth/email_verification_screen.dart';
 import 'ui/screens/auth/face_auth_screen.dart';
+import 'ui/screens/auth/email_password_layer_screen.dart';
 import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
@@ -138,9 +138,10 @@ class SmartHomeApp extends StatelessWidget {
             home: const SplashScreen(),
             routes: {
               '/login': (context) => const ModernLoginScreen(),
-              '/register': (context) => const ModernRegisterScreen(),
               '/verify-email': (context) => const EmailVerificationScreen(),
               '/face-auth': (context) => const FaceAuthScreen(),
+              '/auth/email-password': (context) =>
+                  const EmailPasswordLayerScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
               '/notifications': (context) => const NotificationsScreen(),

@@ -55,6 +55,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildProfileSection(context),
               const SizedBox(height: 24),
 
+              // Authentication Section
+              _buildAuthenticationSection(context),
+              const SizedBox(height: 24),
+
               // Connection Mode Section
               _buildConnectionModeSection(context),
               const SizedBox(height: 24),
@@ -156,6 +160,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAuthenticationSection(BuildContext context) {
+    final settingsProvider = context.watch<SettingsProvider>();
+    final _emailController =
+        TextEditingController(text: settingsProvider.userEmail);
+    final _passwordController =
+        TextEditingController(text: settingsProvider.userPassword);
+
+    return FadeInUp(
+      delay: const Duration(milliseconds: 150),
+      child: _buildSection(
+        'Authentication',
+        [
+          // Info text
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.info_circle,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Face recognition is required for login. Add email/password as a second layer of protection.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.lightText.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Enable Email/Password Toggle
+          _buildSwitchTile(
+            'Enable Email & Password (2FA)',
+            settingsProvider.enableEmailPasswordAuth,
+            (value) => settingsProvider.toggleEmailPasswordAuth(value),
+            icon: Iconsax.key,
+          ), // Email/Password fields (only shown when enabled)
+          if (settingsProvider.enableEmailPasswordAuth) ...[
+            const SizedBox(height: 16),
+            _buildTextField(
+              'Email',
+              _emailController.text,
+              (value) {
+                settingsProvider.setEmailPasswordCredentials(email: value);
+              },
+              icon: Iconsax.sms,
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 12),
+            _buildTextField(
+              'Password',
+              _passwordController.text,
+              (value) {
+                settingsProvider.setEmailPasswordCredentials(password: value);
+              },
+              icon: Iconsax.lock,
+              obscureText: true,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.accentColor.withOpacity(0.1),
+                borderRadius: AppTheme.smallRadius,
+                border: Border.all(
+                  color: AppTheme.accentColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.shield_tick,
+                    color: AppTheme.accentColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'These credentials will be stored securely and used when email/password authentication is required.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.lightText.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -37,9 +37,17 @@ class FaceAuthService {
   FaceAuthSession? get currentSession => _currentSession;
   FaceAuthBeacon? get discoveredBeacon => _discoveredBeacon;
 
+  // Track current request to ignore stale status messages
+  String? _currentRequestId;
+  double? _currentRequestTimestamp;
+
   // Timeouts
-  static const Duration _beaconDiscoveryTimeout = Duration(seconds: 10);
-  static const Duration _authResponseTimeout = Duration(seconds: 30);
+  static const Duration _beaconDiscoveryTimeout = Duration(seconds: 2);
+  static const Duration _cameraInitTimeout =
+      Duration(seconds: 22); // Camera initialization
+  static const Duration _authResponseTimeout = Duration(
+      seconds:
+          60); // Total time for camera init + scanning + response (backend can take 30-40s + network delays)
 
   FaceAuthService({required MqttService mqttService})
       : _mqttService = mqttService {
@@ -77,9 +85,15 @@ class FaceAuthService {
     _logger.i('Starting beacon discovery...');
 
     try {
-      // Create UDP socket for beacon discovery
-      final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      // Create UDP socket for beacon discovery - MUST bind to beacon port to receive broadcasts
+      final socket = await RawDatagramSocket.bind(
+        InternetAddress.anyIPv4,
+        MqttConfig.beaconPort, // Bind to port 18830 to receive broadcasts
+      );
       socket.broadcastEnabled = true;
+
+      _logger.i(
+          'UDP socket bound to port: ${socket.port} (listening for broadcasts)');
 
       final completer = Completer<FaceAuthBeacon?>();
       Timer? timeoutTimer;
@@ -87,7 +101,8 @@ class FaceAuthService {
 
       // Set up timeout
       timeoutTimer = Timer(_beaconDiscoveryTimeout, () {
-        _logger.w('Beacon discovery timeout');
+        _logger.w(
+            'Beacon discovery timeout after ${_beaconDiscoveryTimeout.inSeconds}s');
         socketSubscription?.cancel();
         socket.close();
         if (!completer.isCompleted) {
@@ -96,18 +111,24 @@ class FaceAuthService {
       });
 
       // Listen for beacon responses
+      int packetCount = 0;
       socketSubscription = socket.listen((event) {
+        _logger.d('Socket event: $event');
         if (event == RawSocketEvent.read) {
           final datagram = socket.receive();
           if (datagram != null) {
+            packetCount++;
+            _logger.i(
+                '📦 Packet #$packetCount received from ${datagram.address.address}:${datagram.port}');
             try {
               final message = utf8.decode(datagram.data);
+              _logger.i('📨 Message content: $message');
               final beaconData = jsonDecode(message) as Map<String, dynamic>;
 
               // Check if this is our face-broker beacon
               if (beaconData['name'] == MqttConfig.beaconServiceName) {
                 final beacon = FaceAuthBeacon.fromJson(beaconData);
-                _logger.i('Beacon discovered: ${beacon.ip}:${beacon.port}');
+                _logger.i('✅ Beacon discovered: ${beacon.ip}:${beacon.port}');
 
                 _discoveredBeacon = beacon;
                 _beaconController.add(beacon);
@@ -119,6 +140,9 @@ class FaceAuthService {
                 if (!completer.isCompleted) {
                   completer.complete(beacon);
                 }
+              } else {
+                _logger.w(
+                    '⚠️ Received beacon with wrong name: ${beaconData['name']}');
               }
             } catch (e) {
               _logger.e('Error parsing beacon message: $e');
@@ -127,26 +151,47 @@ class FaceAuthService {
         }
       });
 
-      // Send WHO_IS broadcast message
-      final whoIsMessage = jsonEncode({
-        'type': 'WHO_IS',
-        'name': MqttConfig.beaconServiceName,
-      });
+      // Note: We don't send WHO_IS anymore, just passively listen for periodic broadcasts
+      // The beacon broadcasts every 2 seconds, so we should receive it within 30s
+      _logger.i(
+          '📡 Passively listening for beacon broadcasts on port ${MqttConfig.beaconPort}');
+      _logger.i(
+          '⏳ Waiting up to ${_beaconDiscoveryTimeout.inSeconds}s for beacon broadcast...');
 
-      final data = utf8.encode(whoIsMessage);
-      socket.send(
-        data,
-        InternetAddress('255.255.255.255'),
-        MqttConfig.beaconPort,
-      );
+      final result = await completer.future;
 
-      _logger.i('Sent WHO_IS broadcast');
+      // If discovery failed, try fallback to local broker address
+      if (result == null) {
+        _logger.w(
+            'Beacon discovery failed, trying fallback to ${MqttConfig.localBrokerAddress}');
+        final fallbackBeacon = FaceAuthBeacon(
+          name: MqttConfig.beaconServiceName,
+          ip: MqttConfig.localBrokerAddress,
+          port: MqttConfig.localBrokerPort,
+          discoveredAt: DateTime.now(),
+        );
+        _discoveredBeacon = fallbackBeacon;
+        _beaconController.add(fallbackBeacon);
+        _logger.i(
+            '✅ Using fallback beacon: ${fallbackBeacon.ip}:${fallbackBeacon.port}');
+        return fallbackBeacon;
+      }
 
-      return await completer.future;
+      return result;
     } catch (e) {
       _logger.e('Beacon discovery error: $e');
-      _updateStatus(FaceAuthStatus.error);
-      return null;
+
+      // Try fallback even on exception
+      _logger.w('Attempting fallback to ${MqttConfig.localBrokerAddress}');
+      final fallbackBeacon = FaceAuthBeacon(
+        name: MqttConfig.beaconServiceName,
+        ip: MqttConfig.localBrokerAddress,
+        port: MqttConfig.localBrokerPort,
+        discoveredAt: DateTime.now(),
+      );
+      _discoveredBeacon = fallbackBeacon;
+      _beaconController.add(fallbackBeacon);
+      return fallbackBeacon;
     }
   }
 
@@ -199,6 +244,11 @@ class FaceAuthService {
       final requestId = _uuid.v4();
       final deviceId = await _getDeviceId();
 
+      // Track current request to ignore stale status messages
+      _currentRequestId = requestId;
+      _currentRequestTimestamp = DateTime.now().millisecondsSinceEpoch /
+          1000.0; // Unix timestamp in seconds
+
       final request = FaceAuthRequest(
         requestId: requestId,
         userId: userId,
@@ -221,7 +271,8 @@ class FaceAuthService {
         request.toJson(),
       );
 
-      _updateStatus(FaceAuthStatus.scanning);
+      _updateStatus(FaceAuthStatus
+          .requestingScan); // Start with requestingScan, backend will update to initializing
 
       // Wait for response with timeout
       final response = await _waitForResponse(requestId);
@@ -231,6 +282,9 @@ class FaceAuthService {
         _updateStatus(
           response.success ? FaceAuthStatus.success : FaceAuthStatus.failed,
         );
+        // Clear request tracking after completion
+        _currentRequestId = null;
+        _currentRequestTimestamp = null;
         return response;
       } else {
         _updateStatus(FaceAuthStatus.timeout);
@@ -238,6 +292,9 @@ class FaceAuthService {
           FaceAuthStatus.timeout,
           error: 'Authentication request timed out',
         );
+        // Clear request tracking after timeout
+        _currentRequestId = null;
+        _currentRequestTimestamp = null;
         return null;
       }
     } catch (e) {
@@ -247,6 +304,9 @@ class FaceAuthService {
         FaceAuthStatus.error,
         error: e.toString(),
       );
+      // Clear request tracking after error
+      _currentRequestId = null;
+      _currentRequestTimestamp = null;
       return null;
     }
   }
@@ -300,7 +360,42 @@ class FaceAuthService {
         final jsonData = message.jsonPayload;
         if (jsonData != null) {
           _logger.i('Face auth status update: $jsonData');
-          // Handle status updates (e.g., "scanning", "processing", etc.)
+
+          // Extract timestamp from status message
+          final messageTimestamp = jsonData['timestamp'] as num?;
+
+          // Debug log the comparison
+          _logger.i(
+              'Timestamp comparison: message=$messageTimestamp, currentRequest=$_currentRequestTimestamp');
+
+          // Ignore stale messages (older than current request)
+          if (_currentRequestTimestamp != null &&
+              messageTimestamp != null &&
+              messageTimestamp < _currentRequestTimestamp!) {
+            _logger.w(
+                '⚠️ IGNORING STALE status message: timestamp=$messageTimestamp < currentRequest=$_currentRequestTimestamp');
+            return;
+          }
+
+          // Ignore status updates if no active request (e.g., after timeout)
+          if (_currentRequestId == null) {
+            _logger.w(
+                '⚠️ IGNORING status update - no active request (already completed/timed out)');
+            return;
+          }
+
+          // Parse status from backend
+          final status = jsonData['status'] as String?;
+          if (status == 'initializing') {
+            _logger.i('✅ Updating to INITIALIZING status');
+            _updateStatus(FaceAuthStatus.initializing);
+          } else if (status == 'scanning') {
+            _logger.i('✅ Updating to SCANNING status');
+            _updateStatus(FaceAuthStatus.scanning);
+          } else if (status == 'processing') {
+            _logger.i('✅ Updating to PROCESSING status');
+            _updateStatus(FaceAuthStatus.processing);
+          }
         }
       }
     } catch (e) {

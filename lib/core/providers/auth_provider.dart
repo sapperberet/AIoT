@@ -390,6 +390,9 @@ class AuthProvider with ChangeNotifier {
       case FaceAuthStatus.requestingScan:
         _faceAuthMessage = 'Requesting face scan...';
         break;
+      case FaceAuthStatus.initializing:
+        _faceAuthMessage = 'Initializing camera system...';
+        break;
       case FaceAuthStatus.scanning:
         _faceAuthMessage = 'Please look at the camera...';
         break;

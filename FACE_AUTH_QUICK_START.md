@@ -1,5 +1,15 @@
 # Face Authentication - Quick Start Guide
 
+## 🚀 Authentication Overview
+
+**Primary Login Method**: Face Recognition (required)  
+**Secondary Authentication**: Email & Password (optional 2FA - disabled by default)
+
+### How It Works
+
+1. **Face Recognition (Required)**: Users must authenticate by looking at the camera
+2. **Email/Password (Optional 2FA)**: Can be enabled in Settings as a second layer of protection AFTER face recognition
+
 ## 🚀 Quick Setup (5 Minutes)
 
 ### 1. Start the Backend
@@ -49,17 +59,24 @@ docker-compose restart face-service
 
 1. Ensure mobile device is on **same network** as the computer running Docker
 2. Open the Smart Home app
-3. On login screen, tap **"Sign in with Face Recognition"**
-4. App will auto-discover the face recognition system
-5. Look at the camera when prompted
-6. You're logged in! ✅
+3. **Face recognition** is required for login
+4. Look at the camera when prompted
+5. You're logged in! ✅
+
+**Optional 2FA**: To add email/password as a second layer:
+1. Login with face recognition first
+2. Go to **Settings → Authentication**
+3. Enable "Email & Password (2FA)"
+4. Enter your credentials
+5. Next login: Face recognition + Email/Password both required
 
 ## 📱 User Flow
 
+### Standard Flow (Face Recognition Only)
 ```
 Login Screen
     ↓
-Tap "Sign in with Face Recognition"
+Tap "Face Recognition" button
     ↓
 [Auto-discovery 2-5s]
     ↓
@@ -67,8 +84,25 @@ Tap "Sign in with Face Recognition"
     ↓
 [Face scanned & verified]
     ↓
-Home Screen (with your settings loaded)
+Home Screen
 ```
+
+### Enhanced Security Flow (Face + Password 2FA)
+```
+Login Screen
+    ↓
+Tap "Face Recognition" button
+    ↓
+[Face scanned & verified]
+    ↓
+"Enter Email & Password"
+    ↓
+[Credentials verified]
+    ↓
+Home Screen
+```
+
+**Note**: Email/password 2FA must be configured in Settings (disabled by default)
 
 ## 🛠️ Troubleshooting
 
@@ -138,6 +172,20 @@ docker-compose restart face-service
 ```
 
 ## 🔧 Configuration
+
+### Enable Email/Password 2FA (Optional)
+
+By default, only face recognition is required. To add email/password as a second layer of protection:
+
+1. **Login** with face recognition first
+2. Go to **Settings** → **Authentication**
+3. Toggle **"Enable Email & Password (2FA)"** ON
+4. Enter your email and password
+5. Save
+
+Now when you login:
+1. **Face Recognition** (always required - step 1)
+2. **Email & Password** (required when enabled - step 2)
 
 ### Change MQTT Broker Settings
 

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import 'email_verification_screen.dart';
 
 class ModernLoginScreen extends StatefulWidget {
   const ModernLoginScreen({super.key});
@@ -16,12 +13,6 @@ class ModernLoginScreen extends StatefulWidget {
 
 class _ModernLoginScreenState extends State<ModernLoginScreen>
     with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _rememberMe = false;
-  bool _showEmailPasswordForm = false; // Only show if enabled in settings
   late AnimationController _controller;
 
   @override
@@ -35,79 +26,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      final authProvider = context.read<AuthProvider>();
-
-      try {
-        debugPrint('Starting login...');
-        final success = await authProvider.signIn(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-
-        debugPrint('Login success: $success');
-
-        if (!mounted) return;
-
-        if (success) {
-          // Add a small delay to ensure Firebase auth state is fully updated
-          await Future.delayed(const Duration(milliseconds: 500));
-
-          if (!mounted) return;
-
-          // Check if email is verified
-          final user = authProvider.currentUser;
-          debugPrint(
-              'User: ${user?.email}, Email verified: ${user?.emailVerified}');
-
-          if (user != null && !user.emailVerified) {
-            debugPrint('Navigate to email verification screen');
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => const EmailVerificationScreen(),
-              ),
-            );
-          } else {
-            debugPrint('Navigate to /home');
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-        } else {
-          debugPrint('Login failed: ${authProvider.errorMessage}');
-          if (authProvider.errorMessage != null) {
-            _showErrorSnackbar(authProvider.errorMessage!);
-          }
-        }
-      } catch (e) {
-        debugPrint('Login error: $e');
-        if (!mounted) return;
-        _showErrorSnackbar('Login failed. Please try again.');
-      }
-    }
-  }
-
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Iconsax.warning_2, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppTheme.errorColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.mediumRadius),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
   }
 
   @override
@@ -162,7 +82,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sign in with face recognition',
+                        'Authenticate with face recognition',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.mutedText,
                             ),
@@ -178,10 +98,13 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                   delay: const Duration(milliseconds: 200),
                   duration: const Duration(milliseconds: 400),
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/face-auth'),
+                    onTap: () {
+                      debugPrint('🔵 Face Auth button tapped!');
+                      Navigator.of(context).pushNamed('/face-auth');
+                    },
                     child: GlassmorphicContainer(
                       width: double.infinity,
-                      height: 120,
+                      height: 110,
                       borderRadius: 24,
                       blur: 20,
                       alignment: Alignment.center,
@@ -204,8 +127,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 50,
+                            height: 50,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: LinearGradient(
@@ -219,369 +142,12 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                             child: const Icon(
                               Iconsax.security_user,
                               color: Colors.white,
-                              size: 32,
+                              size: 28,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Text(
-                            'Sign in with Face Recognition',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  color: AppTheme.lightText,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Quick & Secure',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.mutedText,
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Divider with "Advanced Options"
-                FadeInUp(
-                  delay: const Duration(milliseconds: 300),
-                  duration: const Duration(milliseconds: 400),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                Colors.white.withOpacity(0.3),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Advanced Options',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.mutedText,
-                                  ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.3),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Optional: Email/Password Toggle Button
-                if (!_showEmailPasswordForm)
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 400),
-                    duration: const Duration(milliseconds: 400),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _showEmailPasswordForm = true;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 16),
-                        decoration: BoxDecoration(
-                          borderRadius: AppTheme.mediumRadius,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Iconsax.key,
-                              color: AppTheme.mutedText,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Sign in with Email & Password',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppTheme.lightText,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Email/Password Login Form (only shown when toggled)
-                if (_showEmailPasswordForm)
-                FadeInUp(
-                  delay: const Duration(milliseconds: 200),
-                  duration: const Duration(milliseconds: 400),
-                  child: GlassmorphicContainer(
-                    width: double.infinity,
-                    height: 420,
-                    borderRadius: 24,
-                    blur: 20,
-                    alignment: Alignment.center,
-                    border: 2,
-                    linearGradient: LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.1),
-                        Colors.white.withOpacity(0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderGradient: LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.2),
-                        Colors.white.withOpacity(0.1),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            // Email Field
-                            _buildTextField(
-                              controller: _emailController,
-                              label: 'Email',
-                              hint: 'Enter your email',
-                              icon: Iconsax.sms,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Password Field
-                            _buildTextField(
-                              controller: _passwordController,
-                              label: 'Password',
-                              hint: 'Enter your password',
-                              icon: Iconsax.lock,
-                              obscureText: _obscurePassword,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Iconsax.eye_slash
-                                      : Iconsax.eye,
-                                  color: AppTheme.mutedText,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                if (value.length < 6) {
-                                  return 'Password must be at least 6 characters';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Remember Me
-                            Row(
-                              children: [
-                                SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: Checkbox(
-                                    value: _rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _rememberMe = value ?? false;
-                                      });
-                                    },
-                                    fillColor: MaterialStateProperty.all(
-                                      AppTheme.primaryColor,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Remember me',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: AppTheme.lightText,
-                                      ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            // Login Button
-                            Consumer<AuthProvider>(
-                              builder: (context, authProvider, child) {
-                                return authProvider.isLoading
-                                    ? const CircularProgressIndicator()
-                                    : _buildGradientButton(
-                                        text: 'Sign In',
-                                        onPressed: _handleLogin,
-                                      );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // OR Divider
-                FadeInUp(
-                  delay: const Duration(milliseconds: 300),
-                  duration: const Duration(milliseconds: 400),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                Colors.white.withOpacity(0.3),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.mutedText,
-                                  ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.3),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Face Authentication Button
-                FadeInUp(
-                  delay: const Duration(milliseconds: 400),
-                  duration: const Duration(milliseconds: 400),
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/face-auth'),
-                    child: GlassmorphicContainer(
-                      width: double.infinity,
-                      height: 70,
-                      borderRadius: 20,
-                      blur: 20,
-                      alignment: Alignment.center,
-                      border: 2,
-                      linearGradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.1),
-                          Colors.white.withOpacity(0.05),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderGradient: LinearGradient(
-                        colors: [
-                          AppTheme.accentColor.withOpacity(0.5),
-                          AppTheme.primaryColor.withOpacity(0.5),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppTheme.accentColor.withOpacity(0.8),
-                                  AppTheme.primaryColor.withOpacity(0.8),
-                                ],
-                              ),
-                            ),
-                            child: const Icon(
-                              Iconsax.security_user,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Sign in with Face Recognition',
+                            'Face Recognition',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -590,105 +156,64 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Tap to Authenticate',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.mutedText,
+                                      fontSize: 12,
+                                    ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
 
+                const SizedBox(height: 32),
+
+                // Info Box - Explaining 2FA
+                FadeInUp(
+                  delay: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 400),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: AppTheme.mediumRadius,
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Iconsax.info_circle,
+                          color: AppTheme.primaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Face recognition is required. Configure additional security layer (email/password) in Settings after login.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.lightText.withOpacity(0.8),
+                                  fontSize: 12,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-    Widget? suffixIcon,
-    String? Function(String?)? validator,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: AppTheme.mediumRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: AppTheme.lightText),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: Icon(icon, color: AppTheme.primaryColor),
-          suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: AppTheme.darkSurface.withOpacity(0.5),
-          border: OutlineInputBorder(
-            borderRadius: AppTheme.mediumRadius,
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: AppTheme.mediumRadius,
-            borderSide: BorderSide(
-              color: Colors.white.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: AppTheme.mediumRadius,
-            borderSide: const BorderSide(
-              color: AppTheme.primaryColor,
-              width: 2,
-            ),
-          ),
-        ),
-        validator: validator,
-      ),
-    );
-  }
-
-  Widget _buildGradientButton({
-    required String text,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: AppTheme.mediumRadius,
-        boxShadow: AppTheme.glowShadow,
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppTheme.mediumRadius,
-          ),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
           ),
         ),
       ),

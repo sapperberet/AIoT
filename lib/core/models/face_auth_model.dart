@@ -6,6 +6,7 @@ enum FaceAuthStatus {
   discovering,
   connecting,
   requestingScan,
+  initializing, // Camera system initialization (30s)
   scanning,
   processing,
   success,
@@ -114,7 +115,8 @@ class FaceAuthResponse {
     return FaceAuthResponse(
       requestId: json['requestId'] as String? ?? '',
       success: json['success'] as bool? ?? false,
-      recognizedUserId: json['recognizedUserId'] as String?,
+      recognizedUserId: json['recognizedUserId'] as String? ??
+          json['userId'] as String?, // Support backend 'userId' field
       recognizedUserName: json['recognizedUserName'] as String? ??
           json['name'] as String?, // Support backend 'name' field
       confidence: (json['confidence'] as num?)?.toDouble() ??
@@ -123,7 +125,10 @@ class FaceAuthResponse {
               : null),
       errorMessage: json['errorMessage'] as String? ?? json['error'] as String?,
       timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'] as String)
+          ? (json['timestamp'] is String
+              ? DateTime.parse(json['timestamp'] as String)
+              : DateTime.fromMillisecondsSinceEpoch(
+                  ((json['timestamp'] as num).toDouble() * 1000).toInt()))
           : DateTime.now(),
       detectionData: json['detectionData'] as Map<String, dynamic>? ??
           json['detections'] as Map<String, dynamic>?,

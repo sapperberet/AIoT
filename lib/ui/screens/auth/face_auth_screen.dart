@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/face_auth_model.dart';
 
 class FaceAuthScreen extends StatefulWidget {
@@ -52,7 +53,10 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
     final connected = await authProvider.connectToFaceBroker();
 
     if (connected && mounted) {
-      // Connection successful, user can now authenticate
+      // Connection successful, automatically start face authentication
+      debugPrint('🔵 Auto-starting face authentication...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      _authenticateWithFace();
     }
   }
 
@@ -62,10 +66,26 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
 
     if (mounted) {
       if (success) {
-        // Authentication successful - navigate to home
-        Navigator.of(context).pushReplacementNamed('/home');
+        // Layer 1 (Face Authentication) SUCCESSFUL ✓
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          // Check if Layer 2 (Email/Password) is enabled in settings
+          final settingsProvider = context.read<SettingsProvider>();
+
+          if (settingsProvider.enableEmailPasswordAuth) {
+            // Layer 2 is ENABLED - Navigate to email/password screen
+            debugPrint(
+                '🔐 Layer 1 complete. Proceeding to Layer 2 (Email/Password)...');
+            Navigator.of(context).pushReplacementNamed('/auth/email-password');
+          } else {
+            // Layer 2 is DISABLED - Navigate directly to home
+            debugPrint(
+                '✅ Layer 1 complete. Layer 2 disabled. Navigating to home...');
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        }
       } else {
-        // Show error
+        // Show error and allow retry
         _showErrorDialog(
             authProvider.faceAuthMessage ?? 'Authentication failed');
       }
@@ -197,16 +217,6 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
             ),
 
           const SizedBox(height: 40),
-
-          // Alternative Login Option
-          FadeInUp(
-            delay: const Duration(milliseconds: 800),
-            child: TextButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.email),
-              label: const Text('Use Email & Password Instead'),
-            ),
-          ),
         ],
       ),
     );
@@ -226,6 +236,11 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
         icon = Iconsax.close_circle;
         color = Colors.red;
         break;
+      case FaceAuthStatus.timeout:
+        icon = Iconsax.timer_1;
+        color = Colors.orange;
+        break;
+      case FaceAuthStatus.initializing:
       case FaceAuthStatus.scanning:
       case FaceAuthStatus.processing:
         icon = Iconsax.scan;
@@ -257,8 +272,9 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
       ),
     );
 
-    // Add pulse animation when scanning
-    if (status == FaceAuthStatus.scanning ||
+    // Add pulse animation when initializing, scanning or processing
+    if (status == FaceAuthStatus.initializing ||
+        status == FaceAuthStatus.scanning ||
         status == FaceAuthStatus.processing) {
       return AnimatedBuilder(
         animation: _pulseController,
@@ -296,8 +312,12 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
         subtitle = 'Establishing connection';
         break;
       case FaceAuthStatus.requestingScan:
-        title = 'Requesting Scan...';
-        subtitle = null;
+        title = 'Requesting Scan from Camera please Wait...';
+        subtitle = 'This usually takes about 20~30 seconds...';
+        break;
+      case FaceAuthStatus.initializing:
+        title = 'Initializing Camera...';
+        subtitle = 'Please wait, preparing camera system (~30s)';
         break;
       case FaceAuthStatus.scanning:
         title = 'Look at the Camera';
@@ -334,16 +354,14 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
           ),
           textAlign: TextAlign.center,
         ),
-        if (subtitle != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
-            textAlign: TextAlign.center,
+        const SizedBox(height: 12),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.textTheme.bodySmall?.color,
           ),
-        ],
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
@@ -367,8 +385,8 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
       buttonText = 'Authenticate with Face';
       onPressed = isLoading ? null : _authenticateWithFace;
     } else if (status == FaceAuthStatus.success) {
-      buttonText = 'Continue';
-      onPressed = () => Navigator.of(context).pushReplacementNamed('/home');
+      // SUCCESS - No button needed, auto-navigating
+      return const SizedBox.shrink();
     } else {
       buttonText = 'Cancel';
       onPressed = () {

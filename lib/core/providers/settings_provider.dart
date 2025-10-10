@@ -51,6 +51,9 @@ class SettingsProvider with ChangeNotifier {
     _offlineMode = false;
     _dataRefreshInterval = 5;
     _language = 'en';
+    _enableEmailPasswordAuth = false;
+    _userEmail = '';
+    _userPassword = '';
     notifyListeners();
   }
 
@@ -100,6 +103,15 @@ class SettingsProvider with ChangeNotifier {
   // Language
   String _language = 'en';
   String get language => _language;
+
+  // Authentication settings
+  bool _enableEmailPasswordAuth = false; // Default: OFF (only face auth)
+  String _userEmail = '';
+  String _userPassword = '';
+
+  bool get enableEmailPasswordAuth => _enableEmailPasswordAuth;
+  String get userEmail => _userEmail;
+  String get userPassword => _userPassword;
 
   // Change theme
   void setThemeMode(ThemeMode mode) {
@@ -192,6 +204,24 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
+  // Toggle email/password authentication
+  void toggleEmailPasswordAuth(bool value) {
+    _enableEmailPasswordAuth = value;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
+  // Set email/password credentials
+  void setEmailPasswordCredentials({
+    String? email,
+    String? password,
+  }) {
+    if (email != null) _userEmail = email;
+    if (password != null) _userPassword = password;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
   // Load settings from storage (to be implemented with SharedPreferences)
   Future<void> loadSettings() async {
     if (_currentUserId != null && _firestoreService != null) {
@@ -225,6 +255,12 @@ class SettingsProvider with ChangeNotifier {
           _mqttBrokerPort = userSettings['mqttBrokerPort'] as int? ?? 1883;
           _mqttUsername = userSettings['mqttUsername'] as String? ?? '';
           _mqttPassword = userSettings['mqttPassword'] as String? ?? '';
+
+          // Authentication settings
+          _enableEmailPasswordAuth =
+              userSettings['enableEmailPasswordAuth'] as bool? ?? false;
+          _userEmail = userSettings['userEmail'] as String? ?? '';
+          _userPassword = userSettings['userPassword'] as String? ?? '';
 
           notifyListeners();
         }
@@ -279,6 +315,9 @@ class SettingsProvider with ChangeNotifier {
           'mqttBrokerPort': _mqttBrokerPort,
           'mqttUsername': _mqttUsername,
           'mqttPassword': _mqttPassword,
+          'enableEmailPasswordAuth': _enableEmailPasswordAuth,
+          'userEmail': _userEmail,
+          'userPassword': _userPassword,
           'updatedAt': DateTime.now().toIso8601String(),
         });
       } catch (e) {
