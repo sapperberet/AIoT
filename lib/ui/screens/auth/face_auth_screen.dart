@@ -58,7 +58,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
         }
       }
       _previousStatus = newStatus;
-      
+
       // Check if we need to navigate after status change
       _checkAuthStatusAndNavigate(newStatus);
     }
@@ -88,14 +88,14 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
 
   Future<void> _authenticateWithFace() async {
     final authProvider = context.read<AuthProvider>();
-    
+
     // Start the authentication process
     authProvider.authenticateWithFace();
-    
+
     // Wait for status to change to either success or failed
     // The status is updated through the stream listener in auth_provider
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     // The navigation will be handled by the status change listener in initState
     // which monitors faceAuthStatus and calls the navigation logic
   }
@@ -121,7 +121,8 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
           Navigator.of(context).pushReplacementNamed('/home');
         }
       }
-    } else if (status == FaceAuthStatus.failed || status == FaceAuthStatus.error) {
+    } else if (status == FaceAuthStatus.failed ||
+        status == FaceAuthStatus.error) {
       // Show error dialog on failure
       if (mounted) {
         final authProvider = context.read<AuthProvider>();
@@ -471,7 +472,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
 
   Widget _buildBeaconInfo(ThemeData theme, FaceAuthBeacon beacon) {
     final loc = AppLocalizations.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

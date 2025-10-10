@@ -176,7 +176,8 @@ class AppLocalizations {
 
       // Layer 2 Authentication
       'second_layer_auth': 'Second Layer Authentication',
-      'face_success_verify': 'Face recognition successful ✓\nVerify your email and password to continue',
+      'face_success_verify':
+          'Face recognition successful ✓\nVerify your email and password to continue',
       'verify_credentials': 'Verify Credentials',
       'verifying': 'Verifying...',
 
@@ -328,7 +329,8 @@ class AppLocalizations {
       'auth_failed': 'Fehlgeschlagen',
       'auth_failed_subtitle': 'Gesicht nicht erkannt',
       'auth_timeout': 'Zeitüberschreitung',
-      'auth_timeout_subtitle': 'Anfrage zeitüberschritten. Bitte versuchen Sie es erneut.',
+      'auth_timeout_subtitle':
+          'Anfrage zeitüberschritten. Bitte versuchen Sie es erneut.',
       'auth_error': 'Fehler',
       'auth_error_subtitle': 'Ein Fehler ist aufgetreten',
       'try_again': 'Erneut versuchen',
@@ -338,7 +340,8 @@ class AppLocalizations {
       'port': 'Port',
       'discovered_at': 'Entdeckt',
       'authentication_failed': 'Authentifizierung fehlgeschlagen',
-      'please_try_again': 'Bitte versuchen Sie es erneut oder verwenden Sie E-Mail/Passwort.',
+      'please_try_again':
+          'Bitte versuchen Sie es erneut oder verwenden Sie E-Mail/Passwort.',
 
       // Login Screen
       'authenticate_with_face': 'Mit Gesichtserkennung authentifizieren',
@@ -348,7 +351,8 @@ class AppLocalizations {
 
       // Layer 2 Authentication
       'second_layer_auth': 'Zweite Authentifizierungsebene',
-      'face_success_verify': 'Gesichtserkennung erfolgreich ✓\nBestätigen Sie Ihre E-Mail und Passwort, um fortzufahren',
+      'face_success_verify':
+          'Gesichtserkennung erfolgreich ✓\nBestätigen Sie Ihre E-Mail und Passwort, um fortzufahren',
       'verify_credentials': 'Anmeldedaten überprüfen',
       'verifying': 'Überprüfung läuft...',
 
@@ -508,7 +512,8 @@ class AppLocalizations {
       'port': 'المنفذ',
       'discovered_at': 'اكتشف في',
       'authentication_failed': 'فشلت المصادقة',
-      'please_try_again': 'يرجى المحاولة مرة أخرى أو استخدام البريد الإلكتروني/كلمة المرور.',
+      'please_try_again':
+          'يرجى المحاولة مرة أخرى أو استخدام البريد الإلكتروني/كلمة المرور.',
 
       // Login Screen
       'authenticate_with_face': 'المصادقة بالتعرف على الوجه',
@@ -518,7 +523,8 @@ class AppLocalizations {
 
       // Layer 2 Authentication
       'second_layer_auth': 'المصادقة الثانية',
-      'face_success_verify': 'نجح التعرف على الوجه ✓\nتحقق من بريدك الإلكتروني وكلمة المرور للمتابعة',
+      'face_success_verify':
+          'نجح التعرف على الوجه ✓\nتحقق من بريدك الإلكتروني وكلمة المرور للمتابعة',
       'verify_credentials': 'التحقق من بيانات الاعتماد',
       'verifying': 'جاري التحقق...',
 
