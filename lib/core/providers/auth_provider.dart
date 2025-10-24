@@ -381,17 +381,49 @@ class AuthProvider with ChangeNotifier {
 
       if (response != null && response.success && response.isRecognized) {
         // Face recognized successfully
-        _faceAuthMessage = 'Welcome, ${response.recognizedUserName ?? "User"}!';
+        final recognizedName = response.recognizedUserName ?? 'User';
+        _faceAuthMessage = 'Welcome, $recognizedName!';
 
-        // Try to sign in with the recognized user
-        // In a real implementation, you'd link face ID to Firebase user
-        // For now, we'll just set a flag that face auth succeeded
-        debugPrint('Face recognized: ${response.recognizedUserName}');
+        debugPrint('Face recognized: $recognizedName');
         debugPrint('User ID: ${response.recognizedUserId}');
         debugPrint('Confidence: ${response.confidence}');
 
-        notifyListeners();
-        return true;
+        // Sign in to Firebase with the recognized user
+        try {
+          debugPrint('🔐 Signing in to Firebase as: $recognizedName');
+
+          final credential = await _authService.signInWithFaceRecognition(
+            recognizedName: recognizedName,
+          );
+
+          if (credential != null && credential.user != null) {
+            // Successfully signed in to Firebase
+            _currentUser = credential.user;
+            await _loadUserData();
+
+            // Update last used timestamp for this face mapping
+            await _authService.updateFaceMappingLastUsed(recognizedName);
+
+            _faceAuthMessage =
+                'Welcome, ${_currentUser!.displayName ?? recognizedName}!';
+            debugPrint(
+                '✅ Firebase sign-in successful for: ${_currentUser!.email}');
+            debugPrint('✅ User display name: ${_currentUser!.displayName}');
+            debugPrint('✅ User UID: ${_currentUser!.uid}');
+
+            notifyListeners();
+            return true;
+          } else {
+            _faceAuthMessage = 'Failed to sign in to Firebase';
+            notifyListeners();
+            return false;
+          }
+        } catch (e) {
+          debugPrint('❌ Firebase sign-in error: $e');
+          _faceAuthMessage = 'Authentication error: $e';
+          notifyListeners();
+          return false;
+        }
       } else {
         _faceAuthMessage = response?.errorMessage ?? 'Face not recognized';
         notifyListeners();

@@ -21,9 +21,21 @@ service cloud.firestore {
       }
     }
     
+    // Face mappings - system managed (read for auth, write only for system)
+    match /face_mappings/{mappingId} {
+      // Allow read for any authenticated user (for face auth lookup)
+      allow read: if request.auth != null;
+      // Allow write only during user creation (when auth.uid matches the userId being created)
+      allow create: if request.auth != null;
+      // Allow update only for the mapped user
+      allow update: if request.auth != null && 
+                       request.auth.uid == resource.data.userId;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+

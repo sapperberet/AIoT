@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 
 class AuthService {
@@ -96,6 +97,188 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
+  }
+
+  // Sign in or create user with face recognition
+  Future<UserCredential?> signInWithFaceRecognition({
+    required String recognizedName,
+  }) async {
+    try {
+      // Normalize the name to handle variants (ahmed_1, ahmed_2 → ahmed)
+      final baseName = _normalizeRecognizedName(recognizedName);
+
+      debugPrint('🔍 Face recognized: $recognizedName');
+      debugPrint('🔍 Normalized to: $baseName');
+
+      // Try to find existing mapping using the BASE name
+      final mapping = await _getFaceNameMapping(baseName);
+
+      if (mapping != null && mapping['email'] != null) {
+        // User exists, sign in with existing credentials
+        final email = mapping['email'] as String;
+        final password = mapping['password'] as String? ??
+            _generateDefaultPassword(baseName);
+
+        debugPrint('✅ Found existing account for: $baseName');
+
+        try {
+          return await signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+        } catch (e) {
+          // If sign-in fails, might need to recreate account
+          throw 'Failed to sign in existing user: $e';
+        }
+      } else {
+        // New user detected - create Firebase account
+        debugPrint('🆕 New user detected: $baseName (from $recognizedName)');
+
+        final email = _generateEmailFromName(baseName);
+        final password = _generateDefaultPassword(baseName);
+        final displayName = _formatDisplayName(baseName);
+
+        debugPrint('📧 Creating account: $email');
+
+        // Create new Firebase account
+        final credential = await registerWithEmailAndPassword(
+          email: email,
+          password: password,
+          displayName: displayName,
+        );
+
+        // Store face-to-user mapping using BASE name
+        if (credential.user != null) {
+          await _createFaceNameMapping(
+            recognizedName: baseName, // Store base name, not variant
+            userId: credential.user!.uid,
+            email: email,
+            password: password,
+          );
+
+          // Add face recognition info to user profile
+          await _firestore
+              .collection('users')
+              .doc(credential.user!.uid)
+              .update({
+            'faceRecognitionName': baseName, // Store base name
+            'authMethod': 'face_recognition',
+            'recognizedVariants': [recognizedName], // Track all variants
+          });
+
+          debugPrint('✅ Account created for: $baseName');
+        }
+
+        return credential;
+      }
+    } catch (e) {
+      throw 'Face recognition authentication failed: $e';
+    }
+  }
+
+  // Get face name to user mapping from Firestore
+  Future<Map<String, dynamic>?> _getFaceNameMapping(
+      String recognizedName) async {
+    try {
+      final doc = await _firestore
+          .collection('face_mappings')
+          .doc(recognizedName.toLowerCase())
+          .get();
+
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Create face name to user mapping in Firestore
+  Future<void> _createFaceNameMapping({
+    required String recognizedName,
+    required String userId,
+    required String email,
+    required String password,
+  }) async {
+    await _firestore
+        .collection('face_mappings')
+        .doc(recognizedName.toLowerCase())
+        .set({
+      'recognizedName': recognizedName,
+      'userId': userId,
+      'email': email,
+      'password': password, // Encrypted in production!
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastUsed': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Update last used timestamp for face mapping
+  Future<void> updateFaceMappingLastUsed(String recognizedName) async {
+    try {
+      await _firestore
+          .collection('face_mappings')
+          .doc(recognizedName.toLowerCase())
+          .update({
+        'lastUsed': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
+  // Normalize face name to base identity
+  // ahmed, ahmed_1, ahmed_2 → "ahmed" (same person)
+  // ahmed_samy, ahmed_samy_1, ahmed_samy_2 → "ahmed_samy" (same person)
+  String _normalizeRecognizedName(String name) {
+    // Remove trailing _1, _2, _3, etc. (these are image variations of same person)
+
+    final lowerName = name.toLowerCase();
+
+    // Pattern: anything ending with _digit (e.g., ahmed_1, ahmed_samy_2)
+    // This indicates same person, different image
+    final nameWithNumber = RegExp(r'^(.+)_(\d+)$');
+    final match = nameWithNumber.firstMatch(lowerName);
+
+    if (match != null) {
+      // It's a name with number suffix → return base name
+      return match
+          .group(1)!; // "ahmed_1" → "ahmed", "ahmed_samy_2" → "ahmed_samy"
+    }
+
+    // Otherwise return as-is (handles "ahmed", "ahmed_samy", etc.)
+    return lowerName;
+  }
+
+  // Generate email from recognized name
+  String _generateEmailFromName(String name) {
+    // Use normalized name for consistent email
+    final baseName = _normalizeRecognizedName(name);
+    final cleanName = baseName.replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    return '$cleanName@smarthome.local';
+  }
+
+  // Generate a default password (should be secure in production)
+  String _generateDefaultPassword(String name) {
+    // In production, use a secure password generation method
+    // For now, use a combination of base name and timestamp
+    final baseName = _normalizeRecognizedName(name);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return 'FaceAuth_${baseName}_$timestamp';
+  }
+
+  // Format display name from recognized name
+  String _formatDisplayName(String name) {
+    // Use normalized name for consistent display
+    final baseName = _normalizeRecognizedName(name);
+    // Convert snake_case or similar to Title Case
+    return baseName
+        .split(RegExp(r'[_\-\s]+'))
+        .map((word) => word.isEmpty
+            ? ''
+            : word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
   }
 
   // Handle authentication exceptions
