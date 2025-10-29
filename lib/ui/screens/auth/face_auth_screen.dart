@@ -64,8 +64,8 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
       }
       _previousStatus = newStatus;
 
-      // Check if we need to navigate after status change
-      _checkAuthStatusAndNavigate(newStatus);
+      // DO NOT navigate here - navigation is handled by _authenticateWithFace after Firebase auth completes
+      // _checkAuthStatusAndNavigate(newStatus); // REMOVED - This was causing premature navigation
     }
   }
 
@@ -94,15 +94,20 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   Future<void> _authenticateWithFace() async {
     final authProvider = context.read<AuthProvider>();
 
-    // Start the authentication process
-    authProvider.authenticateWithFace();
+    // Start the authentication process and WAIT for it to complete
+    final success = await authProvider.authenticateWithFace();
 
-    // Wait for status to change to either success or failed
-    // The status is updated through the stream listener in auth_provider
-    await Future.delayed(const Duration(milliseconds: 500));
+    debugPrint('🔍 Face authentication completed: $success');
 
-    // The navigation will be handled by the status change listener in initState
-    // which monitors faceAuthStatus and calls the navigation logic
+    if (!mounted) return;
+
+    if (success) {
+      // Authentication successful - proceed with navigation
+      _checkAuthStatusAndNavigate(FaceAuthStatus.success);
+    } else {
+      // Authentication failed
+      debugPrint('❌ Face authentication failed');
+    }
   }
 
   void _checkAuthStatusAndNavigate(FaceAuthStatus status) async {

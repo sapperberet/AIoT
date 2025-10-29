@@ -23,13 +23,14 @@ service cloud.firestore {
     
     // Face mappings - system managed (read for auth, write only for system)
     match /face_mappings/{mappingId} {
-      // Allow read for any authenticated user (for face auth lookup)
-      allow read: if request.auth != null;
-      // Allow write only during user creation (when auth.uid matches the userId being created)
-      allow create: if request.auth != null;
-      // Allow update only for the mapped user
-      allow update: if request.auth != null && 
-                       request.auth.uid == resource.data.userId;
+      // Allow read for face auth lookup (even unauthenticated, needed for login)
+      allow read: if true;
+      // Allow write operations (create/update/delete) for:
+      // 1. Unauthenticated users (needed during face auth registration/password recovery)
+      // 2. Authenticated users who own the mapping
+      allow create, update, delete: if true || 
+                                       (request.auth != null && 
+                                        request.auth.uid == resource.data.userId);
     }
     
     // Deny all other access

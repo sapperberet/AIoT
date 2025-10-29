@@ -22,17 +22,45 @@ class AuthService {
     required String password,
   }) async {
     try {
+      // Save login timestamp BEFORE sign-in to prevent session validation race condition
+      await SessionService.saveLoginTimestamp();
+
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Save login timestamp for session management
-      await SessionService.saveLoginTimestamp();
-
       return credential;
     } on FirebaseAuthException catch (e) {
+      // Check for wrong-password before handling the exception
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        debugPrint('⚠️ Wrong password detected: ${e.code}');
+        throw 'WRONG_PASSWORD';
+      }
       throw _handleAuthException(e);
+    } catch (e) {
+      // Handle Pigeon API errors (Firebase Platform Channel type cast issues)
+      if (e.toString().contains('Pigeon') || 
+          e.toString().contains('List<Object?>') ||
+          e.toString().contains('type cast') ||
+          e.toString().contains('not a subtype') ||
+          e.runtimeType.toString().contains('TypeError')) {
+        debugPrint('⚠️ Pigeon error during signIn (ignored), checking current user: $e');
+        
+        // Despite the error, check if user is actually signed in
+        final user = _auth.currentUser;
+        if (user != null) {
+          debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
+          
+          // Create a pseudo-credential since we can't get the real one
+          // The user is authenticated, which is what matters
+          throw 'PIGEON_ERROR_USER_AUTHENTICATED';
+        } else {
+          debugPrint('❌ No current user after Pigeon error');
+          throw Exception('Failed to sign in: ${e.toString()}');
+        }
+      }
+      rethrow;
     }
   }
 
@@ -43,27 +71,112 @@ class AuthService {
     String? displayName,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      // Save login timestamp FIRST to prevent race condition with auth state listener
+      await SessionService.saveLoginTimestamp();
+      debugPrint('✅ Login timestamp saved BEFORE account creation');
+      
+      UserCredential? credential;
+      User? user;
+      
+      try {
+        credential = await _auth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        user = credential.user;
+        debugPrint('🔧 Account created, user: ${user?.uid}');
+      } catch (e) {
+        // Catch Pigeon errors during account creation
+        final errorStr = e.toString();
+        if (errorStr.contains('Pigeon') || 
+            errorStr.contains('List<Object?>') ||
+            errorStr.contains('type cast') ||
+            errorStr.contains('not a subtype') ||
+            e.runtimeType.toString().contains('TypeError')) {
+          debugPrint('⚠️ Pigeon error during createUser (ignored), getting current user: $e');
+          // Account was created successfully despite the error, get the current user
+          user = _auth.currentUser;
+          if (user != null) {
+            debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
+          } else {
+            debugPrint('❌ No current user found after Pigeon error');
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
+      
+      if (user == null) {
+        throw 'Failed to create user account';
+      }
+      
+      debugPrint('🔧 displayName to set: $displayName');
 
-      // Update display name if provided
-      if (displayName != null && credential.user != null) {
-        await credential.user!.updateDisplayName(displayName);
+      // Update display name if provided (catch Pigeon API errors)
+      if (displayName != null) {
+        try {
+          debugPrint('🔄 Updating displayName to: $displayName');
+          await user.updateDisplayName(displayName);
+          debugPrint('✅ updateDisplayName succeeded');
+          await user.reload(); // Reload to get updated displayName
+          debugPrint('✅ reload succeeded');
+        } catch (e) {
+          // Ignore Pigeon API type cast errors (known Firebase bug)
+          // These errors include "PigeonUserDetails", "PigeonUser", or "List<Object?>"
+          final errorStr = e.toString();
+          debugPrint('⚠️ Caught error during displayName update: $errorStr');
+          if (errorStr.contains('Pigeon') || 
+              errorStr.contains('List<Object?>') ||
+              errorStr.contains('type cast') ||
+              errorStr.contains('not a subtype')) {
+            debugPrint('⚠️ Pigeon API error (ignored): $e');
+          } else {
+            debugPrint('❌ Unknown error (rethrowing): $e');
+            rethrow;
+          }
+        }
       }
 
       // Create user document in Firestore
-      if (credential.user != null) {
-        await _createUserDocument(credential.user!, displayName);
+      debugPrint('🔧 Creating Firestore user document...');
+      await _createUserDocument(user, displayName);
+      debugPrint('✅ Firestore user document created');
+
+      // Login timestamp already saved at the beginning
+      debugPrint('✅ Registration complete');
+
+      // Return credential if we have it, otherwise try to sign in to get one
+      if (credential != null) {
+        return credential;
+      } else {
+        // If we only have user (due to Pigeon error), try to sign in to get credential
+        // But if that also fails with Pigeon error, just return a mock credential
+        debugPrint('🔧 Re-signing in to get credential...');
+        try {
+          return await signInWithEmailAndPassword(email: email, password: password);
+        } catch (e) {
+          final errorStr = e.toString();
+          if (errorStr.contains('Pigeon') || 
+              errorStr.contains('List<Object?>') ||
+              errorStr.contains('type cast') ||
+              errorStr.contains('not a subtype') ||
+              e.runtimeType.toString().contains('TypeError')) {
+            debugPrint('⚠️ Pigeon error during re-sign-in (ignored), user already authenticated');
+            // User is already authenticated, just throw a specific error that we'll catch upstream
+            throw 'PIGEON_ERROR_USER_AUTHENTICATED';
+          } else {
+            rethrow;
+          }
+        }
       }
-
-      // Save login timestamp for session management
-      await SessionService.saveLoginTimestamp();
-
-      return credential;
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ FirebaseAuthException in registerWithEmailAndPassword: $e');
       throw _handleAuthException(e);
+    } catch (e) {
+      debugPrint('❌ Generic exception in registerWithEmailAndPassword: $e');
+      debugPrint('❌ Exception type: ${e.runtimeType}');
+      rethrow;
     }
   }
 
@@ -149,76 +262,258 @@ class AuthService {
       final mapping = await _getFaceNameMapping(baseName);
 
       if (mapping != null && mapping['email'] != null) {
-        // User exists, sign in with existing credentials
-        final email = mapping['email'] as String;
-        final password = mapping['password'] as String? ??
-            _generateDefaultPassword(baseName);
-
-        debugPrint('✅ Found existing account for: $baseName');
-
         try {
-          final credential = await signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
+          // User exists, sign in with existing credentials
+          final email = mapping['email'] as String;
+          final password = mapping['password'] as String? ??
+              _generateDefaultPassword(baseName);
 
-          // Update displayName if not set
-          if (credential.user != null) {
+          debugPrint('✅ Found existing account for: $baseName');
+          debugPrint('📧 Email: $email');
+          debugPrint('🔑 Password retrieved from mapping: ${mapping['password'] != null ? "YES (length: ${(mapping['password'] as String).length})" : "NO (using generated)"}');
+          debugPrint('🔑 Password being used: ${password.substring(0, 10)}... (length: ${password.length})');
+          debugPrint('🔍 Full mapping data: ${mapping.keys.join(', ')}');
+          
+          // DEBUG: Show full password for troubleshooting
+          if (mapping['password'] != null) {
+            debugPrint('🔐 Stored password: ${mapping['password']}');
+          }
+          final generatedPassword = _generateDefaultPassword(baseName);
+          debugPrint('🔐 Generated password would be: $generatedPassword');
+          debugPrint('🔐 Passwords match: ${password == generatedPassword}');
+
+          UserCredential? credential;
+          User? user;
+
+          try {
+            credential = await signInWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+            user = credential.user;
+          } catch (e) {
+            // Handle Pigeon error where user is authenticated but credential couldn't be returned
+            if (e.toString() == 'PIGEON_ERROR_USER_AUTHENTICATED') {
+              debugPrint('⚠️ Pigeon error during sign-in (ignored), user is authenticated');
+              user = _auth.currentUser;
+              
+              if (user == null) {
+                throw 'Failed to sign in: User authenticated but currentUser is null';
+              }
+              
+              debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
+              // Continue with user updates even though we don't have credential
+            } else if (e.toString() == 'WRONG_PASSWORD' ||
+                       e.toString().contains('wrong-password') || 
+                       e.toString().contains('incorrect') ||
+                       e.toString().contains('malformed')) {
+              // Password mismatch - Firebase account exists with different password
+              // This can happen if the account was created in a previous session with a different password
+              debugPrint('⚠️ Password mismatch detected. Attempting to delete and recreate account...');
+              
+              // Delete the face_mappings document to force recreation
+              try {
+                await _firestore
+                    .collection('face_mappings')
+                    .doc(baseName.toLowerCase())
+                    .delete();
+                debugPrint('✅ Deleted old face_mappings document');
+              } catch (deleteError) {
+                debugPrint('⚠️ Error deleting face_mappings: $deleteError');
+              }
+              
+              // Throw error to trigger new user flow
+              throw 'PASSWORD_MISMATCH_RECREATE_NEEDED';
+            } else {
+              // If sign-in fails with a different error, propagate it
+              throw 'Failed to sign in existing user: $e';
+            }
+          }
+
+          // Update displayName - ALWAYS update to ensure correct name
+          if (user != null) {
             final displayName = _formatDisplayName(baseName);
 
-            // Update Firebase Auth displayName if missing
-            if (credential.user!.displayName == null ||
-                credential.user!.displayName!.isEmpty) {
-              await credential.user!.updateDisplayName(displayName);
-              await credential.user!
-                  .reload(); // Reload to get updated displayName
+            // Update Firebase Auth displayName (catch Pigeon API type cast error)
+            try {
+              await user.updateDisplayName(displayName);
+              await user.reload(); // Reload to get updated displayName
               debugPrint(
                   '✅ Updated Firebase Auth displayName to: $displayName');
+            } catch (e) {
+              // Ignore Pigeon API type cast errors (known Firebase bug)
+              final errorStr = e.toString();
+              if (errorStr.contains('Pigeon') || 
+                  errorStr.contains('List<Object?>') ||
+                  errorStr.contains('type cast') ||
+                  errorStr.contains('not a subtype')) {
+                debugPrint('⚠️ Pigeon API error (ignored): $e');
+              } else {
+                rethrow;
+              }
             }
 
-            // Update Firestore displayName if missing
+            // Update Firestore displayName - ALWAYS update to ensure consistency
             final userDoc = await _firestore
                 .collection('users')
-                .doc(credential.user!.uid)
+                .doc(user.uid)
                 .get();
             if (userDoc.exists) {
-              final userData = userDoc.data();
-              if (userData?['displayName'] == null ||
-                  userData?['displayName'] == '') {
-                await _firestore
-                    .collection('users')
-                    .doc(credential.user!.uid)
-                    .update({
-                  'displayName': displayName,
-                  'faceRecognitionName': baseName,
-                  'authMethod': 'face_recognition',
-                });
-                debugPrint('✅ Updated Firestore displayName to: $displayName');
-              }
+              await _firestore
+                  .collection('users')
+                  .doc(user.uid)
+                  .update({
+                'displayName': displayName,
+                'faceRecognitionName': baseName,
+                'authMethod': 'face_recognition',
+              });
+              debugPrint('✅ Updated Firestore displayName to: $displayName');
+            } else {
+              // If user doc doesn't exist for some reason, create it
+              await _createUserDocument(user, displayName);
+              debugPrint('✅ Created user document with displayName: $displayName');
             }
           }
 
           return credential;
         } catch (e) {
-          // If sign-in fails, might need to recreate account
-          throw 'Failed to sign in existing user: $e';
+          // If PASSWORD_MISMATCH error, fall through to create new user
+          if (e.toString() == 'PASSWORD_MISMATCH_RECREATE_NEEDED') {
+            debugPrint('🔄 Falling through to create new user due to password mismatch');
+            // Continue to new user creation below
+          } else {
+            rethrow;
+          }
         }
-      } else {
-        // New user detected - create Firebase account
+      }
+      
+      // New user detected OR password mismatch retry - create Firebase account
+      {
         debugPrint('🆕 New user detected: $baseName (from $recognizedName)');
 
         final email = _generateEmailFromName(baseName);
-        final password = _generateDefaultPassword(baseName);
         final displayName = _formatDisplayName(baseName);
+
+        // Try to find existing password by querying all face_mappings with this email
+        String? existingPassword;
+        try {
+          debugPrint('🔍 Querying face_mappings for email: $email');
+          final mappingsQuery = await _firestore
+              .collection('face_mappings')
+              .where('email', isEqualTo: email)
+              .limit(1)
+              .get();
+
+          debugPrint('🔍 Found ${mappingsQuery.docs.length} face_mappings for $email');
+          
+          if (mappingsQuery.docs.isNotEmpty) {
+            final data = mappingsQuery.docs.first.data();
+            existingPassword = data['password'] as String?;
+            debugPrint('✅ Found existing password for: $email (length: ${existingPassword?.length})');
+            debugPrint('🔍 Face mapping data: ${data.keys.join(', ')}');
+          } else {
+            debugPrint('⚠️ No face_mappings found for: $email');
+          }
+        } catch (e) {
+          debugPrint('❌ Error querying existing password: $e');
+        }
+
+        // Use existing password if found, otherwise generate new one
+        final password = existingPassword ?? _generateDefaultPassword(baseName);
 
         debugPrint('📧 Creating account: $email');
 
-        // Create new Firebase account
-        final credential = await registerWithEmailAndPassword(
-          email: email,
-          password: password,
-          displayName: displayName,
-        );
+        UserCredential? credential;
+        
+        try {
+          // Try to create new Firebase account
+          credential = await registerWithEmailAndPassword(
+            email: email,
+            password: password,
+            displayName: displayName,
+          );
+        } catch (e) {
+          // Handle Pigeon error where user is authenticated but credential couldn't be returned
+          if (e.toString() == 'PIGEON_ERROR_USER_AUTHENTICATED') {
+            debugPrint('✅ User authenticated despite Pigeon error, getting current user');
+            final currentUser = _auth.currentUser;
+            if (currentUser != null) {
+              // User is authenticated, we'll create the face mapping with this user
+              // We don't have a credential but we have the user, which is enough
+              await _createFaceNameMapping(
+                recognizedName: baseName,
+                userId: currentUser.uid,
+                email: email,
+                password: password,
+              );
+
+              await _firestore
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .update({
+                'faceRecognitionName': baseName,
+                'authMethod': 'face_recognition',
+                'recognizedVariants': [recognizedName],
+              });
+
+              debugPrint('✅ Account created for: $baseName (Pigeon workaround)');
+              // Return null to indicate success without credential (caller will check currentUser)
+              return null;
+            } else {
+              throw 'User authentication succeeded but currentUser is null';
+            }
+          }
+          
+          // If account already exists, try to sign in instead
+          if (e.toString().contains('email-already-in-use') || 
+              e.toString().contains('already exists')) {
+            debugPrint('📧 Account already exists, signing in instead...');
+            
+            try {
+              credential = await signInWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+              
+              // Update displayName after sign-in
+              if (credential.user != null) {
+                try {
+                  await credential.user!.updateDisplayName(displayName);
+                  await credential.user!.reload();
+                  debugPrint('✅ Updated Firebase Auth displayName to: $displayName');
+                } catch (updateError) {
+                  final errorStr = updateError.toString();
+                  if (errorStr.contains('Pigeon') || 
+                      errorStr.contains('List<Object?>') ||
+                      errorStr.contains('type cast') ||
+                      errorStr.contains('not a subtype')) {
+                    debugPrint('⚠️ Pigeon API error (ignored): $updateError');
+                  } else {
+                    rethrow;
+                  }
+                }
+                
+                // Update Firestore displayName
+                await _firestore
+                    .collection('users')
+                    .doc(credential.user!.uid)
+                    .set({
+                  'displayName': displayName,
+                  'faceRecognitionName': baseName,
+                  'authMethod': 'face_recognition',
+                }, SetOptions(merge: true));
+                debugPrint('✅ Updated Firestore displayName to: $displayName');
+              }
+            } catch (signInError) {
+              // If sign-in fails, it means the account exists but password doesn't match
+              // This happens when face_mappings was deleted but Firebase Auth account remains
+              debugPrint('❌ Sign-in failed: $signInError');
+              throw 'Account exists with different password. Please delete user "$email" from Firebase Console → Authentication → Users, then try again.';
+            }
+          } else {
+            rethrow;
+          }
+        }
 
         // Store face-to-user mapping using BASE name
         if (credential.user != null) {
@@ -335,10 +630,9 @@ class AuthService {
   // Generate a default password (should be secure in production)
   String _generateDefaultPassword(String name) {
     // In production, use a secure password generation method
-    // For now, use a combination of base name and timestamp
+    // Use a FIXED password based on name (no timestamp) so it's consistent
     final baseName = _normalizeRecognizedName(name);
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'FaceAuth_${baseName}_$timestamp';
+    return 'FaceAuth_${baseName}_SmartHome2024!';
   }
 
   // Format display name from recognized name

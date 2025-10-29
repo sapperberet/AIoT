@@ -103,6 +103,8 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadUserData() async {
     if (_currentUser != null) {
       _userModel = await _authService.getUserData(_currentUser!.uid);
+      debugPrint('📊 _loadUserData: displayName = ${_userModel?.displayName}');
+      debugPrint('📊 _loadUserData: email = ${_userModel?.email}');
       notifyListeners();
     }
   }
@@ -395,9 +397,9 @@ class AuthProvider with ChangeNotifier {
 
       _isLoading = false;
 
-      if (response != null && response.success && response.isRecognized) {
+      if (response != null && response.success && response.recognizedUserName != null) {
         // Face recognized successfully
-        final recognizedName = response.recognizedUserName ?? 'User';
+        final recognizedName = response.recognizedUserName!;
         _faceAuthMessage = 'Welcome, $recognizedName!';
 
         debugPrint('Face recognized: $recognizedName');
@@ -412,12 +414,43 @@ class AuthProvider with ChangeNotifier {
             recognizedName: recognizedName,
           );
 
-          if (credential != null && credential.user != null) {
-            // Successfully signed in to Firebase
+          debugPrint('🔍 signInWithFaceRecognition returned: ${credential != null}');
+          debugPrint('🔍 credential.user: ${credential?.user?.email}');
+
+          // Handle case where credential is null due to Pigeon errors but user is authenticated
+          if (credential == null) {
+            debugPrint('🔍 Credential is null, checking currentUser...');
+            _currentUser = _authService.currentUser;
+            if (_currentUser == null) {
+              _faceAuthMessage = 'Failed to sign in to Firebase';
+              notifyListeners();
+              return false;
+            }
+            debugPrint('✅ User authenticated via Pigeon workaround: ${_currentUser!.email}');
+          } else {
             _currentUser = credential.user;
+          }
+
+          if (_currentUser != null) {
 
             // Reload user to get updated displayName from Firebase Auth
-            await _currentUser!.reload();
+            try {
+              await _currentUser!.reload();
+              debugPrint('✅ User reload successful');
+            } catch (e) {
+              // Ignore Pigeon API errors (known Firebase bug)
+              final errorStr = e.toString();
+              if (errorStr.contains('Pigeon') || 
+                  errorStr.contains('List<Object?>') ||
+                  errorStr.contains('type cast') ||
+                  errorStr.contains('not a subtype')) {
+                debugPrint('⚠️ Pigeon API reload error (ignored): $e');
+              } else {
+                debugPrint('❌ User reload error (rethrowing): $e');
+                rethrow;
+              }
+            }
+            
             _currentUser =
                 _authService.currentUser; // Get refreshed user instance
 
@@ -429,6 +462,16 @@ class AuthProvider with ChangeNotifier {
                 '🔍 After reload - Firebase Auth displayName: ${_currentUser!.displayName}');
             debugPrint(
                 '🔍 After reload - Firestore userModel displayName: ${_userModel?.displayName}');
+            debugPrint(
+                '🔍 After reload - userModel data: ${_userModel?.toJson()}');
+
+            // If displayName is still missing, try one more reload
+            if (_userModel?.displayName == null || _userModel!.displayName!.isEmpty) {
+              debugPrint('⚠️ DisplayName still missing, forcing another reload...');
+              await Future.delayed(const Duration(milliseconds: 500));
+              _userModel = await _authService.getUserData(_currentUser!.uid);
+              debugPrint('🔍 Second attempt - userModel displayName: ${_userModel?.displayName}');
+            }
 
             // Update last used timestamp for this face mapping
             await _authService.updateFaceMappingLastUsed(recognizedName);
@@ -449,6 +492,8 @@ class AuthProvider with ChangeNotifier {
           }
         } catch (e) {
           debugPrint('❌ Firebase sign-in error: $e');
+          debugPrint('❌ Error type: ${e.runtimeType}');
+          debugPrint('❌ Stack trace: ${StackTrace.current}');
           _faceAuthMessage = 'Authentication error: $e';
           notifyListeners();
           return false;

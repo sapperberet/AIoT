@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class UserModel {
   final String uid;
@@ -18,7 +19,8 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
+    debugPrint('🔍 UserModel.fromJson - raw data: $json');
+    final model = UserModel(
       uid: json['uid'] as String,
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
@@ -26,6 +28,8 @@ class UserModel {
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       preferences: json['preferences'] as Map<String, dynamic>? ?? {},
     );
+    debugPrint('🔍 UserModel.fromJson - parsed displayName: ${model.displayName}');
+    return model;
   }
 
   Map<String, dynamic> toJson() {
