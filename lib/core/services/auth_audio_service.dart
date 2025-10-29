@@ -49,6 +49,21 @@ class AuthAudioService {
     }
   }
 
+  /// Play authentication error sound
+  Future<void> playError() async {
+    if (!_isEnabled) return;
+
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(
+        AssetSource('Audio/error.mp3'),
+      );
+      debugPrint('🔊 Playing: Authentication error');
+    } catch (e) {
+      debugPrint('❌ Error playing error audio: $e');
+    }
+  }
+
   /// Stop any currently playing audio
   Future<void> stop() async {
     try {

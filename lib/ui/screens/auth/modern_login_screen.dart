@@ -64,7 +64,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
               children: [
                 const SizedBox(height: 40),
 
-                // Animated Logo/Icon
+                // Logo
                 FadeInDown(
                   duration: const Duration(milliseconds: 400),
                   child: Container(
@@ -75,10 +75,14 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                       gradient: AppTheme.primaryGradient,
                       boxShadow: AppTheme.glowShadow,
                     ),
-                    child: const Icon(
-                      Iconsax.home_15,
-                      size: 60,
-                      color: Colors.white,
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Image.asset(
+                          'assets/icons/playstore.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -55,6 +55,11 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
         } else if (newStatus == FaceAuthStatus.success) {
           // Face recognized successfully
           _audioService.playSuccess();
+        } else if (newStatus == FaceAuthStatus.failed ||
+            newStatus == FaceAuthStatus.error ||
+            newStatus == FaceAuthStatus.timeout) {
+          // Authentication failed
+          _audioService.playError();
         }
       }
       _previousStatus = newStatus;
