@@ -67,21 +67,18 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                 // Logo
                 FadeInDown(
                   duration: const Duration(milliseconds: 400),
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppTheme.primaryGradient,
-                      boxShadow: AppTheme.glowShadow,
-                    ),
-                    child: ClipOval(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Image.asset(
-                          'assets/icons/playstore.png',
-                          fit: BoxFit.contain,
-                        ),
+                  child: ClipOval(
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppTheme.primaryGradient,
+                        boxShadow: AppTheme.glowShadow,
+                      ),
+                      child: Image.asset(
+                        'assets/icons/playstore.png',
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),

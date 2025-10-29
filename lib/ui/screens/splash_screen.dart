@@ -52,18 +52,19 @@ class _SplashScreenState extends State<SplashScreen> {
               // Animated Logo
               FadeInDown(
                 duration: const Duration(milliseconds: 800),
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.primaryGradient,
-                    boxShadow: AppTheme.glowShadow,
-                  ),
-                  child: const Icon(
-                    Iconsax.home_25,
-                    size: 80,
-                    color: Colors.white,
+                child: ClipOval(
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppTheme.primaryGradient,
+                      boxShadow: AppTheme.glowShadow,
+                    ),
+                    child: Image.asset(
+                      'assets/icons/playstore.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
