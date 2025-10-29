@@ -28,6 +28,9 @@ import 'ui/screens/automations/automations_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
 import 'firebase_options.dart';
 
+// ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
+const bool DEBUG_MODE = true;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -44,6 +47,10 @@ void main() async {
       // Re-throw other errors
       rethrow;
     }
+  }
+
+  if (DEBUG_MODE) {
+    debugPrint('🔴 DEBUG MODE ENABLED - Authentication bypassed!');
   }
 
   runApp(const SmartHomeApp());

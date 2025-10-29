@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../main.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,6 +22,17 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
+    // If DEBUG_MODE is enabled, skip the splash screen and go directly to home
+    if (DEBUG_MODE) {
+      debugPrint('🚀 DEBUG MODE: Skipping authentication, going to home...');
+      await Future.delayed(
+          const Duration(seconds: 1)); // Brief splash animation
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/home');
+      return;
+    }
+
+    // Normal authentication flow
     await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
