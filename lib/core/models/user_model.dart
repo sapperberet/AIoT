@@ -28,7 +28,8 @@ class UserModel {
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       preferences: json['preferences'] as Map<String, dynamic>? ?? {},
     );
-    debugPrint('🔍 UserModel.fromJson - parsed displayName: ${model.displayName}');
+    debugPrint(
+        '🔍 UserModel.fromJson - parsed displayName: ${model.displayName}');
     return model;
   }
 

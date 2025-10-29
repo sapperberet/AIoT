@@ -397,7 +397,9 @@ class AuthProvider with ChangeNotifier {
 
       _isLoading = false;
 
-      if (response != null && response.success && response.recognizedUserName != null) {
+      if (response != null &&
+          response.success &&
+          response.recognizedUserName != null) {
         // Face recognized successfully
         final recognizedName = response.recognizedUserName!;
         _faceAuthMessage = 'Welcome, $recognizedName!';
@@ -414,7 +416,8 @@ class AuthProvider with ChangeNotifier {
             recognizedName: recognizedName,
           );
 
-          debugPrint('🔍 signInWithFaceRecognition returned: ${credential != null}');
+          debugPrint(
+              '🔍 signInWithFaceRecognition returned: ${credential != null}');
           debugPrint('🔍 credential.user: ${credential?.user?.email}');
 
           // Handle case where credential is null due to Pigeon errors but user is authenticated
@@ -426,13 +429,13 @@ class AuthProvider with ChangeNotifier {
               notifyListeners();
               return false;
             }
-            debugPrint('✅ User authenticated via Pigeon workaround: ${_currentUser!.email}');
+            debugPrint(
+                '✅ User authenticated via Pigeon workaround: ${_currentUser!.email}');
           } else {
             _currentUser = credential.user;
           }
 
           if (_currentUser != null) {
-
             // Reload user to get updated displayName from Firebase Auth
             try {
               await _currentUser!.reload();
@@ -440,7 +443,7 @@ class AuthProvider with ChangeNotifier {
             } catch (e) {
               // Ignore Pigeon API errors (known Firebase bug)
               final errorStr = e.toString();
-              if (errorStr.contains('Pigeon') || 
+              if (errorStr.contains('Pigeon') ||
                   errorStr.contains('List<Object?>') ||
                   errorStr.contains('type cast') ||
                   errorStr.contains('not a subtype')) {
@@ -450,7 +453,7 @@ class AuthProvider with ChangeNotifier {
                 rethrow;
               }
             }
-            
+
             _currentUser =
                 _authService.currentUser; // Get refreshed user instance
 
@@ -466,11 +469,14 @@ class AuthProvider with ChangeNotifier {
                 '🔍 After reload - userModel data: ${_userModel?.toJson()}');
 
             // If displayName is still missing, try one more reload
-            if (_userModel?.displayName == null || _userModel!.displayName!.isEmpty) {
-              debugPrint('⚠️ DisplayName still missing, forcing another reload...');
+            if (_userModel?.displayName == null ||
+                _userModel!.displayName!.isEmpty) {
+              debugPrint(
+                  '⚠️ DisplayName still missing, forcing another reload...');
               await Future.delayed(const Duration(milliseconds: 500));
               _userModel = await _authService.getUserData(_currentUser!.uid);
-              debugPrint('🔍 Second attempt - userModel displayName: ${_userModel?.displayName}');
+              debugPrint(
+                  '🔍 Second attempt - userModel displayName: ${_userModel?.displayName}');
             }
 
             // Update last used timestamp for this face mapping

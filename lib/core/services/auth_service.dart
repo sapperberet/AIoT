@@ -40,18 +40,20 @@ class AuthService {
       throw _handleAuthException(e);
     } catch (e) {
       // Handle Pigeon API errors (Firebase Platform Channel type cast issues)
-      if (e.toString().contains('Pigeon') || 
+      if (e.toString().contains('Pigeon') ||
           e.toString().contains('List<Object?>') ||
           e.toString().contains('type cast') ||
           e.toString().contains('not a subtype') ||
           e.runtimeType.toString().contains('TypeError')) {
-        debugPrint('⚠️ Pigeon error during signIn (ignored), checking current user: $e');
-        
+        debugPrint(
+            '⚠️ Pigeon error during signIn (ignored), checking current user: $e');
+
         // Despite the error, check if user is actually signed in
         final user = _auth.currentUser;
         if (user != null) {
-          debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
-          
+          debugPrint(
+              '✅ Retrieved current user after Pigeon error: ${user.uid}');
+
           // Create a pseudo-credential since we can't get the real one
           // The user is authenticated, which is what matters
           throw 'PIGEON_ERROR_USER_AUTHENTICATED';
@@ -74,10 +76,10 @@ class AuthService {
       // Save login timestamp FIRST to prevent race condition with auth state listener
       await SessionService.saveLoginTimestamp();
       debugPrint('✅ Login timestamp saved BEFORE account creation');
-      
+
       UserCredential? credential;
       User? user;
-      
+
       try {
         credential = await _auth.createUserWithEmailAndPassword(
           email: email,
@@ -88,16 +90,18 @@ class AuthService {
       } catch (e) {
         // Catch Pigeon errors during account creation
         final errorStr = e.toString();
-        if (errorStr.contains('Pigeon') || 
+        if (errorStr.contains('Pigeon') ||
             errorStr.contains('List<Object?>') ||
             errorStr.contains('type cast') ||
             errorStr.contains('not a subtype') ||
             e.runtimeType.toString().contains('TypeError')) {
-          debugPrint('⚠️ Pigeon error during createUser (ignored), getting current user: $e');
+          debugPrint(
+              '⚠️ Pigeon error during createUser (ignored), getting current user: $e');
           // Account was created successfully despite the error, get the current user
           user = _auth.currentUser;
           if (user != null) {
-            debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
+            debugPrint(
+                '✅ Retrieved current user after Pigeon error: ${user.uid}');
           } else {
             debugPrint('❌ No current user found after Pigeon error');
             rethrow;
@@ -106,11 +110,11 @@ class AuthService {
           rethrow;
         }
       }
-      
+
       if (user == null) {
         throw 'Failed to create user account';
       }
-      
+
       debugPrint('🔧 displayName to set: $displayName');
 
       // Update display name if provided (catch Pigeon API errors)
@@ -126,7 +130,7 @@ class AuthService {
           // These errors include "PigeonUserDetails", "PigeonUser", or "List<Object?>"
           final errorStr = e.toString();
           debugPrint('⚠️ Caught error during displayName update: $errorStr');
-          if (errorStr.contains('Pigeon') || 
+          if (errorStr.contains('Pigeon') ||
               errorStr.contains('List<Object?>') ||
               errorStr.contains('type cast') ||
               errorStr.contains('not a subtype')) {
@@ -154,15 +158,17 @@ class AuthService {
         // But if that also fails with Pigeon error, just return a mock credential
         debugPrint('🔧 Re-signing in to get credential...');
         try {
-          return await signInWithEmailAndPassword(email: email, password: password);
+          return await signInWithEmailAndPassword(
+              email: email, password: password);
         } catch (e) {
           final errorStr = e.toString();
-          if (errorStr.contains('Pigeon') || 
+          if (errorStr.contains('Pigeon') ||
               errorStr.contains('List<Object?>') ||
               errorStr.contains('type cast') ||
               errorStr.contains('not a subtype') ||
               e.runtimeType.toString().contains('TypeError')) {
-            debugPrint('⚠️ Pigeon error during re-sign-in (ignored), user already authenticated');
+            debugPrint(
+                '⚠️ Pigeon error during re-sign-in (ignored), user already authenticated');
             // User is already authenticated, just throw a specific error that we'll catch upstream
             throw 'PIGEON_ERROR_USER_AUTHENTICATED';
           } else {
@@ -270,10 +276,12 @@ class AuthService {
 
           debugPrint('✅ Found existing account for: $baseName');
           debugPrint('📧 Email: $email');
-          debugPrint('🔑 Password retrieved from mapping: ${mapping['password'] != null ? "YES (length: ${(mapping['password'] as String).length})" : "NO (using generated)"}');
-          debugPrint('🔑 Password being used: ${password.substring(0, 10)}... (length: ${password.length})');
+          debugPrint(
+              '🔑 Password retrieved from mapping: ${mapping['password'] != null ? "YES (length: ${(mapping['password'] as String).length})" : "NO (using generated)"}');
+          debugPrint(
+              '🔑 Password being used: ${password.substring(0, 10)}... (length: ${password.length})');
           debugPrint('🔍 Full mapping data: ${mapping.keys.join(', ')}');
-          
+
           // DEBUG: Show full password for troubleshooting
           if (mapping['password'] != null) {
             debugPrint('🔐 Stored password: ${mapping['password']}');
@@ -294,23 +302,26 @@ class AuthService {
           } catch (e) {
             // Handle Pigeon error where user is authenticated but credential couldn't be returned
             if (e.toString() == 'PIGEON_ERROR_USER_AUTHENTICATED') {
-              debugPrint('⚠️ Pigeon error during sign-in (ignored), user is authenticated');
+              debugPrint(
+                  '⚠️ Pigeon error during sign-in (ignored), user is authenticated');
               user = _auth.currentUser;
-              
+
               if (user == null) {
                 throw 'Failed to sign in: User authenticated but currentUser is null';
               }
-              
-              debugPrint('✅ Retrieved current user after Pigeon error: ${user.uid}');
+
+              debugPrint(
+                  '✅ Retrieved current user after Pigeon error: ${user.uid}');
               // Continue with user updates even though we don't have credential
             } else if (e.toString() == 'WRONG_PASSWORD' ||
-                       e.toString().contains('wrong-password') || 
-                       e.toString().contains('incorrect') ||
-                       e.toString().contains('malformed')) {
+                e.toString().contains('wrong-password') ||
+                e.toString().contains('incorrect') ||
+                e.toString().contains('malformed')) {
               // Password mismatch - Firebase account exists with different password
               // This can happen if the account was created in a previous session with a different password
-              debugPrint('⚠️ Password mismatch detected. Attempting to delete and recreate account...');
-              
+              debugPrint(
+                  '⚠️ Password mismatch detected. Attempting to delete and recreate account...');
+
               // Delete the face_mappings document to force recreation
               try {
                 await _firestore
@@ -321,7 +332,7 @@ class AuthService {
               } catch (deleteError) {
                 debugPrint('⚠️ Error deleting face_mappings: $deleteError');
               }
-              
+
               // Throw error to trigger new user flow
               throw 'PASSWORD_MISMATCH_RECREATE_NEEDED';
             } else {
@@ -343,7 +354,7 @@ class AuthService {
             } catch (e) {
               // Ignore Pigeon API type cast errors (known Firebase bug)
               final errorStr = e.toString();
-              if (errorStr.contains('Pigeon') || 
+              if (errorStr.contains('Pigeon') ||
                   errorStr.contains('List<Object?>') ||
                   errorStr.contains('type cast') ||
                   errorStr.contains('not a subtype')) {
@@ -354,15 +365,10 @@ class AuthService {
             }
 
             // Update Firestore displayName - ALWAYS update to ensure consistency
-            final userDoc = await _firestore
-                .collection('users')
-                .doc(user.uid)
-                .get();
+            final userDoc =
+                await _firestore.collection('users').doc(user.uid).get();
             if (userDoc.exists) {
-              await _firestore
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({
+              await _firestore.collection('users').doc(user.uid).update({
                 'displayName': displayName,
                 'faceRecognitionName': baseName,
                 'authMethod': 'face_recognition',
@@ -371,7 +377,8 @@ class AuthService {
             } else {
               // If user doc doesn't exist for some reason, create it
               await _createUserDocument(user, displayName);
-              debugPrint('✅ Created user document with displayName: $displayName');
+              debugPrint(
+                  '✅ Created user document with displayName: $displayName');
             }
           }
 
@@ -379,14 +386,15 @@ class AuthService {
         } catch (e) {
           // If PASSWORD_MISMATCH error, fall through to create new user
           if (e.toString() == 'PASSWORD_MISMATCH_RECREATE_NEEDED') {
-            debugPrint('🔄 Falling through to create new user due to password mismatch');
+            debugPrint(
+                '🔄 Falling through to create new user due to password mismatch');
             // Continue to new user creation below
           } else {
             rethrow;
           }
         }
       }
-      
+
       // New user detected OR password mismatch retry - create Firebase account
       {
         debugPrint('🆕 New user detected: $baseName (from $recognizedName)');
@@ -404,12 +412,14 @@ class AuthService {
               .limit(1)
               .get();
 
-          debugPrint('🔍 Found ${mappingsQuery.docs.length} face_mappings for $email');
-          
+          debugPrint(
+              '🔍 Found ${mappingsQuery.docs.length} face_mappings for $email');
+
           if (mappingsQuery.docs.isNotEmpty) {
             final data = mappingsQuery.docs.first.data();
             existingPassword = data['password'] as String?;
-            debugPrint('✅ Found existing password for: $email (length: ${existingPassword?.length})');
+            debugPrint(
+                '✅ Found existing password for: $email (length: ${existingPassword?.length})');
             debugPrint('🔍 Face mapping data: ${data.keys.join(', ')}');
           } else {
             debugPrint('⚠️ No face_mappings found for: $email');
@@ -424,7 +434,7 @@ class AuthService {
         debugPrint('📧 Creating account: $email');
 
         UserCredential? credential;
-        
+
         try {
           // Try to create new Firebase account
           credential = await registerWithEmailAndPassword(
@@ -435,7 +445,8 @@ class AuthService {
         } catch (e) {
           // Handle Pigeon error where user is authenticated but credential couldn't be returned
           if (e.toString() == 'PIGEON_ERROR_USER_AUTHENTICATED') {
-            debugPrint('✅ User authenticated despite Pigeon error, getting current user');
+            debugPrint(
+                '✅ User authenticated despite Pigeon error, getting current user');
             final currentUser = _auth.currentUser;
             if (currentUser != null) {
               // User is authenticated, we'll create the face mapping with this user
@@ -447,43 +458,42 @@ class AuthService {
                 password: password,
               );
 
-              await _firestore
-                  .collection('users')
-                  .doc(currentUser.uid)
-                  .update({
+              await _firestore.collection('users').doc(currentUser.uid).update({
                 'faceRecognitionName': baseName,
                 'authMethod': 'face_recognition',
                 'recognizedVariants': [recognizedName],
               });
 
-              debugPrint('✅ Account created for: $baseName (Pigeon workaround)');
+              debugPrint(
+                  '✅ Account created for: $baseName (Pigeon workaround)');
               // Return null to indicate success without credential (caller will check currentUser)
               return null;
             } else {
               throw 'User authentication succeeded but currentUser is null';
             }
           }
-          
+
           // If account already exists, try to sign in instead
-          if (e.toString().contains('email-already-in-use') || 
+          if (e.toString().contains('email-already-in-use') ||
               e.toString().contains('already exists')) {
             debugPrint('📧 Account already exists, signing in instead...');
-            
+
             try {
               credential = await signInWithEmailAndPassword(
                 email: email,
                 password: password,
               );
-              
+
               // Update displayName after sign-in
               if (credential.user != null) {
                 try {
                   await credential.user!.updateDisplayName(displayName);
                   await credential.user!.reload();
-                  debugPrint('✅ Updated Firebase Auth displayName to: $displayName');
+                  debugPrint(
+                      '✅ Updated Firebase Auth displayName to: $displayName');
                 } catch (updateError) {
                   final errorStr = updateError.toString();
-                  if (errorStr.contains('Pigeon') || 
+                  if (errorStr.contains('Pigeon') ||
                       errorStr.contains('List<Object?>') ||
                       errorStr.contains('type cast') ||
                       errorStr.contains('not a subtype')) {
@@ -492,7 +502,7 @@ class AuthService {
                     rethrow;
                   }
                 }
-                
+
                 // Update Firestore displayName
                 await _firestore
                     .collection('users')
