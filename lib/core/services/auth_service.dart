@@ -2,10 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import 'session_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Firebase automatically persists user sessions on mobile platforms
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -19,10 +22,15 @@ class AuthService {
     required String password,
   }) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Save login timestamp for session management
+      await SessionService.saveLoginTimestamp();
+
+      return credential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
@@ -49,6 +57,9 @@ class AuthService {
       if (credential.user != null) {
         await _createUserDocument(credential.user!, displayName);
       }
+
+      // Save login timestamp for session management
+      await SessionService.saveLoginTimestamp();
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -85,9 +96,33 @@ class AuthService {
     }
   }
 
+  // Check if current session is valid
+  Future<bool> isSessionValid() async {
+    // Check if user is logged in
+    if (_auth.currentUser == null) {
+      return false;
+    }
+
+    // Check if session hasn't expired (2 days)
+    return await SessionService.isSessionValid();
+  }
+
+  // Sign out if session expired
+  Future<void> signOutIfSessionExpired() async {
+    if (_auth.currentUser != null) {
+      final isValid = await SessionService.isSessionValid();
+      if (!isValid) {
+        debugPrint('⚠️ Session expired, signing out...');
+        await signOut();
+      }
+    }
+  }
+
   // Sign out
   Future<void> signOut() async {
     await _auth.signOut();
+    // Clear session data
+    await SessionService.clearSession();
   }
 
   // Reset password
@@ -122,10 +157,48 @@ class AuthService {
         debugPrint('✅ Found existing account for: $baseName');
 
         try {
-          return await signInWithEmailAndPassword(
+          final credential = await signInWithEmailAndPassword(
             email: email,
             password: password,
           );
+
+          // Update displayName if not set
+          if (credential.user != null) {
+            final displayName = _formatDisplayName(baseName);
+
+            // Update Firebase Auth displayName if missing
+            if (credential.user!.displayName == null ||
+                credential.user!.displayName!.isEmpty) {
+              await credential.user!.updateDisplayName(displayName);
+              await credential.user!
+                  .reload(); // Reload to get updated displayName
+              debugPrint(
+                  '✅ Updated Firebase Auth displayName to: $displayName');
+            }
+
+            // Update Firestore displayName if missing
+            final userDoc = await _firestore
+                .collection('users')
+                .doc(credential.user!.uid)
+                .get();
+            if (userDoc.exists) {
+              final userData = userDoc.data();
+              if (userData?['displayName'] == null ||
+                  userData?['displayName'] == '') {
+                await _firestore
+                    .collection('users')
+                    .doc(credential.user!.uid)
+                    .update({
+                  'displayName': displayName,
+                  'faceRecognitionName': baseName,
+                  'authMethod': 'face_recognition',
+                });
+                debugPrint('✅ Updated Firestore displayName to: $displayName');
+              }
+            }
+          }
+
+          return credential;
         } catch (e) {
           // If sign-in fails, might need to recreate account
           throw 'Failed to sign in existing user: $e';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -15,7 +15,7 @@ class CameraFeedScreen extends StatefulWidget {
 }
 
 class _CameraFeedScreenState extends State<CameraFeedScreen> {
-  late WebViewController _webViewController;
+  VideoPlayerController? _controller;
   bool _isLoading = true;
   String? _errorMessage;
   bool _isDoorOpen = false;
@@ -26,151 +26,69 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
     _initializeCamera();
   }
 
-  void _initializeCamera() {
+  void _initializeCamera() async {
     final authProvider = context.read<AuthProvider>();
-    final streamUrl = authProvider.getHlsStreamUrl();
 
-    if (streamUrl == null) {
+    // Check if beacon is discovered
+    if (authProvider.discoveredBeacon == null) {
       setState(() {
-        _errorMessage = 'Camera stream not available. Please connect to face recognition system.';
+        _errorMessage =
+            'Please connect to face recognition system first.\n\nGo back and tap "Login with Face Recognition" to discover the system.';
         _isLoading = false;
       });
       return;
     }
 
-    // Initialize WebView for HLS streaming
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
-          },
-          onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
-          },
-          onWebResourceError: (WebResourceError error) {
-            setState(() {
-              _errorMessage = 'Failed to load camera feed: ${error.description}';
-              _isLoading = false;
-            });
-          },
-        ),
-      )
-      ..loadHtmlString(_buildHlsPlayerHtml(streamUrl));
-  }
+    final streamUrl = authProvider.getRtspStreamUrl(); // Use RTSP
 
-  String _buildHlsPlayerHtml(String streamUrl) {
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .status {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-family: system-ui;
-      font-size: 12px;
-    }
-    .error {
-      color: #ff5252;
-      text-align: center;
-      padding: 20px;
-      font-family: system-ui;
-    }
-  </style>
-</head>
-<body>
-  <div id="status" class="status">Loading...</div>
-  <video id="video" controls autoplay muted playsinline></video>
-  
-  <script>
-    const video = document.getElementById('video');
-    const status = document.getElementById('status');
-    const streamUrl = '$streamUrl';
-    
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90
+    if (streamUrl == null) {
+      setState(() {
+        _errorMessage =
+            'Camera stream not available. Please connect to face recognition system.';
+        _isLoading = false;
       });
-      
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
-      
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        status.textContent = 'Live';
-        status.style.background = 'rgba(76, 175, 80, 0.9)';
-        video.play();
-      });
-      
-      hls.on(Hls.Events.ERROR, function(event, data) {
-        if (data.fatal) {
-          status.textContent = 'Error: ' + data.type;
-          status.style.background = 'rgba(244, 67, 54, 0.9)';
-          
-          switch(data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              break;
-          }
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
-      video.addEventListener('loadedmetadata', function() {
-        status.textContent = 'Live';
-        status.style.background = 'rgba(76, 175, 80, 0.9)';
-        video.play();
-      });
-    } else {
-      document.body.innerHTML = '<div class="error">HLS not supported in this browser</div>';
+      return;
     }
-  </script>
-</body>
-</html>
-    ''';
+
+    // Debug log
+    debugPrint('📹 Camera RTSP stream URL: $streamUrl');
+
+    try {
+      // Dispose previous controller if exists
+      await _controller?.dispose();
+
+      // Initialize video player with RTSP stream
+      // video_player on Android uses ExoPlayer which supports RTSP
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(streamUrl),
+        videoPlayerOptions: VideoPlayerOptions(
+          allowBackgroundPlayback: false,
+          mixWithOthers: false,
+        ),
+      );
+
+      await _controller!.initialize();
+      await _controller!.play();
+
+      // Set to loop
+      _controller!.setLooping(true);
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Video player error: $e');
+      setState(() {
+        _errorMessage =
+            'Failed to initialize video player.\n\nError: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _openDoor() async {
     final authProvider = context.read<AuthProvider>();
-    
+
     setState(() {
       _isDoorOpen = true;
     });
@@ -183,7 +101,8 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
           content: Text(
             success ? 'Door opened successfully' : 'Failed to open door',
           ),
-          backgroundColor: success ? AppTheme.successColor : AppTheme.errorColor,
+          backgroundColor:
+              success ? AppTheme.successColor : AppTheme.errorColor,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -197,6 +116,12 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
@@ -319,8 +244,21 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
                 ),
               ),
             )
+          else if (_controller != null && _controller!.value.isInitialized)
+            Center(
+              child: AspectRatio(
+                aspectRatio: _controller!.value.aspectRatio,
+                child: VideoPlayer(_controller!),
+              ),
+            )
           else
-            WebViewWidget(controller: _webViewController),
+            Center(
+              child: Icon(
+                Iconsax.video,
+                size: 80,
+                color: textColor.withOpacity(0.3),
+              ),
+            ),
 
           // Loading Indicator
           if (_isLoading && _errorMessage == null)
@@ -359,9 +297,8 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
           ? FadeInUp(
               child: FloatingActionButton.extended(
                 onPressed: _isDoorOpen ? null : _openDoor,
-                backgroundColor: _isDoorOpen
-                    ? AppTheme.successColor
-                    : AppTheme.primaryColor,
+                backgroundColor:
+                    _isDoorOpen ? AppTheme.successColor : AppTheme.primaryColor,
                 icon: Icon(
                   _isDoorOpen ? Iconsax.tick_circle : Iconsax.lock_slash,
                   color: Colors.white,

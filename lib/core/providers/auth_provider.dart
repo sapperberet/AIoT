@@ -45,15 +45,25 @@ class AuthProvider with ChangeNotifier {
       _faceAuthService != null || _faceAuthHttpService != null;
 
   void _init() {
-    _authService.authStateChanges.listen((User? user) {
+    _authService.authStateChanges.listen((User? user) async {
       _currentUser = user;
       if (user != null) {
-        _loadUserData();
+        // Check if session is still valid
+        final isValid = await _authService.isSessionValid();
+        if (!isValid) {
+          debugPrint('⚠️ Session expired, logging out...');
+          await signOut();
+          return;
+        }
+        await _loadUserData();
       } else {
         _userModel = null;
       }
       notifyListeners();
     });
+
+    // Check session validity on app start
+    _checkSessionValidity();
 
     // Initialize face auth listeners if available
     if (_faceAuthService != null) {
@@ -81,6 +91,12 @@ class AuthProvider with ChangeNotifier {
         _discoveredBeacon = beacon;
         notifyListeners();
       });
+    }
+  }
+
+  Future<void> _checkSessionValidity() async {
+    if (_currentUser != null) {
+      await _authService.signOutIfSessionExpired();
     }
   }
 
@@ -399,7 +415,20 @@ class AuthProvider with ChangeNotifier {
           if (credential != null && credential.user != null) {
             // Successfully signed in to Firebase
             _currentUser = credential.user;
-            await _loadUserData();
+
+            // Reload user to get updated displayName from Firebase Auth
+            await _currentUser!.reload();
+            _currentUser =
+                _authService.currentUser; // Get refreshed user instance
+
+            // Force reload user data from Firestore (this updates _userModel with displayName)
+            _userModel = await _authService.getUserData(_currentUser!.uid);
+
+            // Additional debug to verify displayName
+            debugPrint(
+                '🔍 After reload - Firebase Auth displayName: ${_currentUser!.displayName}');
+            debugPrint(
+                '🔍 After reload - Firestore userModel displayName: ${_userModel?.displayName}');
 
             // Update last used timestamp for this face mapping
             await _authService.updateFaceMappingLastUsed(recognizedName);

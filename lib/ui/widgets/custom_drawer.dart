@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
+import '../screens/camera/camera_feed_screen.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
@@ -183,6 +184,23 @@ class CustomDrawer extends StatelessWidget {
                           delay: const Duration(milliseconds: 300),
                           child: _buildMenuItem(
                             context,
+                            icon: Iconsax.video,
+                            title: loc.t('camera_feed'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CameraFeedScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
+                          delay: const Duration(milliseconds: 400),
+                          child: _buildMenuItem(
+                            context,
                             icon: Iconsax.notification,
                             title: loc.t('notifications'),
                             badge: '3',
@@ -193,7 +211,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 400),
+                          delay: const Duration(milliseconds: 500),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.timer,
@@ -205,7 +223,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 500),
+                          delay: const Duration(milliseconds: 600),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.flash_1,
@@ -217,7 +235,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 700),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.info_circle,

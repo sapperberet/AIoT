@@ -6,6 +6,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/session_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,6 +16,21 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  int _sessionDuration = 2; // Default value
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadSessionDuration();
+  }
+  
+  Future<void> _loadSessionDuration() async {
+    final duration = await SessionService.getSessionDuration();
+    setState(() {
+      _sessionDuration = duration;
+    });
+  }
+  
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
@@ -653,11 +669,147 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAccountSection(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
+    
     return FadeInUp(
       delay: const Duration(milliseconds: 600),
       child: _buildSection(
         loc.t('account'),
         [
+          // Session Duration Setting
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Iconsax.timer_1,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Session Duration',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '$_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You will be automatically logged out after this period of inactivity',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: AppTheme.primaryColor,
+                    inactiveTrackColor: AppTheme.primaryColor.withOpacity(0.3),
+                    thumbColor: AppTheme.primaryColor,
+                    overlayColor: AppTheme.primaryColor.withOpacity(0.2),
+                    trackHeight: 4,
+                  ),
+                  child: Slider(
+                    value: _sessionDuration.toDouble(),
+                    min: 1,
+                    max: 30,
+                    divisions: 29,
+                    label: '$_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}',
+                    onChanged: (value) async {
+                      setState(() {
+                        _sessionDuration = value.toInt();
+                      });
+                      await SessionService.setSessionDuration(_sessionDuration);
+                      
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Session duration set to $_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}'),
+                            backgroundColor: AppTheme.successColor,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '1 day',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: textColor.withOpacity(0.5),
+                      ),
+                    ),
+                    Text(
+                      '30 days',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: textColor.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Session expiry info
+          FutureBuilder<DateTime?>(
+            future: SessionService.getSessionExpiryDate(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data != null) {
+                final expiry = snapshot.data!;
+                final now = DateTime.now();
+                final remaining = expiry.difference(now);
+                
+                String expiryText;
+                if (remaining.inHours < 1) {
+                  expiryText = 'Expires in ${remaining.inMinutes} minutes';
+                } else if (remaining.inHours < 24) {
+                  expiryText = 'Expires in ${remaining.inHours} hours';
+                } else {
+                  expiryText = 'Expires in ${remaining.inDays} days';
+                }
+                
+                return _buildSettingTile(
+                  'Current Session',
+                  expiryText,
+                  Iconsax.clock,
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           _buildSettingTile(
             loc.t('change_password'),
             '',

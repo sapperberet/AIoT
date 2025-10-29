@@ -42,15 +42,18 @@ class FaceAuthHttpService {
 
   // Timeouts
   static const Duration _beaconDiscoveryTimeout = Duration(seconds: 10);
-  static const Duration _authTimeout =
-      Duration(seconds: 45); // Max time for face detection (increased for video processing)
+  static const Duration _authTimeout = Duration(
+      seconds:
+          45); // Max time for face detection (increased for video processing)
 
   // HTTP client
   final http.Client _httpClient = http.Client();
 
   // n8n base URL (uses port 5678)
   String? _n8nBaseUrl;
-  String get n8nBaseUrl => _n8nBaseUrl ?? 'http://${_discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress}:5678';
+  String get n8nBaseUrl =>
+      _n8nBaseUrl ??
+      'http://${_discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress}:5678';
 
   FaceAuthHttpService();
 
@@ -309,7 +312,8 @@ class FaceAuthHttpService {
             authResponse = FaceAuthResponse(
               requestId: requestId,
               success: false,
-              errorMessage: result['error'] as String? ?? 'No recognized face detected',
+              errorMessage:
+                  result['error'] as String? ?? 'No recognized face detected',
               timestamp: DateTime.now(),
             );
           }
@@ -320,8 +324,10 @@ class FaceAuthHttpService {
           return authResponse;
         } else {
           // n8n not available, fallback to direct API
-          _logger.w('⚠️ n8n returned ${response.statusCode}, falling back to direct API');
-          return await requestFaceAuthDirect(userId: userId, metadata: metadata);
+          _logger.w(
+              '⚠️ n8n returned ${response.statusCode}, falling back to direct API');
+          return await requestFaceAuthDirect(
+              userId: userId, metadata: metadata);
         }
       } on TimeoutException {
         _logger.w('⏱️ n8n timeout, falling back to direct API');
@@ -389,7 +395,8 @@ class FaceAuthHttpService {
           'stop_on_first': 'true', // Stop on first recognized face
           'model': 'hog', // Use HOG model (faster, CPU-friendly)
           'tolerance': '0.6',
-          'frame_stride': '2', // Check every 2nd frame (balance speed vs detection)
+          'frame_stride':
+              '2', // Check every 2nd frame (balance speed vs detection)
         };
 
         // Make HTTP POST request
@@ -528,7 +535,7 @@ class FaceAuthHttpService {
   /// For web-based playback
   String getHlsStreamUrl() {
     final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
-    return 'http://$ip:8888/cam';
+    return 'http://$ip:8888/cam/index.m3u8';
   }
 
   /// Trigger door open via n8n API (Version 2)
