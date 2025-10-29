@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../camera/camera_feed_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -477,6 +478,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
+    
+    // Check if this is an unrecognized face notification
+    final isUnrecognizedFace = notification.data?['type'] == 'unrecognized_face';
 
     showModalBottomSheet(
       context: context,
@@ -553,10 +557,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
             const SizedBox(height: 24),
+            
+            // Show camera button for unrecognized face notifications
+            if (isUnrecognizedFace)
+              Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context); // Close bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CameraFeedScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Iconsax.video),
+                    label: const Text('View Camera Feed'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.errorColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppTheme.mediumRadius,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: isUnrecognizedFace 
+                    ? theme.colorScheme.surface 
+                    : AppTheme.primaryColor,
+                foregroundColor: isUnrecognizedFace 
+                    ? textColor 
+                    : Colors.white,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
                   borderRadius: AppTheme.mediumRadius,

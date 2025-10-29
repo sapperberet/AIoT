@@ -48,6 +48,10 @@ class FaceAuthHttpService {
   // HTTP client
   final http.Client _httpClient = http.Client();
 
+  // n8n base URL (uses port 5678)
+  String? _n8nBaseUrl;
+  String get n8nBaseUrl => _n8nBaseUrl ?? 'http://${_discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress}:5678';
+
   FaceAuthHttpService();
 
   void _updateStatus(FaceAuthStatus status) {
@@ -212,6 +216,7 @@ class FaceAuthHttpService {
   }
 
   /// Request face authentication via HTTP REST API
+  /// Version 2: Uses n8n workflow automation
   Future<FaceAuthResponse?> requestFaceAuth({
     String? userId,
     Map<String, dynamic>? metadata,
@@ -248,15 +253,179 @@ class FaceAuthHttpService {
       // Update status to scanning
       _updateStatus(FaceAuthStatus.scanning);
 
-      // Call face detection REST API
+      // VERSION 2: Call n8n workflow via MQTT trigger
+      // The n8n workflow listens on face/trigger/cmd and calls the face detection service
+      final apiUrl = '$n8nBaseUrl/webhook/face-detect';
+      _logger.i('🌐 Calling n8n face detection workflow: $apiUrl');
+
+      try {
+        // Prepare request payload for n8n workflow
+        final requestData = {
+          'requestId': requestId,
+          'userId': userId,
+          'deviceId': await _getDeviceId(),
+        };
+
+        // Make HTTP POST request to n8n webhook
+        final response = await _httpClient
+            .post(
+              Uri.parse(apiUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(requestData),
+            )
+            .timeout(_authTimeout);
+
+        _logger.i('📡 Response status: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body) as Map<String, dynamic>;
+          _logger.i('📊 Detection result: $result');
+
+          // Extract detected persons from n8n workflow response
+          final detectedName = result['name'] as String?;
+          final success = result['success'] as bool? ?? false;
+
+          FaceAuthResponse authResponse;
+
+          if (success && detectedName != null && detectedName.isNotEmpty) {
+            // Face recognized successfully
+            _logger.i('✅ Face recognized: $detectedName');
+
+            _updateStatus(FaceAuthStatus.success);
+
+            authResponse = FaceAuthResponse(
+              requestId: requestId,
+              success: true,
+              recognizedUserName: detectedName,
+              confidence: (result['confidence'] as num?)?.toDouble() ?? 0.95,
+              timestamp: DateTime.now(),
+              detectionData: result,
+            );
+          } else {
+            // No known face found
+            _logger.w('⚠️ No recognized face detected');
+
+            _updateStatus(FaceAuthStatus.failed);
+
+            authResponse = FaceAuthResponse(
+              requestId: requestId,
+              success: false,
+              errorMessage: result['error'] as String? ?? 'No recognized face detected',
+              timestamp: DateTime.now(),
+            );
+          }
+
+          _currentSession?.setResponse(authResponse);
+          _responseController.add(authResponse);
+          _currentRequestId = null;
+          return authResponse;
+        } else {
+          // API error
+          _logger.e('❌ API returned status: ${response.statusCode}');
+          _updateStatus(FaceAuthStatus.error);
+
+          final authResponse = FaceAuthResponse(
+            requestId: requestId,
+            success: false,
+            errorMessage:
+                'Face detection service error: ${response.statusCode}',
+            timestamp: DateTime.now(),
+          );
+
+          _currentSession?.setResponse(authResponse);
+          _currentRequestId = null;
+          return authResponse;
+        }
+      } on TimeoutException {
+        _logger.w('⏱️ Face detection request timed out');
+        _updateStatus(FaceAuthStatus.timeout);
+
+        final authResponse = FaceAuthResponse(
+          requestId: requestId,
+          success: false,
+          errorMessage: 'Face detection timed out',
+          timestamp: DateTime.now(),
+        );
+
+        _currentSession?.updateStatus(
+          FaceAuthStatus.timeout,
+          error: 'Request timed out',
+        );
+        _currentRequestId = null;
+        return authResponse;
+      } catch (e) {
+        _logger.e('❌ HTTP request error: $e');
+        _updateStatus(FaceAuthStatus.error);
+
+        final authResponse = FaceAuthResponse(
+          requestId: requestId,
+          success: false,
+          errorMessage: 'Network error: $e',
+          timestamp: DateTime.now(),
+        );
+
+        _currentSession?.updateStatus(
+          FaceAuthStatus.error,
+          error: e.toString(),
+        );
+        _currentRequestId = null;
+        return authResponse;
+      }
+    } catch (e) {
+      _logger.e('❌ Face authentication request error: $e');
+      _updateStatus(FaceAuthStatus.error);
+      _currentRequestId = null;
+      return null;
+    }
+  }
+
+  /// Request face authentication via direct face service API (fallback)
+  /// This is the original method that directly calls the face detection service
+  Future<FaceAuthResponse?> requestFaceAuthDirect({
+    String? userId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      if (_discoveredBeacon == null || !_discoveredBeacon!.isValid) {
+        _logger.e('❌ No valid beacon available');
+        _updateStatus(FaceAuthStatus.error);
+        return null;
+      }
+
+      _updateStatus(FaceAuthStatus.requestingScan);
+
+      // Generate request
+      final requestId = _uuid.v4();
+      _currentRequestId = requestId;
+
+      final request = FaceAuthRequest(
+        requestId: requestId,
+        userId: userId,
+        deviceId: await _getDeviceId(),
+        metadata: metadata,
+      );
+
+      // Create session
+      _currentSession = FaceAuthSession(
+        sessionId: requestId,
+        request: request,
+        status: FaceAuthStatus.requestingScan,
+      );
+
+      _logger.i('📸 Requesting face authentication (direct): $requestId');
+
+      // Update status to scanning
+      _updateStatus(FaceAuthStatus.scanning);
+
+      // Call face detection REST API directly (Version 1 style)
       final apiUrl = 'http://${_discoveredBeacon!.ip}:8000/detect-webcam';
       _logger.i('🌐 Calling face detection API: $apiUrl');
 
       try {
-        // Prepare form data
+        // VERSION 2: Uses RTSP stream from MediaMTX instead of direct webcam
         final requestData = {
           'persons_dir': '/data/persons',
-          'webcam': '0',
+          'camera_url': 'rtsp://mediamtx:8554/cam', // Use RTSP stream
           'max_seconds': '8', // Quick scan - 8 seconds max
           'stop_on_first': 'true', // Stop on first recognized face
           'model': 'hog', // Use HOG model (faster, CPU-friendly)
@@ -381,6 +550,49 @@ class FaceAuthHttpService {
   Future<String> _getDeviceId() async {
     // In production, use device_info_plus or similar
     return 'flutter_device_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  /// Get camera feed URL from n8n API (Version 2)
+  /// Returns the URL to the camera stream (redirects to MediaMTX)
+  String getCameraFeedUrl() {
+    return '$n8nBaseUrl/api/camera-feed';
+  }
+
+  /// Get direct RTSP stream URL (Version 2)
+  /// This is the MediaMTX RTSP stream endpoint
+  String getRtspStreamUrl() {
+    final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
+    return 'rtsp://$ip:8554/cam';
+  }
+
+  /// Get HLS stream URL (Version 2)
+  /// For web-based playback
+  String getHlsStreamUrl() {
+    final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
+    return 'http://$ip:8888/cam';
+  }
+
+  /// Trigger door open via n8n API (Version 2)
+  Future<bool> openDoor() async {
+    try {
+      final apiUrl = '$n8nBaseUrl/api/door';
+      _logger.i('🚪 Triggering door open: $apiUrl');
+
+      final response = await _httpClient
+          .post(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        _logger.i('✅ Door open command sent successfully');
+        return true;
+      } else {
+        _logger.e('❌ Door open failed: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      _logger.e('❌ Error opening door: $e');
+      return false;
+    }
   }
 
   /// Cancel current authentication request

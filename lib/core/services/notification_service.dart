@@ -272,6 +272,35 @@ class NotificationService with ChangeNotifier {
     );
   }
 
+  // Face detection notifications (Version 2)
+  void notifyUnrecognizedPerson({String? location}) {
+    addNotification(
+      title: '⚠️ Unrecognized Person Detected',
+      message: 'An unrecognized person was detected at ${location ?? 'entrance'}. Tap to view camera feed.',
+      type: NotificationType.security,
+      priority: NotificationPriority.urgent,
+      data: {
+        'type': 'unrecognized_face',
+        'location': location ?? 'entrance',
+        'action': 'view_camera',
+      },
+    );
+  }
+
+  void notifyPersonRecognized(String name, {String? location}) {
+    addNotification(
+      title: '✅ Person Recognized',
+      message: '$name detected at ${location ?? 'entrance'}',
+      type: NotificationType.info,
+      priority: NotificationPriority.low,
+      data: {
+        'type': 'recognized_face',
+        'name': name,
+        'location': location ?? 'entrance',
+      },
+    );
+  }
+
   @override
   void dispose() {
     _notificationStreamController.close();

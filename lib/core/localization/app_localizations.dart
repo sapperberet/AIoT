@@ -91,6 +91,9 @@ class AppLocalizations {
       'week': 'Week',
       'month': 'Month',
       'year': 'Year',
+      
+      // Camera Feed
+      'camera_feed': 'Camera Feed',
 
       // Common
       'save': 'Save',
@@ -264,6 +267,9 @@ class AppLocalizations {
       'week': 'Woche',
       'month': 'Monat',
       'year': 'Jahr',
+      
+      // Camera Feed
+      'camera_feed': 'Kamera-Feed',
 
       // Common
       'save': 'Speichern',
@@ -437,6 +443,9 @@ class AppLocalizations {
       'week': 'الأسبوع',
       'month': 'الشهر',
       'year': 'السنة',
+      
+      // Camera Feed
+      'camera_feed': 'تغذية الكاميرا',
 
       // Common
       'save': 'حفظ',

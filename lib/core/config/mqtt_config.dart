@@ -1,4 +1,10 @@
 /// MQTT Configuration for local and cloud brokers
+/// 
+/// Version 2 Integration (grad_project_backend-main(Version 2)):
+/// - MediaMTX streaming server (RTSP/RTMP/HLS/WebRTC)
+/// - n8n automation workflows
+/// - Separate camera publisher service
+/// - Improved face detection with RTSP stream consumption
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
   static const String localBrokerAddress =
@@ -42,10 +48,23 @@ class MqttConfig {
   static const String faceAuthResponseTopic = '$topicPrefix/auth/face/response';
   static const String faceAuthStatusTopic = '$topicPrefix/auth/face/status';
   static const String faceAuthBeaconTopic = '$topicPrefix/auth/beacon';
+  
+  // Version 2: n8n workflow triggers
+  static const String faceDetectTriggerTopic = 'face/trigger/cmd';
+  static const String faceRecognizedTopic = '$topicPrefix/app/face-recognized';
+  static const String faceUnrecognizedTopic = '$topicPrefix/app/face-unrecognized';
 
   // Beacon discovery settings
   static const int beaconPort = 18830;
   static const String beaconServiceName = 'face-broker';
+  
+  // Version 2: Service ports
+  static const int n8nPort = 5678;           // n8n automation
+  static const int faceServicePort = 8000;   // Face detection API
+  static const int rtspPort = 8554;          // MediaMTX RTSP
+  static const int rtmpPort = 1935;          // MediaMTX RTMP
+  static const int hlsPort = 8888;           // MediaMTX HLS
+  static const int webrtcPort = 8889;        // MediaMTX WebRTC
 
   // Keep alive and reconnection
   static const int keepAlivePeriod = 60;

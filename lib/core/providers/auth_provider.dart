@@ -495,4 +495,48 @@ class AuthProvider with ChangeNotifier {
         break;
     }
   }
+
+  // === Version 2 Features ===
+
+  /// Get camera stream URL (Version 2)
+  /// Returns the URL to view the live camera stream
+  String? getCameraStreamUrl() {
+    return _faceAuthHttpService?.getCameraFeedUrl();
+  }
+
+  /// Get RTSP stream URL (Version 2)
+  /// Direct RTSP stream for media players
+  String? getRtspStreamUrl() {
+    return _faceAuthHttpService?.getRtspStreamUrl();
+  }
+
+  /// Get HLS stream URL (Version 2)
+  /// HLS stream for web-based video players
+  String? getHlsStreamUrl() {
+    return _faceAuthHttpService?.getHlsStreamUrl();
+  }
+
+  /// Trigger door open (Version 2)
+  /// Opens the door via n8n automation
+  Future<bool> openDoor() async {
+    if (_faceAuthHttpService == null) {
+      _faceAuthMessage = 'Door control not available';
+      return false;
+    }
+
+    try {
+      final success = await _faceAuthHttpService!.openDoor();
+      if (success) {
+        _faceAuthMessage = 'Door opened successfully';
+      } else {
+        _faceAuthMessage = 'Failed to open door';
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _faceAuthMessage = 'Error opening door: $e';
+      notifyListeners();
+      return false;
+    }
+  }
 }

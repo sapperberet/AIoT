@@ -87,6 +87,7 @@ class SmartHomeApp extends StatelessWidget {
           create: (context) => DeviceProvider(
             mqttService: context.read<MqttService>(),
             firestoreService: context.read<FirestoreService>(),
+            notificationService: context.read<NotificationService>(),
           ),
         ),
         ChangeNotifierProvider<HomeVisualizationProvider>(

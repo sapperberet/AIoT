@@ -1,5 +1,6 @@
 # Ignore Python virtual environments
 grad_project_backend-main/venv/
+/grad_project_backend-main*
 
 # Common Python ignores
 __pycache__/

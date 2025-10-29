@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import '../models/device_model.dart';
 import '../config/mqtt_config.dart';
 
 class DeviceProvider with ChangeNotifier {
   final MqttService _mqttService;
   final FirestoreService _firestoreService;
+  final NotificationService _notificationService;
 
   List<Device> _devices = [];
   List<AlarmEvent> _alarms = [];
@@ -18,8 +20,10 @@ class DeviceProvider with ChangeNotifier {
   DeviceProvider({
     required MqttService mqttService,
     required FirestoreService firestoreService,
+    required NotificationService notificationService,
   })  : _mqttService = mqttService,
-        _firestoreService = firestoreService {
+        _firestoreService = firestoreService,
+        _notificationService = notificationService {
     _init();
   }
 
@@ -86,6 +90,10 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.fireAlarmTopic);
     _mqttService.subscribe(MqttConfig.motionAlarmTopic);
     _mqttService.subscribe(MqttConfig.doorAlarmTopic);
+    
+    // Subscribe to face detection topics (Version 2)
+    _mqttService.subscribe(MqttConfig.faceRecognizedTopic);
+    _mqttService.subscribe(MqttConfig.faceUnrecognizedTopic);
 
     // Subscribe to device status topics
     for (var device in _devices) {
@@ -97,12 +105,74 @@ class DeviceProvider with ChangeNotifier {
     final payload = message.jsonPayload;
     if (payload == null) return;
 
+    // Check for face detection events (Version 2)
+    if (message.topic == MqttConfig.faceUnrecognizedTopic) {
+      _handleUnrecognizedFace(payload);
+      return;
+    } else if (message.topic == MqttConfig.faceRecognizedTopic) {
+      _handleRecognizedFace(payload);
+      return;
+    }
+
     // Check if it's an alarm
     if (message.topic.contains('alarm')) {
       _handleAlarm(message.topic, payload);
     } else {
       _handleDeviceUpdate(message.topic, payload);
     }
+  }
+  
+  void _handleUnrecognizedFace(Map<String, dynamic> payload) {
+    // Create security alarm for unrecognized person
+    final alarm = AlarmEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      location: 'entrance',
+      type: 'unrecognized_person',
+      severity: 'high',
+      message: 'Unrecognized person detected at entrance',
+      timestamp: DateTime.now(),
+    );
+
+    // Add to local list
+    _alarms.insert(0, alarm);
+
+    // Save to Firestore
+    if (_userId != null) {
+      _firestoreService.addAlarmEvent(_userId!, alarm);
+    }
+
+    // Send notification
+    _notificationService.notifyUnrecognizedPerson(location: 'entrance');
+
+    notifyListeners();
+  }
+  
+  void _handleRecognizedFace(Map<String, dynamic> payload) {
+    final name = payload['name'] ?? 'Unknown';
+    
+    // Create info log for recognized person
+    final alarm = AlarmEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      location: 'entrance',
+      type: 'person_recognized',
+      severity: 'info',
+      message: '$name detected at entrance',
+      timestamp: DateTime.now(),
+      acknowledged: true, // Auto-acknowledge for recognized faces
+    );
+
+    // Add to local list
+    _alarms.insert(0, alarm);
+
+    // Save to Firestore
+    if (_userId != null) {
+      _firestoreService.addAlarmEvent(_userId!, alarm);
+    }
+
+    // Send notification
+    _notificationService.notifyPersonRecognized(name, location: 'entrance');
+
+    notifyListeners();
   }
 
   void _handleAlarm(String topic, Map<String, dynamic> payload) {
