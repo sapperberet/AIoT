@@ -43,7 +43,7 @@ class FaceAuthHttpService {
   // Timeouts
   static const Duration _beaconDiscoveryTimeout = Duration(seconds: 10);
   static const Duration _authTimeout =
-      Duration(seconds: 15); // Max time for face detection
+      Duration(seconds: 45); // Max time for face detection (increased for video processing)
 
   // HTTP client
   final http.Client _httpClient = http.Client();
@@ -253,10 +253,9 @@ class FaceAuthHttpService {
       // Update status to scanning
       _updateStatus(FaceAuthStatus.scanning);
 
-      // VERSION 2: Call n8n workflow via MQTT trigger
-      // The n8n workflow listens on face/trigger/cmd and calls the face detection service
+      // VERSION 2: Try n8n workflow first, fallback to direct API
       final apiUrl = '$n8nBaseUrl/webhook/face-detect';
-      _logger.i('🌐 Calling n8n face detection workflow: $apiUrl');
+      _logger.i('🌐 Trying n8n face detection workflow: $apiUrl');
 
       try {
         // Prepare request payload for n8n workflow
@@ -273,7 +272,7 @@ class FaceAuthHttpService {
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(requestData),
             )
-            .timeout(_authTimeout);
+            .timeout(const Duration(seconds: 5)); // Quick timeout for n8n
 
         _logger.i('📡 Response status: ${response.statusCode}');
 
@@ -320,56 +319,16 @@ class FaceAuthHttpService {
           _currentRequestId = null;
           return authResponse;
         } else {
-          // API error
-          _logger.e('❌ API returned status: ${response.statusCode}');
-          _updateStatus(FaceAuthStatus.error);
-
-          final authResponse = FaceAuthResponse(
-            requestId: requestId,
-            success: false,
-            errorMessage:
-                'Face detection service error: ${response.statusCode}',
-            timestamp: DateTime.now(),
-          );
-
-          _currentSession?.setResponse(authResponse);
-          _currentRequestId = null;
-          return authResponse;
+          // n8n not available, fallback to direct API
+          _logger.w('⚠️ n8n returned ${response.statusCode}, falling back to direct API');
+          return await requestFaceAuthDirect(userId: userId, metadata: metadata);
         }
       } on TimeoutException {
-        _logger.w('⏱️ Face detection request timed out');
-        _updateStatus(FaceAuthStatus.timeout);
-
-        final authResponse = FaceAuthResponse(
-          requestId: requestId,
-          success: false,
-          errorMessage: 'Face detection timed out',
-          timestamp: DateTime.now(),
-        );
-
-        _currentSession?.updateStatus(
-          FaceAuthStatus.timeout,
-          error: 'Request timed out',
-        );
-        _currentRequestId = null;
-        return authResponse;
+        _logger.w('⏱️ n8n timeout, falling back to direct API');
+        return await requestFaceAuthDirect(userId: userId, metadata: metadata);
       } catch (e) {
-        _logger.e('❌ HTTP request error: $e');
-        _updateStatus(FaceAuthStatus.error);
-
-        final authResponse = FaceAuthResponse(
-          requestId: requestId,
-          success: false,
-          errorMessage: 'Network error: $e',
-          timestamp: DateTime.now(),
-        );
-
-        _currentSession?.updateStatus(
-          FaceAuthStatus.error,
-          error: e.toString(),
-        );
-        _currentRequestId = null;
-        return authResponse;
+        _logger.e('❌ n8n error: $e, falling back to direct API');
+        return await requestFaceAuthDirect(userId: userId, metadata: metadata);
       }
     } catch (e) {
       _logger.e('❌ Face authentication request error: $e');
@@ -426,11 +385,11 @@ class FaceAuthHttpService {
         final requestData = {
           'persons_dir': '/data/persons',
           'camera_url': 'rtsp://mediamtx:8554/cam', // Use RTSP stream
-          'max_seconds': '8', // Quick scan - 8 seconds max
+          'max_seconds': '30', // Allow up to 30 seconds for face detection
           'stop_on_first': 'true', // Stop on first recognized face
           'model': 'hog', // Use HOG model (faster, CPU-friendly)
           'tolerance': '0.6',
-          'frame_stride': '1', // Check every frame for faster detection
+          'frame_stride': '2', // Check every 2nd frame (balance speed vs detection)
         };
 
         // Make HTTP POST request

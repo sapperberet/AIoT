@@ -123,11 +123,15 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
       }
     } else if (status == FaceAuthStatus.failed ||
         status == FaceAuthStatus.error) {
-      // Show error dialog on failure
+      // Show error dialog on failure - schedule after build
       if (mounted) {
         final authProvider = context.read<AuthProvider>();
-        _showErrorDialog(
-            authProvider.faceAuthMessage ?? 'Authentication failed');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showErrorDialog(
+                authProvider.faceAuthMessage ?? 'Authentication failed');
+          }
+        });
       }
     }
   }

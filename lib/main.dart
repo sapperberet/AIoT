@@ -76,6 +76,9 @@ class SmartHomeApp extends StatelessWidget {
         ),
 
         // State Providers
+        ChangeNotifierProvider<NotificationService>(
+          create: (_) => NotificationService(),
+        ),
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             authService: context.read<AuthService>(),
@@ -98,9 +101,6 @@ class SmartHomeApp extends StatelessWidget {
             firestoreService: context.read<FirestoreService>(),
             authService: context.read<AuthService>(),
           ),
-        ),
-        ChangeNotifierProvider<NotificationService>(
-          create: (_) => NotificationService(),
         ),
         ChangeNotifierProvider<AutomationProvider>(
           create: (_) => AutomationProvider(),
