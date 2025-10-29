@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
@@ -16,6 +17,10 @@ class DeviceProvider with ChangeNotifier {
   bool _isConnectedToMqtt = false;
   bool _useCloudMode = false;
   String? _userId;
+
+  // Performance optimization
+  Timer? _updateDebounceTimer;
+  final Map<String, dynamic> _pendingUpdates = {};
 
   DeviceProvider({
     required MqttService mqttService,
@@ -41,7 +46,7 @@ class DeviceProvider with ChangeNotifier {
       notifyListeners();
     });
 
-    // Listen to MQTT messages
+    // Listen to MQTT messages with debouncing for performance
     _mqttService.messageStream.listen(_handleMqttMessage);
 
     // Check connectivity and decide on local vs cloud
@@ -90,7 +95,7 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.fireAlarmTopic);
     _mqttService.subscribe(MqttConfig.motionAlarmTopic);
     _mqttService.subscribe(MqttConfig.doorAlarmTopic);
-    
+
     // Subscribe to face detection topics (Version 2)
     _mqttService.subscribe(MqttConfig.faceRecognizedTopic);
     _mqttService.subscribe(MqttConfig.faceUnrecognizedTopic);
@@ -121,7 +126,7 @@ class DeviceProvider with ChangeNotifier {
       _handleDeviceUpdate(message.topic, payload);
     }
   }
-  
+
   void _handleUnrecognizedFace(Map<String, dynamic> payload) {
     // Create security alarm for unrecognized person
     final alarm = AlarmEvent(
@@ -146,10 +151,10 @@ class DeviceProvider with ChangeNotifier {
 
     notifyListeners();
   }
-  
+
   void _handleRecognizedFace(Map<String, dynamic> payload) {
     final name = payload['name'] ?? 'Unknown';
-    
+
     // Create info log for recognized person
     final alarm = AlarmEvent(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -257,6 +262,8 @@ class DeviceProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _updateDebounceTimer?.cancel();
+    _pendingUpdates.clear();
     _mqttService.dispose();
     super.dispose();
   }

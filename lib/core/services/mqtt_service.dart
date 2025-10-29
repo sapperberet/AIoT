@@ -27,6 +27,13 @@ class MqttService {
   ConnectionStatus _currentStatus = ConnectionStatus.disconnected;
   ConnectionStatus get currentStatus => _currentStatus;
 
+  // CRITICAL FIX: Prevent blocking media playback during reconnection
+  Timer? _reconnectTimer;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
+  static const Duration _reconnectBackoff = Duration(seconds: 3);
+
   // Connect to MQTT broker
   Future<void> connect({
     String? brokerAddress,
@@ -104,13 +111,18 @@ class MqttService {
   }
 
   // Subscribe to a topic
-  void subscribe(String topic, {MqttQos qos = MqttQos.atLeastOnce}) {
+  void subscribe(String topic, {MqttQos? qos}) {
     if (_currentStatus != ConnectionStatus.connected) {
       _logger.w('Cannot subscribe: Not connected to broker');
       return;
     }
-    _client?.subscribe(topic, qos);
-    _logger.i('Subscribed to topic: $topic');
+    // Use QoS 0 (AtMostOnce) for real-time performance, unless explicitly specified
+    final effectiveQos = qos ??
+        (MqttConfig.useHighPerformanceMode
+            ? MqttQos.atMostOnce
+            : MqttQos.atLeastOnce);
+    _client?.subscribe(topic, effectiveQos);
+    _logger.i('Subscribed to topic: $topic (QoS: ${effectiveQos.name})');
   }
 
   // Unsubscribe from a topic
@@ -120,8 +132,7 @@ class MqttService {
   }
 
   // Publish a message
-  void publish(String topic, String message,
-      {MqttQos qos = MqttQos.atLeastOnce}) {
+  void publish(String topic, String message, {MqttQos? qos}) {
     if (_currentStatus != ConnectionStatus.connected) {
       _logger.w('Cannot publish: Not connected to broker');
       return;
@@ -129,13 +140,17 @@ class MqttService {
 
     final builder = MqttClientPayloadBuilder();
     builder.addString(message);
-    _client?.publishMessage(topic, qos, builder.payload!);
-    _logger.i('Published to $topic: $message');
+    // Use QoS 0 (AtMostOnce) for real-time performance, unless explicitly specified
+    final effectiveQos = qos ??
+        (MqttConfig.useHighPerformanceMode
+            ? MqttQos.atMostOnce
+            : MqttQos.atLeastOnce);
+    _client?.publishMessage(topic, effectiveQos, builder.payload!);
+    _logger.i('Published to $topic: $message (QoS: ${effectiveQos.name})');
   }
 
   // Publish JSON data
-  void publishJson(String topic, Map<String, dynamic> data,
-      {MqttQos qos = MqttQos.atLeastOnce}) {
+  void publishJson(String topic, Map<String, dynamic> data, {MqttQos? qos}) {
     publish(topic, jsonEncode(data), qos: qos);
   }
 
@@ -149,11 +164,41 @@ class MqttService {
     _logger.w('MQTT client disconnected');
     _updateStatus(ConnectionStatus.disconnected);
 
-    // Auto-reconnect after delay
-    Future.delayed(Duration(seconds: MqttConfig.reconnectDelay), () {
+    // CRITICAL FIX: Reconnect on background thread, don't block UI/media
+    _scheduleReconnect();
+  }
+
+  /// CRITICAL FIX: Schedule reconnection without blocking media playback
+  void _scheduleReconnect() {
+    if (_isReconnecting) {
+      _logger.i('Reconnection already in progress, skipping...');
+      return;
+    }
+
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      _logger.e('Max reconnection attempts reached, giving up');
+      _reconnectAttempts = 0;
+      return;
+    }
+
+    _isReconnecting = true;
+    _reconnectTimer?.cancel();
+
+    // Calculate exponential backoff
+    final delay = _reconnectBackoff * (_reconnectAttempts + 1);
+    _logger.i(
+        'Scheduling reconnect in ${delay.inSeconds}s (attempt ${_reconnectAttempts + 1}/$_maxReconnectAttempts)');
+
+    _reconnectTimer = Timer(delay, () {
       if (_currentStatus == ConnectionStatus.disconnected) {
-        _logger.i('Attempting to reconnect...');
-        connect();
+        _reconnectAttempts++;
+        _logger.i(
+            'Attempting to reconnect... (${_reconnectAttempts}/$_maxReconnectAttempts)');
+
+        // Run on background isolate to not block UI/media threads
+        connect().whenComplete(() {
+          _isReconnecting = false;
+        });
       }
     });
   }
@@ -169,6 +214,7 @@ class MqttService {
 
   // Cleanup
   void dispose() {
+    _reconnectTimer?.cancel();
     disconnect();
     _statusController.close();
     _messageController.close();

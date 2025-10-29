@@ -79,7 +79,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   void _checkEmailVerification() {
-    Timer.periodic(const Duration(seconds: 3), (timer) async {
+    Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
       try {
         final authProvider = context.read<AuthProvider>();
         await authProvider.reloadUser();

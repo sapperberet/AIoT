@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:async';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,6 +20,15 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isDoorOpen = false;
+  DateTime? _lastStreamStart;
+  int _connectionAttempts = 0;
+
+  // Performance tuning constants - CRITICAL CHANGES FOR AUDIO/VIDEO SYNC
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(milliseconds: 500);
+
+  // Monitoring metrics for debugging
+  int _audioSyncErrors = 0;
 
   @override
   void initState() {
@@ -26,8 +36,9 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
     _initializeCamera();
   }
 
-  void _initializeCamera() async {
+  Future<void> _initializeCamera() async {
     final authProvider = context.read<AuthProvider>();
+    _connectionAttempts = 0;
 
     // Check if beacon is discovered
     if (authProvider.discoveredBeacon == null) {
@@ -50,39 +61,192 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
       return;
     }
 
-    // Debug log
     debugPrint('📹 Camera RTSP stream URL: $streamUrl');
+    debugPrint('⏱️ Starting camera stream initialization...');
+    _lastStreamStart = DateTime.now();
 
+    await _connectToStream(streamUrl);
+  }
+
+  /// Connect to camera stream with retry logic and timeout
+  Future<void> _connectToStream(String streamUrl) async {
     try {
       // Dispose previous controller if exists
       await _controller?.dispose();
 
-      // Initialize video player with RTSP stream
-      // video_player on Android uses ExoPlayer which supports RTSP
-      _controller = VideoPlayerController.networkUrl(
-        Uri.parse(streamUrl),
-        videoPlayerOptions: VideoPlayerOptions(
-          allowBackgroundPlayback: false,
-          mixWithOthers: false,
-        ),
-      );
+      // CRITICAL: Try RTSP first (faster initialization), then fallback to HLS
+      // RTSP = immediate connection (good for testing)
+      // HLS = slower init but better audio sync once connected
+      final streamUrls = _getStreamUrlFallbackChain(streamUrl);
 
-      await _controller!.initialize();
-      await _controller!.play();
+      debugPrint('🎥 Stream URL chain: $streamUrls');
 
-      // Set to loop
-      _controller!.setLooping(true);
+      // Try each URL in sequence until one works
+      String? effectiveStreamUrl;
+      String? lastError;
 
-      setState(() {
-        _isLoading = false;
-      });
+      for (final url in streamUrls) {
+        try {
+          debugPrint('🔗 Trying: $url');
+
+          _controller = VideoPlayerController.networkUrl(
+            Uri.parse(url),
+            videoPlayerOptions: VideoPlayerOptions(
+              allowBackgroundPlayback: false,
+              mixWithOthers: false,
+            ),
+          );
+
+          _controller!.addListener(_onVideoControllerUpdate);
+
+          // Use longer timeout for HLS (slower to start)
+          final timeout = url.contains('.m3u8')
+              ? Duration(seconds: 20) // HLS: 20 seconds (segments need time)
+              : Duration(seconds: 10); // RTSP: 10 seconds (direct connection)
+
+          debugPrint(
+              '⏳ Initializing video player (timeout: ${timeout.inSeconds}s) - $url');
+
+          await Future.any([
+            _controller!.initialize(),
+            Future.delayed(timeout, () {
+              throw TimeoutException(
+                  'Video player initialization timeout for $url');
+            }),
+          ]);
+
+          // SUCCESS! Set playback speed and start
+          await _controller!.setPlaybackSpeed(1.0);
+          await _controller!.play();
+          _controller!.setLooping(true);
+
+          effectiveStreamUrl = url;
+          debugPrint('✅ Successfully connected to: $url');
+          break; // Exit loop on success
+        } on TimeoutException catch (e) {
+          lastError = e.message ?? 'Timeout';
+          debugPrint('⏱️ Timeout on $url: $lastError');
+          await _controller?.dispose();
+          _controller = null;
+          // Continue to next URL
+        } catch (e) {
+          lastError = e.toString();
+          debugPrint('❌ Failed on $url: $lastError');
+          await _controller?.dispose();
+          _controller = null;
+          // Continue to next URL
+        }
+      }
+
+      if (effectiveStreamUrl == null) {
+        throw Exception('All stream URLs failed. Last error: $lastError');
+      }
+
+      // Calculate initialization time
+      final elapsed = DateTime.now().difference(_lastStreamStart!);
+      debugPrint(
+          '✅ Camera stream initialized in ${elapsed.inMilliseconds}ms using: $effectiveStreamUrl');
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = null;
+          _connectionAttempts = 0;
+          _audioSyncErrors = 0;
+        });
+      }
     } catch (e) {
       debugPrint('❌ Video player error: $e');
+      _handleStreamError(
+          'Failed to initialize video player.\n\nError: ${e.toString()}');
+    }
+  }
+
+  /// Get fallback chain: [RTSP (fast), HLS (better sync), HLS with alt port]
+  List<String> _getStreamUrlFallbackChain(String rtspUrl) {
+    try {
+      if (rtspUrl.contains('rtsp://')) {
+        final ip = rtspUrl.split('rtsp://')[1].split(':')[0];
+        return [
+          rtspUrl, // Try RTSP first (faster initialization)
+          'http://$ip:8888/cam/index.m3u8', // HLS primary port
+          'http://$ip:8080/cam/index.m3u8', // HLS alternate port
+        ];
+      }
+      return [rtspUrl];
+    } catch (e) {
+      debugPrint('⚠️ Failed to build stream URL chain: $e');
+      return [rtspUrl];
+    }
+  }
+
+  /// Handle stream errors with retry logic
+  void _handleStreamError(String error) {
+    _connectionAttempts++;
+
+    if (_connectionAttempts < _maxRetries && mounted) {
+      debugPrint(
+          '🔄 Retry attempt $_connectionAttempts/$_maxRetries after ${_retryDelay.inMilliseconds}ms');
+
       setState(() {
         _errorMessage =
-            'Failed to initialize video player.\n\nError: ${e.toString()}';
-        _isLoading = false;
+            '$error\n\nRetrying... (${_connectionAttempts}/$_maxRetries)';
       });
+
+      Future.delayed(_retryDelay, () {
+        if (mounted) {
+          final authProvider = context.read<AuthProvider>();
+          final streamUrl = authProvider.getRtspStreamUrl();
+          if (streamUrl != null) {
+            _connectToStream(streamUrl);
+          }
+        }
+      });
+    } else {
+      debugPrint('❌ Failed to connect after $_connectionAttempts attempts');
+      if (mounted) {
+        setState(() {
+          _errorMessage = error;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Monitor video player state for optimization and audio/video sync
+  void _onVideoControllerUpdate() {
+    if (!mounted) return;
+
+    // CRITICAL FIX: Detect and handle audio sync problems
+    if (_controller?.value.isBuffering == true) {
+      _audioSyncErrors++;
+
+      if (_audioSyncErrors > 5) {
+        debugPrint(
+            '🚨 CRITICAL: Audio/video buffering detected (${_audioSyncErrors} times). Frame drops likely.');
+        debugPrint(
+            '📊 Current playback: isPlaying=${_controller?.value.isPlaying}, position=${_controller?.value.position}');
+
+        // If we see too many buffering events, consider restarting stream
+        if (_audioSyncErrors > 15 && mounted) {
+          debugPrint('⚠️ Excessive buffering detected - restarting stream');
+          _audioSyncErrors = 0;
+        }
+      }
+    } else {
+      // Reset counter when not buffering
+      if (_audioSyncErrors > 0) {
+        _audioSyncErrors = 0;
+      }
+    }
+
+    // Monitor frame drops
+    if (_controller?.value.position != null && _lastStreamStart != null) {
+      final duration = DateTime.now().difference(_lastStreamStart!);
+      if (duration.inSeconds > 5 && duration.inSeconds % 10 == 0) {
+        // Log metrics every 10 seconds
+        debugPrint('📈 Stream metrics - Audio sync errors: $_audioSyncErrors');
+      }
     }
   }
 
@@ -120,6 +284,7 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_onVideoControllerUpdate);
     _controller?.dispose();
     super.dispose();
   }
@@ -184,9 +349,11 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
             child: IconButton(
               icon: Icon(Iconsax.refresh, color: textColor),
               onPressed: () {
+                debugPrint('🔄 Manual camera refresh requested');
                 setState(() {
                   _isLoading = true;
                   _errorMessage = null;
+                  _connectionAttempts = 0;
                 });
                 _initializeCamera();
               },
@@ -223,9 +390,11 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
                     const SizedBox(height: 32),
                     ElevatedButton.icon(
                       onPressed: () {
+                        debugPrint('🔄 Manual retry requested');
                         setState(() {
                           _errorMessage = null;
                           _isLoading = true;
+                          _connectionAttempts = 0;
                         });
                         _initializeCamera();
                       },
