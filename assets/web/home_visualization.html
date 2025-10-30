@@ -77,31 +77,43 @@
             );
             camera.position.set(10, 10, 10);
 
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Renderer - Optimized for mobile
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true,
+                powerPreference: "high-performance"
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Smooth but performant
             renderer.shadowMap.enabled = true;
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            const canvas = renderer.domElement;
+            canvas.style.touchAction = 'none'; // Prevent default touch behaviors
+            document.getElementById('canvas-container').appendChild(canvas);
 
-            // Controls
+            // Controls - Optimized for mobile touch
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.enableRotate = true; // Ensure rotation is enabled
-            controls.enableZoom = true; // Enable zoom
-            controls.enablePan = true; // Enable panning
-            controls.rotateSpeed = 1.0;
-            controls.zoomSpeed = 1.2;
-            controls.panSpeed = 0.8;
-            controls.minDistance = 5; // Min zoom
-            controls.maxDistance = 500; // Max zoom
+            controls.dampingFactor = 0.1;
+            controls.enableRotate = true;
+            controls.enableZoom = false; // Disable OrbitControls zoom - we'll handle it manually
+            controls.enablePan = false;
             
-            console.log('🎮 OrbitControls initialized:', {
-                enabled: controls.enabled,
-                rotate: controls.enableRotate,
-                zoom: controls.enableZoom,
-                pan: controls.enablePan
-            });
+            // Mobile-optimized speeds
+            controls.rotateSpeed = 1.0;
+            
+            // Zoom limits
+            controls.minDistance = 10;
+            controls.maxDistance = 500;
+            
+            // Touch-specific settings - only one finger rotation
+            controls.touches = {
+                ONE: THREE.TOUCH.ROTATE
+            };
+            
+            controls.screenSpacePanning = false;
+            
+            console.log('🎮 Controls initialized - one finger rotation, manual two-finger zoom');
 
             // Lights
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -528,8 +540,99 @@
         window.updateAlarms = updateAlarms;
         window.loadModelFromBase64 = loadModelFromBase64;
 
+        // Setup proper two-finger controls
+        function setupTwoFingerControls() {
+            const canvas = renderer.domElement;
+            let lastTouchDistance = 0;
+            let lastTouchAngle = 0;
+            
+            function getTouchDistance(touch1, touch2) {
+                const dx = touch2.clientX - touch1.clientX;
+                const dy = touch2.clientY - touch1.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            function getTouchAngle(touch1, touch2) {
+                return Math.atan2(
+                    touch2.clientY - touch1.clientY,
+                    touch2.clientX - touch1.clientX
+                );
+            }
+            
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    lastTouchDistance = getTouchDistance(touch1, touch2);
+                    lastTouchAngle = getTouchAngle(touch1, touch2);
+                }
+            }, { passive: false });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = getTouchDistance(touch1, touch2);
+                    const currentAngle = getTouchAngle(touch1, touch2);
+                    
+                    // PINCH ZOOM - smooth and centered between fingers
+                    if (lastTouchDistance > 0) {
+                        const ratio = currentDistance / lastTouchDistance;
+                        const zoomFactor = 1 / ratio; // Invert so pinch-in = zoom in
+                        
+                        // Apply zoom smoothly
+                        const distance = camera.position.length();
+                        const newDistance = distance * zoomFactor;
+                        
+                        // Apply with limits
+                        if (newDistance >= controls.minDistance && newDistance <= controls.maxDistance) {
+                            camera.position.multiplyScalar(zoomFactor);
+                        }
+                    }
+                    
+                    // TWO-FINGER TWIST ROTATION
+                    const angleDelta = currentAngle - lastTouchAngle;
+                    if (Math.abs(angleDelta) > 0.02) { // Only rotate on significant angle change
+                        const rotationAxis = new THREE.Vector3(0, 1, 0); // Y axis (up)
+                        const rotationAngle = angleDelta * 3; // Rotation sensitivity
+                        
+                        // Rotate camera around the target
+                        const relativePos = camera.position.clone().sub(controls.target);
+                        const quat = new THREE.Quaternion();
+                        quat.setFromAxisAngle(rotationAxis, rotationAngle);
+                        relativePos.applyQuaternion(quat);
+                        camera.position.copy(controls.target).add(relativePos);
+                    }
+                    
+                    lastTouchDistance = currentDistance;
+                    lastTouchAngle = currentAngle;
+                }
+            }, { passive: false });
+            
+            canvas.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    lastTouchDistance = 0;
+                    lastTouchAngle = 0;
+                }
+            }, { passive: false });
+            
+            console.log('📱 Two-finger zoom and twist rotation enabled');
+        }
+
         // Initialize the scene
         init();
+        
+        // Setup two-finger controls
+        setTimeout(() => {
+            if (renderer && renderer.domElement) {
+                setupTwoFingerControls();
+            }
+        }, 100);
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
