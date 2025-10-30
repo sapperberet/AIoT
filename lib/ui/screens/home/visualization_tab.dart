@@ -36,6 +36,11 @@ class _VisualizationTabState extends State<VisualizationTab> {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
+      ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
+        // Silently handle console messages to prevent serialization crashes
+        // The WebView plugin has issues serializing complex objects in console messages
+        debugPrint('📍 Console [${message.level.name}]: ${message.message}');
+      })
       ..addJavaScriptChannel(
         'FlutterBridge',
         onMessageReceived: (JavaScriptMessage message) {
