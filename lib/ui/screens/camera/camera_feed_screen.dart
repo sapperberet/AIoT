@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'dart:async';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/home_visualization_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 class CameraFeedScreen extends StatefulWidget {
@@ -99,10 +100,13 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
 
           _controller!.addListener(_onVideoControllerUpdate);
 
-          // Use longer timeout for HLS (slower to start)
+          // CRITICAL FIX: Aggressive timeout for faster fallback
+          // RTSP is too slow on slow networks - give it only 5s then fall back to HLS
           final timeout = url.contains('.m3u8')
-              ? Duration(seconds: 20) // HLS: 20 seconds (segments need time)
-              : Duration(seconds: 10); // RTSP: 10 seconds (direct connection)
+              ? Duration(seconds: 15) // HLS: 15 seconds (faster than RTSP)
+              : Duration(
+                  seconds:
+                      5); // RTSP: 5 seconds ONLY (skip slow connections fast)
 
           debugPrint(
               '⏳ Initializing video player (timeout: ${timeout.inSeconds}s) - $url');
@@ -252,10 +256,14 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
 
   Future<void> _openDoor() async {
     final authProvider = context.read<AuthProvider>();
+    final vizProvider = context.read<HomeVisualizationProvider>();
 
     setState(() {
       _isDoorOpen = true;
     });
+
+    // Trigger door animation in 3D visualization (global sync)
+    vizProvider.triggerDoorOpen();
 
     final success = await authProvider.openDoor();
 
@@ -263,7 +271,9 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success ? 'Door opened successfully' : 'Failed to open door',
+            success
+                ? '✅ Door opened successfully! (Check 3D view)'
+                : '❌ Failed to open door',
           ),
           backgroundColor:
               success ? AppTheme.successColor : AppTheme.errorColor,

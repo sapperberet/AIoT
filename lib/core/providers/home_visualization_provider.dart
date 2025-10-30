@@ -5,8 +5,14 @@ class HomeVisualizationProvider with ChangeNotifier {
   Map<String, dynamic> _homeData = {};
   Map<String, AlarmVisualization> _activeVisualAlarms = {};
 
+  // Door state
+  bool _isDoorOpen = false;
+  bool _isDoorAnimating = false;
+
   Map<String, dynamic> get homeData => _homeData;
   Map<String, AlarmVisualization> get activeVisualAlarms => _activeVisualAlarms;
+  bool get isDoorOpen => _isDoorOpen;
+  bool get isDoorAnimating => _isDoorAnimating;
 
   // Load 3D home model data (dimensions, sections from CAD/SolidWorks)
   void loadHomeModel(Map<String, dynamic> modelData) {
@@ -36,6 +42,35 @@ class HomeVisualizationProvider with ChangeNotifier {
   void clearAllVisualAlarms() {
     _activeVisualAlarms.clear();
     notifyListeners();
+  }
+
+  // Door control methods
+  void setDoorOpen(bool isOpen) {
+    _isDoorOpen = isOpen;
+    notifyListeners();
+  }
+
+  void setDoorAnimating(bool isAnimating) {
+    _isDoorAnimating = isAnimating;
+    notifyListeners();
+  }
+
+  void triggerDoorOpen() {
+    _isDoorAnimating = true;
+    _isDoorOpen = true;
+    notifyListeners();
+
+    // Reset animating state after animation duration
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      _isDoorAnimating = false;
+      notifyListeners();
+    });
+
+    // Auto-close door after 6 seconds
+    Future.delayed(const Duration(seconds: 6), () {
+      _isDoorOpen = false;
+      notifyListeners();
+    });
   }
 
   Color _getAlarmColor(String severity) {

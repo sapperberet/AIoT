@@ -40,12 +40,22 @@
     <div id="info">Click on rooms to control devices</div>
     <div class="loading" id="loading">Loading 3D Model...</div>
 
-    <!-- Three.js from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Three.js from CDN - ES Module approach -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
-    <script>
+    <script type="module">
+        // Import Three.js modules
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
         // Scene setup
         let scene, camera, renderer, controls;
         let homeModel;
@@ -74,9 +84,24 @@
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             // Controls
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
+            controls.enableRotate = true; // Ensure rotation is enabled
+            controls.enableZoom = true; // Enable zoom
+            controls.enablePan = true; // Enable panning
+            controls.rotateSpeed = 1.0;
+            controls.zoomSpeed = 1.2;
+            controls.panSpeed = 0.8;
+            controls.minDistance = 5; // Min zoom
+            controls.maxDistance = 500; // Max zoom
+            
+            console.log('🎮 OrbitControls initialized:', {
+                enabled: controls.enabled,
+                rotate: controls.enableRotate,
+                zoom: controls.enableZoom,
+                pan: controls.enablePan
+            });
 
             // Lights
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -103,37 +128,116 @@
         }
 
         function loadHomeModel() {
-            // Try to load glTF model if available
-            // For now, create a placeholder house structure
+            // Initial fallback to placeholder
+            // The actual model will be loaded via loadModelFromBase64() called from Flutter
+            console.log('⏳ Waiting for Flutter to send .glb model...');
             createPlaceholderHouse();
             document.getElementById('loading').style.display = 'none';
+        }
 
-            /* Uncomment when you have a .glb model:
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-                'assets/3d/home_model.glb',
-                function(gltf) {
-                    homeModel = gltf.scene;
-                    scene.add(homeModel);
-                    
-                    // Extract room meshes for interaction
-                    homeModel.traverse((child) => {
-                        if (child.isMesh && child.name) {
-                            roomMeshes[child.name] = child;
-                            child.userData.originalColor = child.material.color.clone();
-                        }
-                    });
-                    
-                    document.getElementById('loading').style.display = 'none';
-                },
-                undefined,
-                function(error) {
-                    console.error('Error loading model:', error);
-                    createPlaceholderHouse();
-                    document.getElementById('loading').style.display = 'none';
+        // Load 3D model from base64 string (called from Flutter)
+        function loadModelFromBase64(base64String) {
+            try {
+                console.log('📦 Received base64 model from Flutter');
+                console.log('📊 Base64 length:', base64String.length);
+                
+                // Convert base64 to binary
+                const binaryString = atob(base64String);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
                 }
-            );
-            */
+                
+                console.log('🔄 Creating blob from binary data...');
+                const blob = new Blob([bytes], { type: 'model/gltf-binary' });
+                const url = URL.createObjectURL(blob);
+                
+                console.log('🚀 Loading model with GLTFLoader...');
+                const loader = new GLTFLoader();
+                loader.load(
+                    url,
+                    function(gltf) {
+                        // Remove placeholder if it exists
+                        if (roomMeshes['living_room']) {
+                            Object.values(roomMeshes).forEach(mesh => {
+                                scene.remove(mesh);
+                            });
+                            roomMeshes = {};
+                        }
+                        
+                        homeModel = gltf.scene;
+                        
+                        // CRITICAL FIX: Scale up the model significantly
+                        homeModel.scale.set(100, 100, 100); // Scale 100x
+                        
+                        scene.add(homeModel);
+                        
+                        console.log('✅ 3D Model loaded successfully from base64!');
+                        console.log('📏 Model scaled to:', homeModel.scale);
+                        
+                        // Calculate bounding box to understand model size
+                        const box = new THREE.Box3().setFromObject(homeModel);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+                        
+                        console.log('📦 Model size:', size);
+                        console.log('📍 Model center:', center);
+                        
+                        // Position camera to view the entire model
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const fov = camera.fov * (Math.PI / 180);
+                        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                        cameraZ *= 1.5; // Add some padding
+                        
+                        camera.position.set(cameraZ, cameraZ * 0.7, cameraZ);
+                        camera.lookAt(center);
+                        
+                        // Update controls target to model center
+                        controls.target.copy(center);
+                        controls.update();
+                        
+                        console.log('🎥 Camera positioned at:', camera.position);
+                        console.log('🎯 Camera looking at:', center);
+                        
+                        // Extract room meshes and door for interaction
+                        homeModel.traverse((child) => {
+                            if (child.isMesh && child.name) {
+                                console.log('Found mesh:', child.name);
+                                
+                                // Store all meshes
+                                roomMeshes[child.name] = child;
+                                
+                                // Store original color for reset
+                                if (child.material) {
+                                    if (child.material.color) {
+                                        child.userData.originalColor = child.material.color.clone();
+                                    }
+                                    // Store original position for animations
+                                    child.userData.originalPosition = child.position.clone();
+                                    child.userData.originalRotation = child.rotation.clone();
+                                }
+                            }
+                        });
+                        
+                        console.log('📦 Extracted meshes:', Object.keys(roomMeshes));
+                        
+                        // Clean up blob URL
+                        URL.revokeObjectURL(url);
+                    },
+                    function(xhr) {
+                        const percent = (xhr.loaded / xhr.total * 100).toFixed(2);
+                        console.log(percent + '% loaded');
+                    },
+                    function(error) {
+                        console.error('❌ Error loading model from base64:', error);
+                        console.log('⚠️ Keeping placeholder house');
+                        URL.revokeObjectURL(url);
+                    }
+                );
+            } catch (error) {
+                console.error('❌ Error processing base64 model:', error);
+                console.log('⚠️ Keeping placeholder house');
+            }
         }
 
         function createPlaceholderHouse() {
@@ -164,16 +268,18 @@
                 roomMeshes[room.name] = mesh;
             });
 
-            // Floor
+            // Floor (hidden - model has its own floor)
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
             const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
+            floor.visible = false; // Hide the floor
             scene.add(floor);
 
-            // Grid helper
+            // Grid helper (hidden)
             const gridHelper = new THREE.GridHelper(20, 20);
+            gridHelper.visible = false; // Hide the grid
             scene.add(gridHelper);
         }
 
@@ -280,6 +386,147 @@
             controls.target.set(0, 0, 0);
             controls.update();
         }
+
+        // Door animation functions
+        let doorMesh = null;
+        let doorAnimating = false;
+        let doorOpen = false;
+
+        function findDoor() {
+            // Try to find door mesh by common names
+            const doorNames = ['door', 'Door', 'DOOR', 'entrance_door', 'front_door', 'main_door', 'porte', 'Porte'];
+            for (const name of doorNames) {
+                if (roomMeshes[name]) {
+                    doorMesh = roomMeshes[name];
+                    console.log('🚪 Found door mesh:', name);
+                    return true;
+                }
+            }
+            console.log('⚠️ Door mesh not found. Available meshes:', Object.keys(roomMeshes));
+            return false;
+        }
+
+        function openDoor() {
+            if (!doorMesh) {
+                if (!findDoor()) {
+                    console.log('❌ Cannot animate door - mesh not found');
+                    // Try to animate any entrance-related mesh
+                    const entrance = roomMeshes['entrance'] || roomMeshes['Entrance'] || roomMeshes['hallway'];
+                    if (entrance) {
+                        console.log('✅ Animating entrance area instead');
+                        animateMesh(entrance, true);
+                    }
+                    return;
+                }
+            }
+
+            if (doorAnimating || doorOpen) {
+                console.log('⚠️ Door already open or animating');
+                return;
+            }
+
+            console.log('🚪 Opening door...');
+            doorAnimating = true;
+
+            // Smooth rotation animation (door swings open)
+            const targetRotation = doorMesh.userData.originalRotation.y + Math.PI / 2; // 90 degrees
+            const startRotation = doorMesh.rotation.y;
+            const duration = 1000; // 1 second
+            const startTime = Date.now();
+
+            function animateOpen() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+                
+                doorMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateOpen);
+                } else {
+                    doorAnimating = false;
+                    doorOpen = true;
+                    console.log('✅ Door opened');
+                    
+                    // Auto-close after 5 seconds
+                    setTimeout(() => {
+                        closeDoor();
+                    }, 5000);
+                }
+            }
+
+            animateOpen();
+        }
+
+        function closeDoor() {
+            if (!doorMesh || doorAnimating || !doorOpen) {
+                return;
+            }
+
+            console.log('🚪 Closing door...');
+            doorAnimating = true;
+
+            const targetRotation = doorMesh.userData.originalRotation.y;
+            const startRotation = doorMesh.rotation.y;
+            const duration = 1000;
+            const startTime = Date.now();
+
+            function animateClose() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                doorMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateClose);
+                } else {
+                    doorAnimating = false;
+                    doorOpen = false;
+                    console.log('✅ Door closed');
+                }
+            }
+
+            animateClose();
+        }
+
+        // Generic mesh animation for rooms/objects
+        function animateMesh(mesh, highlight = false) {
+            if (!mesh || !mesh.material) return;
+
+            const originalColor = mesh.userData.originalColor || mesh.material.color.clone();
+            const targetColor = new THREE.Color(highlight ? 0x00ff00 : 0xffffff);
+            const duration = 500;
+            const startTime = Date.now();
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                mesh.material.color.lerpColors(originalColor, targetColor, progress);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Reset after highlight
+                    setTimeout(() => {
+                        mesh.material.color.copy(originalColor);
+                    }, 300);
+                }
+            }
+
+            animate();
+        }
+
+        // Expose functions to global scope for Flutter to call
+        window.resetCamera = resetCamera;
+        window.openDoor = openDoor;
+        window.closeDoor = closeDoor;
+        window.updateAlarms = updateAlarms;
+        window.loadModelFromBase64 = loadModelFromBase64;
 
         // Initialize the scene
         init();
