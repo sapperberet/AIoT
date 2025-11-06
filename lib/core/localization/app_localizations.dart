@@ -91,7 +91,7 @@ class AppLocalizations {
       'week': 'Week',
       'month': 'Month',
       'year': 'Year',
-      
+
       // Camera Feed
       'camera_feed': 'Camera Feed',
 
@@ -188,6 +188,26 @@ class AppLocalizations {
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
       'language_arabic': 'العربية (Arabic)',
+
+      // AI Chat
+      'ai_assistant': 'AI Assistant',
+      'ai_chat': 'AI Chat',
+      'online': 'Online',
+      'offline': 'Offline',
+      'ai_chat_welcome':
+          'Ask me anything about your smart home. I can help you control devices, create automations, and answer questions.',
+      'suggestion_status': 'What\'s the status of my devices?',
+      'suggestion_automation': 'Help me create an automation',
+      'suggestion_energy': 'Show me my energy consumption',
+      'type_message': 'Type a message...',
+      'configure_server': 'Configure Server',
+      'clear_chat': 'Clear Chat',
+      'clear_chat_confirm': 'Are you sure you want to clear all chat messages?',
+      'server_url': 'Server URL',
+      'ai_server_url_hint':
+          'Enter the URL of your AI agent server running on your Linux machine',
+      'server_url_updated': 'Server URL updated successfully',
+      'retry': 'Retry',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -267,7 +287,7 @@ class AppLocalizations {
       'week': 'Woche',
       'month': 'Monat',
       'year': 'Jahr',
-      
+
       // Camera Feed
       'camera_feed': 'Kamera-Feed',
 
@@ -366,6 +386,27 @@ class AppLocalizations {
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
       'language_arabic': 'العربية (Arabic)',
+
+      // AI Chat
+      'ai_assistant': 'KI-Assistent',
+      'ai_chat': 'KI-Chat',
+      'online': 'Online',
+      'offline': 'Offline',
+      'ai_chat_welcome':
+          'Fragen Sie mich alles über Ihr Smart Home. Ich kann Ihnen helfen, Geräte zu steuern, Automatisierungen zu erstellen und Fragen zu beantworten.',
+      'suggestion_status': 'Was ist der Status meiner Geräte?',
+      'suggestion_automation': 'Hilf mir eine Automatisierung zu erstellen',
+      'suggestion_energy': 'Zeige mir meinen Energieverbrauch',
+      'type_message': 'Nachricht eingeben...',
+      'configure_server': 'Server konfigurieren',
+      'clear_chat': 'Chat löschen',
+      'clear_chat_confirm':
+          'Sind Sie sicher, dass Sie alle Chat-Nachrichten löschen möchten?',
+      'server_url': 'Server-URL',
+      'ai_server_url_hint':
+          'Geben Sie die URL Ihres KI-Agentenservers ein, der auf Ihrer Linux-Maschine läuft',
+      'server_url_updated': 'Server-URL erfolgreich aktualisiert',
+      'retry': 'Wiederholen',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -443,7 +484,7 @@ class AppLocalizations {
       'week': 'الأسبوع',
       'month': 'الشهر',
       'year': 'السنة',
-      
+
       // Camera Feed
       'camera_feed': 'تغذية الكاميرا',
 
@@ -541,6 +582,26 @@ class AppLocalizations {
       'language_english': 'English',
       'language_german': 'Deutsch (German)',
       'language_arabic': 'العربية (Arabic)',
+
+      // AI Chat
+      'ai_assistant': 'مساعد الذكاء الاصطناعي',
+      'ai_chat': 'دردشة الذكاء الاصطناعي',
+      'online': 'متصل',
+      'offline': 'غير متصل',
+      'ai_chat_welcome':
+          'اسألني أي شيء عن منزلك الذكي. يمكنني مساعدتك في التحكم في الأجهزة وإنشاء الأتمتة والإجابة على الأسئلة.',
+      'suggestion_status': 'ما هي حالة أجهزتي؟',
+      'suggestion_automation': 'ساعدني في إنشاء أتمتة',
+      'suggestion_energy': 'أظهر لي استهلاك الطاقة',
+      'type_message': 'اكتب رسالة...',
+      'configure_server': 'تكوين الخادم',
+      'clear_chat': 'مسح الدردشة',
+      'clear_chat_confirm': 'هل أنت متأكد من أنك تريد مسح جميع رسائل الدردشة؟',
+      'server_url': 'عنوان URL للخادم',
+      'ai_server_url_hint':
+          'أدخل عنوان URL لخادم وكيل الذكاء الاصطناعي الذي يعمل على جهاز Linux الخاص بك',
+      'server_url_updated': 'تم تحديث عنوان URL للخادم بنجاح',
+      'retry': 'إعادة المحاولة',
     },
   };
 

@@ -119,6 +119,10 @@ class SettingsProvider with ChangeNotifier {
   String get userPassword => _userPassword;
   bool get enableAuthAudio => _enableAuthAudio;
 
+  // AI Chat settings
+  String _aiServerUrl = 'http://localhost:5678/webhook-test/agent';
+  String? get aiServerUrl => _aiServerUrl;
+
   // Change theme
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
@@ -235,6 +239,13 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
+  // Set AI server URL
+  void setAiServerUrl(String url) {
+    _aiServerUrl = url;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
   // Load settings from storage
   Future<void> loadSettings() async {
     // First, try to load from Firestore if user is logged in
@@ -276,6 +287,10 @@ class SettingsProvider with ChangeNotifier {
           _userEmail = userSettings['userEmail'] as String? ?? '';
           _userPassword = userSettings['userPassword'] as String? ?? '';
           _enableAuthAudio = userSettings['enableAuthAudio'] as bool? ?? true;
+
+          // AI Chat settings
+          _aiServerUrl = userSettings['aiServerUrl'] as String? ??
+              'http://192.168.1.100:8000';
 
           notifyListeners();
           // Also save to local storage for offline access
@@ -345,6 +360,7 @@ class SettingsProvider with ChangeNotifier {
           'userEmail': _userEmail,
           'userPassword': _userPassword,
           'enableAuthAudio': _enableAuthAudio,
+          'aiServerUrl': _aiServerUrl,
           'updatedAt': DateTime.now().toIso8601String(),
         });
       } catch (e) {
@@ -393,6 +409,9 @@ class SettingsProvider with ChangeNotifier {
       _userPassword = prefs.getString('userPassword') ?? '';
       _enableAuthAudio = prefs.getBool('enableAuthAudio') ?? true;
 
+      _aiServerUrl =
+          prefs.getString('aiServerUrl') ?? 'http://192.168.1.100:8000';
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading settings from local storage: $e');
@@ -427,6 +446,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setString('userEmail', _userEmail);
       await prefs.setString('userPassword', _userPassword);
       await prefs.setBool('enableAuthAudio', _enableAuthAudio);
+      await prefs.setString('aiServerUrl', _aiServerUrl);
     } catch (e) {
       debugPrint('Error saving settings to local storage: $e');
     }

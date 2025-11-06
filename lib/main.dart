@@ -9,11 +9,13 @@ import 'core/services/face_auth_service.dart';
 import 'core/services/face_auth_http_service.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/ai_chat_service.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/automation_provider.dart';
+import 'core/providers/ai_chat_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
@@ -26,6 +28,7 @@ import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
 import 'ui/screens/automations/automations_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
+import 'ui/screens/chat/ai_chat_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
@@ -81,6 +84,9 @@ class SmartHomeApp extends StatelessWidget {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
+        Provider<AIChatService>(
+          create: (_) => AIChatService(),
+        ),
 
         // State Providers
         ChangeNotifierProvider<NotificationService>(
@@ -111,6 +117,11 @@ class SmartHomeApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<AutomationProvider>(
           create: (_) => AutomationProvider(),
+        ),
+        ChangeNotifierProvider<AIChatProvider>(
+          create: (context) => AIChatProvider(
+            chatService: context.read<AIChatService>(),
+          ),
         ),
       ],
       child: Consumer<SettingsProvider>(
@@ -160,6 +171,7 @@ class SmartHomeApp extends StatelessWidget {
               '/notifications': (context) => const NotificationsScreen(),
               '/automations': (context) => const AutomationsScreen(),
               '/energy': (context) => const EnergyMonitorScreen(),
+              '/ai-chat': (context) => const AIChatScreen(),
             },
           );
         },
