@@ -79,7 +79,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     print('[AI Chat Screen] _sendMessage called');
     final message = _messageController.text.trim();
     print('[AI Chat Screen] Message: "$message"');
-    
+
     if (message.isEmpty) {
       print('[AI Chat Screen] Message is empty, returning');
       return;

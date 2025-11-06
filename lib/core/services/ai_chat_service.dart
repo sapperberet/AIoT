@@ -59,15 +59,16 @@ class AIChatService {
 
         await for (var chunk in response.stream.transform(utf8.decoder)) {
           print('[AI Chat Service] Raw chunk received: $chunk');
-          
+
           // Parse each line of the streamed response
           final lines = chunk.split('\n');
           print('[AI Chat Service] Split into ${lines.length} lines');
 
           for (var line in lines) {
             if (line.trim().isEmpty) continue;
-            
-            print('[AI Chat Service] Processing line: ${line.substring(0, line.length > 100 ? 100 : line.length)}...');
+
+            print(
+                '[AI Chat Service] Processing line: ${line.substring(0, line.length > 100 ? 100 : line.length)}...');
 
             try {
               final data = jsonDecode(line);
@@ -76,7 +77,7 @@ class AIChatService {
 
               // Handle different n8n streaming event types
               final type = data['type'] as String?;
-              
+
               if (type == 'begin') {
                 print('[AI Chat Service] ✅ Stream begin event');
                 continue;
@@ -90,39 +91,40 @@ class AIChatService {
                 print('[AI Chat Service] Error field: ${data['error']}');
                 print('[AI Chat Service] Message field: ${data['message']}');
                 print('[AI Chat Service] Metadata: ${data['metadata']}');
-                
+
                 // Try multiple ways to extract error info
                 String errorMsg = 'AI workflow error';
-                
+
                 if (data['error'] != null) {
                   if (data['error'] is String) {
                     errorMsg = data['error'] as String;
                   } else if (data['error'] is Map) {
-                    errorMsg = data['error']['message'] ?? data['error'].toString();
+                    errorMsg =
+                        data['error']['message'] ?? data['error'].toString();
                   }
                 } else if (data['message'] != null) {
                   errorMsg = data['message'] as String;
                 } else if (data['description'] != null) {
                   errorMsg = data['description'] as String;
                 }
-                
+
                 print('[AI Chat Service] Yielding error message: $errorMsg');
                 yield '⚠️ $errorMsg\n\n(Check n8n workflow logs for details)';
                 continue;
               }
-              
+
               // Extract content from data/message/chunk events
               if (type == 'item' ||
                   type == 'message' ||
                   type == 'chunk' ||
                   type == 'data' ||
                   type == 'token') {
-                String content =
-                    data['content'] as String? ?? 
-                    data['data'] as String? ?? 
-                    data['text'] as String? ?? 
-                    data['output'] as String? ?? 
-                    data['message'] as String? ?? '';
+                String content = data['content'] as String? ??
+                    data['data'] as String? ??
+                    data['text'] as String? ??
+                    data['output'] as String? ??
+                    data['message'] as String? ??
+                    '';
                 print('[AI Chat Service] Extracted content: $content');
 
                 // Handle <think> blocks if filtering is enabled
@@ -155,7 +157,8 @@ class AIChatService {
                   print('[AI Chat Service] Content is empty, not yielding');
                 }
               } else {
-                print('[AI Chat Service] ⚠️ Unknown event type: $type, full data: $data');
+                print(
+                    '[AI Chat Service] ⚠️ Unknown event type: $type, full data: $data');
               }
             } catch (e) {
               print('[AI Chat Service] Error parsing line: $e');
