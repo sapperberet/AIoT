@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../config/mqtt_config.dart';
 
 enum ConnectionMode {
   cloud,
@@ -119,8 +120,10 @@ class SettingsProvider with ChangeNotifier {
   String get userPassword => _userPassword;
   bool get enableAuthAudio => _enableAuthAudio;
 
-  // AI Chat settings
-  String _aiServerUrl = 'http://localhost:5678/webhook-test/agent';
+  // AI Chat settings - use same backend as MQTT broker (where n8n is running)
+  // Production API endpoint (always active when workflow is active)
+  String _aiServerUrl =
+      'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
   String? get aiServerUrl => _aiServerUrl;
 
   // Change theme

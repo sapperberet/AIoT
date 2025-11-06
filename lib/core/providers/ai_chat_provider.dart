@@ -64,7 +64,14 @@ class AIChatProvider with ChangeNotifier {
 
   /// Send a message to the AI agent with streaming support
   Future<void> sendMessage(String content, String userId) async {
-    if (content.trim().isEmpty) return;
+    print('[AI Chat] sendMessage called with content: "$content"');
+
+    if (content.trim().isEmpty) {
+      print('[AI Chat] Content is empty, returning');
+      return;
+    }
+
+    print('[AI Chat] Creating user message...');
 
     // Play send sound
     _playSendSound();
@@ -79,6 +86,8 @@ class AIChatProvider with ChangeNotifier {
     );
 
     _messages.add(userMessage);
+    print(
+        '[AI Chat] User message added to list. Total messages: ${_messages.length}');
     notifyListeners();
 
     // Update message status to sent
@@ -87,16 +96,18 @@ class AIChatProvider with ChangeNotifier {
       _messages[index] = userMessage.copyWith(status: MessageStatus.sent);
       notifyListeners();
     }
-
     // Show loading indicator
     _isLoading = true;
     _error = null;
+    print('[AI Chat] Starting AI request...');
     notifyListeners();
 
     try {
       // Generate session ID for this conversation
       final sessionId = _uuid.v4();
+      print('[AI Chat] Session ID: $sessionId');
 
+      // Create AI message placeholder
       // Create AI message placeholder
       final aiMessageId = _uuid.v4();
       final aiMessage = ChatMessage(
@@ -111,6 +122,7 @@ class AIChatProvider with ChangeNotifier {
 
       // Receive streamed response
       final buffer = StringBuffer();
+      print('[AI Chat] Starting to receive stream...');
 
       await for (var chunk in _chatService.sendMessageStream(
         content,
@@ -119,6 +131,8 @@ class AIChatProvider with ChangeNotifier {
         filterThinkBlocks: !_showThinkMode, // Filter if NOT showing think mode
       )) {
         buffer.write(chunk);
+        print(
+            '[AI Chat] Received chunk (${chunk.length} chars): ${chunk.substring(0, chunk.length > 50 ? 50 : chunk.length)}...');
 
         // Update AI message with accumulated content
         final aiIndex = _messages.indexWhere((m) => m.id == aiMessageId);

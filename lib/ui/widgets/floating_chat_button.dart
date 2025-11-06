@@ -40,7 +40,7 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
 
   void _startCollapseTimer() {
     _collapseTimer?.cancel();
-    _collapseTimer = Timer(const Duration(seconds: 5), () {
+    _collapseTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
           _isExpanded = false;

@@ -76,19 +76,27 @@ class _AIChatScreenState extends State<AIChatScreen>
   }
 
   void _sendMessage() {
+    print('[AI Chat Screen] _sendMessage called');
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    print('[AI Chat Screen] Message: "$message"');
+    
+    if (message.isEmpty) {
+      print('[AI Chat Screen] Message is empty, returning');
+      return;
+    }
 
     final authProvider = context.read<AuthProvider>();
     final chatProvider = context.read<AIChatProvider>();
 
-    if (authProvider.currentUser != null) {
-      chatProvider.sendMessage(message, authProvider.currentUser!.uid);
-      _messageController.clear();
+    // Get user ID (use debug fallback if auth is bypassed)
+    final userId = authProvider.currentUser?.uid ?? 'debug-user';
+    print('[AI Chat Screen] User ID: $userId');
 
-      // Scroll to bottom after sending
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-    }
+    chatProvider.sendMessage(message, userId);
+    _messageController.clear();
+
+    // Scroll to bottom after sending
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   @override
@@ -287,46 +295,49 @@ class _AIChatScreenState extends State<AIChatScreen>
 
   Widget _buildEmptyState(AppLocalizations loc, bool isDark, Color textColor) {
     return Center(
-      child: FadeIn(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient.scale(0.3),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Iconsax.message_programming,
-                size: 80,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              loc.t('ai_assistant'),
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                loc.t('ai_chat_welcome'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: textColor.withOpacity(0.6),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: FadeIn(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient.scale(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Iconsax.message_programming,
+                  size: 80,
+                  color: AppTheme.primaryColor,
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            _buildSuggestionChips(loc),
-          ],
+              const SizedBox(height: 24),
+              Text(
+                loc.t('ai_assistant'),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  loc.t('ai_chat_welcome'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: textColor.withOpacity(0.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              _buildSuggestionChips(loc),
+            ],
+          ),
         ),
       ),
     );
