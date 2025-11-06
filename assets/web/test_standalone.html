@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home 3D Visualization - Test Standalone</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #4CAF50;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        /* Theme Switcher */
+        #theme-panel {
+            position: absolute;
+            top: 10px;
+            left: 80px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 0;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            visibility: visible !important;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        #theme-panel.minimized {
+            left: 80px;
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-height: 60px;
+            overflow: hidden;
+        }
+        
+        #theme-panel.minimized #theme-panel-content {
+            display: none;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            gap: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #theme-panel h3 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+            border: none;
+            padding: 0;
+        }
+        
+        .minimize-btn {
+            display: none;
+        }
+        
+        .minimize-btn:hover {
+            background: rgba(76, 175, 80, 0.6);
+            border-color: #4CAF50;
+        }
+        
+        .theme-section {
+            margin-bottom: 12px;
+        }
+        
+        .theme-section label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+        
+        .theme-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .theme-btn {
+            padding: 8px 10px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .theme-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .theme-btn.active {
+            background: #4CAF50;
+            border-color: #45a049;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+        
+        .toggle-btn {
+            padding: 8px 10px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(76, 175, 80, 0.6);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        
+        .toggle-btn:hover {
+            background: rgba(76, 175, 80, 0.8);
+        }
+        
+        /* Color picker for selected mesh */
+        #selected-mesh-color-panel {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            display: none;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        }
+        
+        #selected-mesh-color-panel.active {
+            display: block;
+        }
+        
+        .mesh-name-display {
+            font-size: 12px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+            font-weight: bold;
+        }
+        
+        .color-picker-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .color-picker-group input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .color-picker-group input[type="text"] {
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 4px;
+            color: white;
+            font-size: 11px;
+            font-family: monospace;
+            width: 100px;
+        }
+        
+        /* Navigation Controls */
+        #navigation-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            border-radius: 8px;
+            padding: 0;
+            z-index: 999;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+        
+        #navigation-controls.minimized .nav-content {
+            display: none;
+        }
+        
+        #navigation-controls.minimized {
+            padding: 0;
+            width: 60px;
+            height: 60px;
+        }
+        
+        .nav-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .nav-label {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 0;
+        }
+        
+        .nav-minimize-btn {
+            display: none;
+        }
+        
+        .nav-minimize-btn:hover {
+            background: rgba(76, 175, 80, 0.6);
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+        }
+        
+        .nav-content {
+            transition: all 0.3s ease;
+        }
+        
+        .nav-arrows {
+            display: grid;
+            grid-template-columns: 35px 35px 35px;
+            grid-template-rows: 30px 30px 30px;
+            gap: 3px;
+        }
+        
+        .nav-btn {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.6);
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            padding: 0;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(76, 175, 80, 0.6);
+            border-color: #4CAF50;
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+        }
+        
+        .nav-btn:active {
+            background: rgba(76, 175, 80, 0.8);
+            box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .nav-btn.forward {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .nav-btn.left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        .nav-btn.back {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        .nav-btn.right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        /* Minecraft-style HUD */
+        #minecraft-hud {
+            position: fixed;
+            top: 10px;
+            left: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #8B8680;
+            padding: 0;
+            font-family: 'Minecraft', 'Arial', sans-serif;
+            z-index: 998;
+            color: white;
+            text-shadow: 2px 2px 0px #000;
+            width: 60px;
+            height: 60px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #minecraft-hud.minimized {
+            top: 10px;
+            left: 150px;
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-height: 60px;
+            overflow: hidden;
+        }
+        
+        #minecraft-hud.minimized .hud-content {
+            display: none;
+        }
+        
+        .hud-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+            gap: 0;
+        }
+        
+        .hud-title {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            margin: 0;
+            color: #FFD700;
+        }
+        
+        .hud-minimize-btn {
+            display: none;
+        }
+        
+        .hud-minimize-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+        
+        .hud-minimize-btn:active {
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .hud-section {
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #8B8680;
+        }
+        
+        .hud-label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 4px;
+        }
+        
+        .hud-bar {
+            background: #2A2A2A;
+            border: 1px solid #555;
+            height: 10px;
+            width: 100%;
+            display: flex;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        
+        .hud-bar-fill {
+            background: #4CAF50;
+            height: 100%;
+            transition: width 0.1s;
+            box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
+        }
+        
+        .hud-bar-fill.low {
+            background: #FF6B6B;
+        }
+        
+        .hud-bar-fill.medium {
+            background: #FFD700;
+        }
+        
+        .hud-value {
+            font-size: 10px;
+            color: #AAAAAA;
+            text-align: right;
+        }
+        
+        .hud-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-top: 8px;
+        }
+        
+        .hud-slot {
+            width: 40px;
+            height: 40px;
+            background: #8B7355;
+            border: 2px solid #5C4033;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.1s;
+            box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5), 0 2px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .hud-slot:hover {
+            background: #9C8566;
+            box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5), 0 2px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+        
+        .hud-slot.active {
+            background: #5C4033;
+            box-shadow: inset 0 0 4px rgba(255, 215, 0, 0.6), 0 2px 2px rgba(0, 0, 0, 0.5);
+            border-color: #FFD700;
+        }
+        
+        .hud-hotbar {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 3px;
+            margin-top: 8px;
+        }
+        
+        .hud-hotbar-slot {
+            width: 35px;
+            height: 35px;
+            background: #8B7355;
+            border: 2px solid #5C4033;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.1s;
+            box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .hud-hotbar-slot:hover {
+            background: #9C8566;
+        }
+        
+        .hud-hotbar-slot.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 6px rgba(255, 215, 0, 0.8), inset 0 0 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .hud-button {
+            background: #8B7355;
+            border: 2px solid #5C4033;
+            color: #FFD700;
+            padding: 6px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.1s;
+            width: 100%;
+            text-shadow: 1px 1px 0px #000;
+        }
+        
+        .hud-button:hover {
+            background: #9C8566;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+        
+        .hud-button:active {
+            background: #5C4033;
+            box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info">Click on objects to customize their colors</div>
+    <div class="loading" id="loading">Loading 3D Model...</div>
+
+    <!-- Navigation Controls -->
+    <div id="navigation-controls" class="minimized">
+        <div class="nav-header" style="cursor: pointer;">
+            <div class="nav-label">🧭</div>
+        </div>
+        <div class="nav-content">
+        <div class="nav-arrows">
+            <button class="nav-btn forward" title="Move Forward">↑</button>
+            <button class="nav-btn left" title="Move Left">←</button>
+            <button class="nav-btn back" title="Move Back">↓</button>
+            <button class="nav-btn right" title="Move Right">→</button>
+        </div>
+        </div>
+    </div>
+
+    <!-- Theme Switcher Panel -->
+    <div id="theme-panel" class="minimized">
+        <div class="panel-header" style="cursor: pointer;">
+            <h3>🎨</h3>
+        </div>
+        
+        <div id="theme-panel-content">
+            <div class="theme-section">
+                <label>Color Palette:</label>
+                <div class="theme-buttons">
+                    <button class="theme-btn active" data-theme="modern">Modern Light</button>
+                    <button class="theme-btn" data-theme="classic">Classic Warm</button>
+                    <button class="theme-btn" data-theme="minimal">Minimal Cool</button>
+                    <button class="theme-btn" data-theme="vibrant">Vibrant</button>
+                </div>
+            </div>
+            
+            <div class="theme-section">
+                <label>Lighting:</label>
+                <div class="theme-buttons">
+                    <button class="theme-btn active" data-lighting="bright">Bright</button>
+                    <button class="theme-btn" data-lighting="normal">Normal</button>
+                    <button class="theme-btn" data-lighting="dim">Dim</button>
+                </div>
+            </div>
+            
+            <div class="theme-section">
+                <button class="toggle-btn" id="toggle-shadows">Shadows: ON</button>
+            </div>
+            
+            <div class="theme-section" style="font-size: 11px; opacity: 0.7; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px;">
+                Click on objects to customize their colors
+            </div>
+        </div>
+    </div>
+    
+    <!-- Selected Mesh Color Picker -->
+    <div id="selected-mesh-color-panel">
+        <div class="mesh-name-display" id="selected-mesh-name">Select an object</div>
+        <div class="color-picker-group">
+            <input type="color" id="selected-mesh-color-input" value="#ff4444">
+            <input type="text" id="selected-mesh-hex-input" placeholder="#ff4444" maxlength="7">
+        </div>
+    </div>
+
+    <!-- Minecraft-style HUD -->
+    <div id="minecraft-hud" class="minimized">
+        <div class="hud-header" style="cursor: pointer;">
+            <div class="hud-title">🏠</div>
+        </div>
+        
+        <div class="hud-content">
+        <div class="hud-section">
+            <div class="hud-label">Lighting Level</div>
+            <div class="hud-bar">
+                <div class="hud-bar-fill" id="lighting-bar" style="width: 100%"></div>
+            </div>
+            <div class="hud-value"><span id="lighting-value">100%</span></div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-label">Theme Tools</div>
+            <div class="hud-grid" id="theme-tools">
+                <div class="hud-slot" data-theme="modern" title="Modern Light">🏠</div>
+                <div class="hud-slot" data-theme="classic" title="Classic Warm">🔥</div>
+                <div class="hud-slot" data-theme="minimal" title="Minimal Cool">❄️</div>
+                <div class="hud-slot" data-theme="vibrant" title="Vibrant">⭐</div>
+            </div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-label">Hotbar</div>
+            <div class="hud-hotbar" id="hud-hotbar">
+                <div class="hud-hotbar-slot" data-action="shadows" title="Toggle Shadows">💡</div>
+                <div class="hud-hotbar-slot" data-action="bright" title="Bright">☀️</div>
+                <div class="hud-hotbar-slot" data-action="normal" title="Normal">🌤️</div>
+                <div class="hud-hotbar-slot" data-action="dim" title="Dim">🌙</div>
+                <div class="hud-hotbar-slot" data-action="reset" title="Reset Colors">↻</div>
+                <div class="hud-hotbar-slot" data-action="info" title="Object Info">ℹ️</div>
+                <div class="hud-hotbar-slot" data-action="save" title="Save">💾</div>
+                <div class="hud-hotbar-slot" data-action="delete" title="Clear">✕</div>
+                <div class="hud-hotbar-slot" data-action="menu" title="Menu">≡</div>
+            </div>
+        </div>
+        
+        <div class="hud-section">
+            <button class="hud-button" id="hud-toggle-theme">Toggle Theme Panel</button>
+        </div>
+        </div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        let scene, camera, renderer, controls;
+        let homeModel;
+        let raycaster, mouse;
+        let roomMeshes = {};
+        let ambientLight, directionalLight, pointLight1, pointLight2;
+        let currentTheme = 'modern';
+        let currentLighting = 'bright';
+        let shadowsEnabled = true;
+        let meshColorOverrides = {};
+        let selectedMesh = null;
+
+        const themes = {
+            modern: {
+                colors: {
+                    yard: 0x90EE90, home: 0xF5DEB3, roof: 0xD4A574, door: 0xFF4444, glass: 0xADD8E6, garage: 0xD3D3D3
+                },
+                emissive: 0x666666, emissiveIntensity: 0.4
+            },
+            classic: {
+                colors: {
+                    yard: 0x2d8a2d, home: 0x8B5A3C, roof: 0x6B4423, door: 0xD4A574, glass: 0x87CEEB, garage: 0x6B7280
+                },
+                emissive: 0x444444, emissiveIntensity: 0.3
+            },
+            minimal: {
+                colors: {
+                    yard: 0xC0C0C0, home: 0xE8E8E8, roof: 0xA9A9A9, door: 0x4169E1, glass: 0xB0E0E6, garage: 0x808080
+                },
+                emissive: 0x333333, emissiveIntensity: 0.2
+            },
+            vibrant: {
+                colors: {
+                    yard: 0x00FF00, home: 0xFF6B6B, roof: 0xFF8C00, door: 0xFFD700, glass: 0x00CED1, garage: 0x9370DB
+                },
+                emissive: 0x777777, emissiveIntensity: 0.5
+            }
+        };
+
+        const lightingPresets = {
+            bright: { ambientIntensity: 1.4, directionalIntensity: 1.7, pointIntensity: 1.0 },
+            normal: { ambientIntensity: 1.2, directionalIntensity: 1.5, pointIntensity: 0.8 },
+            dim: { ambientIntensity: 0.8, directionalIntensity: 1.0, pointIntensity: 0.5 }
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Position camera right at the house wall, very close, looking at it
+            camera.position.set(0, 3.5, 2);
+            camera.lookAt(0, 3.5, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            
+            const canvas = renderer.domElement;
+            canvas.style.touchAction = 'none';
+            document.getElementById('canvas-container').appendChild(canvas);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.enableRotate = true;
+            controls.enableZoom = true;
+            controls.rotateSpeed = 1.0;
+            // Set target to center of house
+            controls.target.set(0, 3.5, 0);
+            
+            ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+            scene.add(ambientLight);
+
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1.7);
+            directionalLight.position.set(15, 25, 15);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            pointLight1 = new THREE.PointLight(0xffffff, 1.0, 100);
+            pointLight1.position.set(-20, 15, -20);
+            scene.add(pointLight1);
+            
+            pointLight2 = new THREE.PointLight(0xffffff, 1.0, 100);
+            pointLight2.position.set(20, 15, 20);
+            scene.add(pointLight2);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onMouseClick);
+
+            loadHomeModel();
+            setTimeout(initializeThemeUI, 100);
+            animate();
+        }
+
+        function loadHomeModel() {
+            const loader = new GLTFLoader();
+            // Load from local assets path - adjust if needed
+            loader.load('./home_model.glb', (gltf) => {
+                homeModel = gltf.scene;
+                scene.add(homeModel);
+                
+                let count = 0;
+                homeModel.traverse((child) => {
+                    if (child.isMesh) {
+                        count++;
+                        
+                        // IMPORTANT: Clone the material so each mesh has its own independent material
+                        if (child.material) {
+                            child.material = child.material.clone();
+                        }
+                        
+                        child.userData.originalColor = child.material.color.clone();
+                        roomMeshes[child.name] = child;
+                        
+                        // Apply initial colors
+                        const nameLower = child.name.toLowerCase();
+                        if (nameLower.includes('yard') || nameLower.includes('ground')) {
+                            child.material.color.setHex(0x90EE90);
+                        } else if (nameLower.includes('door')) {
+                            child.material.color.setHex(0xFF4444);
+                        } else if (nameLower.includes('roof')) {
+                            child.material.color.setHex(0xD4A574);
+                        } else if (nameLower.includes('glass') || nameLower.includes('window')) {
+                            child.material.color.setHex(0xADD8E6);
+                        } else if (nameLower.includes('garage')) {
+                            child.material.color.setHex(0xD3D3D3);
+                        } else if (nameLower.includes('home') || nameLower.includes('wall') || nameLower.includes('body') || nameLower.includes('level')) {
+                            child.material.color.setHex(0xF5DEB3);
+                        }
+                        
+                        console.log('Loaded mesh:', child.name, '- Color:', '#' + child.material.color.getHexString());
+                    }
+                });
+                
+                console.log('Model loaded with', count, 'meshes');
+                document.getElementById('loading').style.display = 'none';
+            }, undefined, (error) => {
+                console.error('Error loading model:', error);
+                document.getElementById('loading').textContent = 'Error loading model. Make sure home_model.glb is in the same folder.';
+            });
+        }
+
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const allObjects = [];
+            homeModel?.traverse((child) => {
+                if (child.isMesh) allObjects.push(child);
+            });
+            const intersects = raycaster.intersectObjects(allObjects);
+
+            if (intersects.length > 0) {
+                selectMesh(intersects[0].object);
+            }
+        }
+
+        function selectMesh(mesh) {
+            if (selectedMesh) selectedMesh.userData.isSelected = false;
+            
+            selectedMesh = mesh;
+            mesh.userData.isSelected = true;
+            
+            const meshNameDisplay = document.getElementById('selected-mesh-name');
+            const colorInput = document.getElementById('selected-mesh-color-input');
+            const hexInput = document.getElementById('selected-mesh-hex-input');
+            const colorPanel = document.getElementById('selected-mesh-color-panel');
+            
+            if (meshNameDisplay) meshNameDisplay.textContent = 'Object: ' + mesh.name;
+            
+            if (colorInput && hexInput) {
+                const hexColor = '#' + mesh.material.color.getHexString();
+                colorInput.value = hexColor;
+                hexInput.value = hexColor;
+            }
+            
+            if (colorPanel) colorPanel.classList.add('active');
+            
+            console.log('Selected:', mesh.name, '- Color:', '#' + mesh.material.color.getHexString());
+        }
+
+        function updateSelectedMeshColor(hexColor) {
+            if (!selectedMesh) return;
+            const colorValue = parseInt(hexColor.replace('#', ''), 16);
+            selectedMesh.material.color.setHex(colorValue);
+            meshColorOverrides[selectedMesh.name] = hexColor;
+            console.log('Updated', selectedMesh.name, 'to', hexColor);
+        }
+
+        function applyTheme(themeName) {
+            if (!themes[themeName]) return;
+            const theme = themes[themeName];
+            currentTheme = themeName;
+
+            Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                let colorKey = name.toLowerCase();
+                if (colorKey.includes('yard') || colorKey.includes('ground')) colorKey = 'yard';
+                else if (colorKey.includes('door')) colorKey = 'door';
+                else if (colorKey.includes('roof')) colorKey = 'roof';
+                else if (colorKey.includes('glass') || colorKey.includes('window')) colorKey = 'glass';
+                else if (colorKey.includes('garage')) colorKey = 'garage';
+                else colorKey = 'home';
+
+                const newColor = theme.colors[colorKey];
+                if (newColor) {
+                    mesh.material.color.setHex(newColor);
+                    mesh.userData.originalColor.setHex(newColor);
+                    mesh.material.emissive.setHex(theme.emissive);
+                    mesh.material.emissiveIntensity = theme.emissiveIntensity;
+                }
+            });
+
+            updateThemeButtons();
+            console.log('Theme applied:', themeName);
+        }
+
+        function applyLighting(lightingLevel) {
+            if (!lightingPresets[lightingLevel]) return;
+            const preset = lightingPresets[lightingLevel];
+            currentLighting = lightingLevel;
+
+            if (ambientLight) ambientLight.intensity = preset.ambientIntensity;
+            if (directionalLight) directionalLight.intensity = preset.directionalIntensity;
+            if (pointLight1) pointLight1.intensity = preset.pointIntensity;
+            if (pointLight2) pointLight2.intensity = preset.pointIntensity;
+
+            updateLightingButtons();
+            console.log('Lighting applied:', lightingLevel);
+        }
+
+        function toggleShadows() {
+            shadowsEnabled = !shadowsEnabled;
+            renderer.shadowMap.enabled = shadowsEnabled;
+            const btn = document.getElementById('toggle-shadows');
+            if (btn) {
+                btn.textContent = 'Shadows: ' + (shadowsEnabled ? 'ON' : 'OFF');
+            }
+            console.log('Shadows:', shadowsEnabled ? 'enabled' : 'disabled');
+        }
+
+        function updateThemeButtons() {
+            document.querySelectorAll('[data-theme]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+            });
+        }
+
+        function updateLightingButtons() {
+            document.querySelectorAll('[data-lighting]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lighting === currentLighting);
+            });
+        }
+
+        function initializeThemeUI() {
+            console.log('Initializing Theme UI...');
+            
+            const panel = document.getElementById('theme-panel');
+            const panelHeader = panel.querySelector('.panel-header');
+            
+            if (panelHeader && panel) {
+                panelHeader.addEventListener('click', () => {
+                    panel.classList.toggle('minimized');
+                });
+            }
+            
+            const colorInput = document.getElementById('selected-mesh-color-input');
+            const hexInput = document.getElementById('selected-mesh-hex-input');
+            
+            if (colorInput) {
+                colorInput.addEventListener('change', (e) => {
+                    const hexValue = e.target.value;
+                    if (hexInput) hexInput.value = hexValue;
+                    updateSelectedMeshColor(hexValue);
+                });
+                colorInput.addEventListener('input', (e) => {
+                    updateSelectedMeshColor(e.target.value);
+                });
+            }
+            
+            if (hexInput) {
+                hexInput.addEventListener('change', (e) => {
+                    let hexValue = e.target.value.trim();
+                    if (!hexValue.startsWith('#')) hexValue = '#' + hexValue;
+                    if (!/^#[0-9A-Fa-f]{6}$/.test(hexValue)) return;
+                    if (colorInput) colorInput.value = hexValue;
+                    updateSelectedMeshColor(hexValue);
+                });
+            }
+            
+            document.querySelectorAll('[data-theme]').forEach(btn => {
+                btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+            });
+
+            document.querySelectorAll('[data-lighting]').forEach(btn => {
+                btn.addEventListener('click', () => applyLighting(btn.dataset.lighting));
+            });
+
+            const shadowToggle = document.getElementById('toggle-shadows');
+            if (shadowToggle) shadowToggle.addEventListener('click', toggleShadows);
+
+            updateThemeButtons();
+            updateLightingButtons();
+            
+            // Initialize Minecraft HUD
+            initializeMinecraftHUD();
+            
+            console.log('Theme UI initialized');
+        }
+        
+        function initializeMinecraftHUD() {
+            console.log('Initializing Minecraft HUD...');
+            
+            // HUD minimize/expand by clicking emoji
+            const hud = document.getElementById('minecraft-hud');
+            const hudHeader = hud.querySelector('.hud-header');
+            if (hudHeader && hud) {
+                hudHeader.addEventListener('click', () => {
+                    hud.classList.toggle('minimized');
+                });
+            }
+            
+            // Navigation Controls
+            const navControls = document.getElementById('navigation-controls');
+            const moveDistance = 0.5; // Very small for subtle movement near origin
+            
+            // Minimize nav controls by clicking emoji
+            const navHeader = navControls.querySelector('.nav-header');
+            if (navHeader) {
+                navHeader.addEventListener('click', () => {
+                    navControls.classList.toggle('minimized');
+                });
+            }
+            
+            if (navControls) {
+                navControls.querySelector('.forward').addEventListener('click', () => {
+                    // Move forward along camera direction
+                    const direction = new THREE.Vector3();
+                    camera.getWorldDirection(direction);
+                    direction.y = 0; // Keep movement horizontal
+                    direction.normalize();
+                    const moveVec = direction.multiplyScalar(moveDistance);
+                    camera.position.add(moveVec);
+                    controls.target.add(moveVec);
+                    controls.update();
+                });
+                
+                navControls.querySelector('.back').addEventListener('click', () => {
+                    // Move backward
+                    const direction = new THREE.Vector3();
+                    camera.getWorldDirection(direction);
+                    direction.y = 0;
+                    direction.normalize();
+                    const moveVec = direction.multiplyScalar(-moveDistance);
+                    camera.position.add(moveVec);
+                    controls.target.add(moveVec);
+                    controls.update();
+                });
+                
+                navControls.querySelector('.left').addEventListener('click', () => {
+                    // Move left (perpendicular to forward direction)
+                    const forward = new THREE.Vector3();
+                    camera.getWorldDirection(forward);
+                    forward.y = 0;
+                    forward.normalize();
+                    
+                    // Get right vector using proper cross product: right = forward × up
+                    const right = new THREE.Vector3();
+                    right.crossVectors(forward, camera.up).normalize();
+                    
+                    // Move left means negative right direction
+                    const moveVec = right.multiplyScalar(-moveDistance);
+                    camera.position.add(moveVec);
+                    controls.target.add(moveVec);
+                    controls.update();
+                });
+                
+                navControls.querySelector('.right').addEventListener('click', () => {
+                    // Move right
+                    const forward = new THREE.Vector3();
+                    camera.getWorldDirection(forward);
+                    forward.y = 0;
+                    forward.normalize();
+                    
+                    // Get right vector using proper cross product: right = forward × up
+                    const right = new THREE.Vector3();
+                    right.crossVectors(forward, camera.up).normalize();
+                    
+                    // Move right means positive right direction
+                    const moveVec = right.multiplyScalar(moveDistance);
+                    camera.position.add(moveVec);
+                    controls.target.add(moveVec);
+                    controls.update();
+                });
+            }
+            
+            // Theme tools - click to apply theme
+            document.querySelectorAll('#theme-tools .hud-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    const theme = slot.dataset.theme;
+                    applyTheme(theme);
+                    // Visual feedback
+                    document.querySelectorAll('#theme-tools .hud-slot').forEach(s => {
+                        s.classList.remove('active');
+                    });
+                    slot.classList.add('active');
+                });
+            });
+            
+            // Hotbar actions
+            document.querySelectorAll('#hud-hotbar .hud-hotbar-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    const action = slot.dataset.action;
+                    
+                    // Visual feedback
+                    document.querySelectorAll('#hud-hotbar .hud-hotbar-slot').forEach(s => {
+                        s.classList.remove('selected');
+                    });
+                    slot.classList.add('selected');
+                    
+                    switch(action) {
+                        case 'shadows':
+                            toggleShadows();
+                            break;
+                        case 'bright':
+                            applyLighting('bright');
+                            updateHUDBar(1.0);
+                            break;
+                        case 'normal':
+                            applyLighting('normal');
+                            updateHUDBar(0.75);
+                            break;
+                        case 'dim':
+                            applyLighting('dim');
+                            updateHUDBar(0.5);
+                            break;
+                        case 'reset':
+                            if (selectedMesh) {
+                                selectedMesh.material.color.copy(selectedMesh.userData.originalColor);
+                                console.log('Reset', selectedMesh.name, 'to original color');
+                            }
+                            break;
+                        case 'info':
+                            if (selectedMesh) {
+                                alert('Object: ' + selectedMesh.name + '\nColor: #' + selectedMesh.material.color.getHexString());
+                            } else {
+                                alert('Select an object first');
+                            }
+                            break;
+                        case 'save':
+                            console.log('Saved mesh color overrides:', meshColorOverrides);
+                            alert('Settings saved to console');
+                            break;
+                        case 'delete':
+                            if (selectedMesh) {
+                                selectedMesh.material.color.setHex(0x808080);
+                                console.log('Cleared', selectedMesh.name);
+                            }
+                            break;
+                        case 'menu':
+                            alert('Menu: Use the Design Theme panel (top-left) to access full controls');
+                            break;
+                    }
+                });
+            });
+            
+            // Toggle theme panel button
+            const toggleThemeBtn = document.getElementById('hud-toggle-theme');
+            if (toggleThemeBtn) {
+                toggleThemeBtn.addEventListener('click', () => {
+                    const panel = document.getElementById('theme-panel');
+                    if (panel) {
+                        panel.classList.toggle('minimized');
+                        const minimizeBtn = document.getElementById('minimize-panel-btn');
+                        if (minimizeBtn) {
+                            minimizeBtn.textContent = panel.classList.contains('minimized') ? '+' : '−';
+                        }
+                    }
+                });
+            }
+            
+            console.log('Minecraft HUD initialized');
+        }
+        
+        function updateHUDBar(value) {
+            const bar = document.getElementById('lighting-bar');
+            const valueText = document.getElementById('lighting-value');
+            if (bar) {
+                const percent = Math.round(value * 100);
+                bar.style.width = percent + '%';
+                bar.className = 'hud-bar-fill';
+                if (value < 0.4) bar.classList.add('low');
+                else if (value < 0.7) bar.classList.add('medium');
+            }
+            if (valueText) {
+                valueText.textContent = Math.round(value * 100) + '%';
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>

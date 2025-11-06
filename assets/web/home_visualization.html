@@ -38,7 +38,7 @@
         #theme-panel {
             position: absolute;
             top: 10px;
-            left: 10px;
+            left: 120px;
             background: rgba(0, 0, 0, 0.85);
             color: white;
             padding: 15px;
@@ -56,10 +56,15 @@
         }
         
         #theme-panel.minimized {
+            left: 120px;
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             max-height: 50px;
-            padding: 10px 15px;
             overflow: hidden;
-            min-width: auto;
         }
         
         #theme-panel.minimized .theme-section {
@@ -72,35 +77,22 @@
         
         .panel-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            margin-bottom: 10px;
-            gap: 8px;
+            margin: 0;
+            gap: 0;
         }
         
         #theme-panel h3 {
             margin: 0;
-            font-size: 14px;
+            font-size: 28px;
             font-weight: bold;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            padding-bottom: 8px;
+            border: none;
+            padding: 0;
         }
         
         .minimize-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            cursor: pointer;
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            padding: 0;
+            display: none;
         }
         
         .minimize-btn:hover {
@@ -220,8 +212,8 @@
         /* Color picker for selected mesh */
         #selected-mesh-color-panel {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
+            top: 70px;
+            left: 10px;
             background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 15px;
@@ -267,6 +259,332 @@
             font-size: 11px;
             font-family: monospace;
             width: 100px;
+        }
+        
+        /* Navigation Controls */
+        #navigation-controls {
+            position: absolute;
+            top: 10px;
+            left: 65px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+        
+        #navigation-controls.minimized .nav-content {
+            display: none;
+        }
+        
+        #navigation-controls.minimized {
+            padding: 8px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-label {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 0;
+        }
+        
+        .nav-minimize-btn {
+            display: none;
+        }
+        
+        .nav-minimize-btn:hover {
+            background: rgba(76, 175, 80, 0.6);
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+        }
+        
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-content {
+            transition: all 0.3s ease;
+        }
+        
+        .nav-arrows {
+            display: grid;
+            grid-template-columns: 35px 35px 35px;
+            grid-template-rows: 30px 30px 30px;
+            gap: 3px;
+        }
+        
+        .nav-btn {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.6);
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            padding: 0;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(76, 175, 80, 0.6);
+            border-color: #4CAF50;
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+        }
+        
+        .nav-btn:active {
+            background: rgba(76, 175, 80, 0.8);
+            box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .nav-btn.forward {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .nav-btn.left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        .nav-btn.back {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        .nav-btn.right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        #navigation-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            border-radius: 8px;
+            padding: 8px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+        
+        #navigation-controls.minimized .nav-content {
+            display: none;
+        }
+        
+        #navigation-controls.minimized {
+            padding: 6px;
+            min-width: auto;
+        }
+        /* Minecraft-style Control Panel */
+        #minecraft-hud {
+            position: fixed;
+            top: 10px;
+            left: 175px;
+            z-index: 999;
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+        
+        #minecraft-hud.minimized .hud-panel-content {
+            display: none;
+        }
+        
+        #minecraft-hud.minimized .hud-panel {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: auto;
+        }
+        
+        .hud-panel {
+            background: linear-gradient(145deg, rgba(80, 80, 80, 0.95), rgba(50, 50, 50, 0.95));
+            border: 3px solid rgba(100, 100, 100, 0.8);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.9);
+            border-radius: 2px;
+            padding: 12px;
+            min-width: 180px;
+        }
+        
+        .hud-panel-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            gap: 0;
+        }
+        
+        .hud-title {
+            color: #FFD700;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+        
+        .hud-minimize-btn {
+            display: none;
+        }
+        
+        .hud-minimize-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+        
+        .hud-panel-content {
+            transition: all 0.3s ease;
+        }
+        
+        .hud-slot-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .hud-slot {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
+            border: 2px solid #555;
+            border-radius: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8), 0 2px 5px rgba(0, 0, 0, 0.5);
+            position: relative;
+            font-size: 20px;
+            user-select: none;
+        }
+        
+        .hud-slot:hover {
+            background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+            border-color: #FFD700;
+            box-shadow: inset 0 0 5px rgba(255, 215, 0, 0.2), 0 0 10px rgba(255, 215, 0, 0.4);
+        }
+        
+        .hud-slot.active {
+            background: linear-gradient(145deg, #FFD700, #FFC700);
+            border-color: #FFD700;
+            color: #333;
+            box-shadow: inset 0 0 5px rgba(255, 215, 0, 0.8), 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+        
+        .hud-slot-label {
+            position: absolute;
+            bottom: -18px;
+            font-size: 9px;
+            color: #aaa;
+            white-space: nowrap;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hud-info-bar {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            border: 1px solid #555;
+            border-radius: 1px;
+            padding: 8px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #ccc;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hud-info-label {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        
+        .hud-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 1px;
+            overflow: hidden;
+            box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hud-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00FF00, #00DD00);
+            width: 100%;
+            transition: width 0.2s ease;
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.6);
+        }
+        
+        .hud-button {
+            width: 100%;
+            padding: 6px;
+            background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
+            border: 2px solid #555;
+            border-radius: 1px;
+            color: #ddd;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+            transition: all 0.1s ease;
+            margin-top: 4px;
+        }
+        
+        .hud-button:hover {
+            background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+            border-color: #FFD700;
+            color: #FFD700;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+        }
+        
+        .hud-button:active {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hud-stack-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #FFD700;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 1px 3px;
+            border: 1px solid #555;
+            border-radius: 1px;
         }
         
         /* Mesh Color Customizer Panel */
@@ -402,11 +720,25 @@
     <div id="info">Click on rooms to control devices</div>
     <div class="loading" id="loading">Loading 3D Model...</div>
 
+    <!-- Navigation Controls -->
+    <div id="navigation-controls" class="minimized">
+        <div class="nav-header" style="cursor: pointer;">
+            <div class="nav-label">🧭</div>
+        </div>
+        <div class="nav-content">
+        <div class="nav-arrows">
+            <button class="nav-btn forward" title="Move Forward">↑</button>
+            <button class="nav-btn left" title="Move Left">←</button>
+            <button class="nav-btn back" title="Move Back">↓</button>
+            <button class="nav-btn right" title="Move Right">→</button>
+        </div>
+        </div>
+    </div>
+
     <!-- Theme Switcher Panel -->
-    <div id="theme-panel">
-        <div class="panel-header">
-            <h3>Design Theme</h3>
-            <button class="minimize-btn" id="minimize-panel-btn" title="Minimize">−</button>
+    <div id="theme-panel" class="minimized">
+        <div class="panel-header" style="cursor: pointer;">
+            <h3>🎨</h3>
         </div>
         
         <div id="theme-panel-content">
@@ -448,6 +780,46 @@
         <div class="color-picker-group">
             <input type="color" id="selected-mesh-color-input" value="#ff4444">
             <input type="text" id="selected-mesh-hex-input" placeholder="#ff4444" maxlength="7">
+        </div>
+    </div>
+    
+    <!-- Minecraft-style HUD Control Panel -->
+    <div id="minecraft-hud" class="minimized">
+        <div class="hud-panel">
+            <div class="hud-panel-header" style="cursor: pointer;">
+                <div class="hud-title">🏠</div>
+            </div>
+            
+            <div class="hud-panel-content">
+            <!-- Inventory Slots -->
+            <div class="hud-slot-container">
+                <div class="hud-slot active" data-tool="paint" title="Paint Tool">🎨</div>
+                <div class="hud-slot" data-tool="light" title="Light Control">💡</div>
+                <div class="hud-slot" data-tool="settings" title="Settings">⚙</div>
+                <div class="hud-slot" data-tool="doors" title="Door Control">🚪</div>
+                <div class="hud-slot" data-tool="rotate" title="Rotate View">🔄</div>
+                <div class="hud-slot" data-tool="reset" title="Reset Colors">↺</div>
+            </div>
+            
+            <!-- Light Level Indicator -->
+            <div class="hud-info-bar">
+                <div class="hud-info-label">Light Level</div>
+                <div class="hud-progress-bar">
+                    <div class="hud-progress-fill" id="light-level-fill" style="width: 80%;"></div>
+                </div>
+            </div>
+            
+            <!-- Temperature Meter -->
+            <div class="hud-info-bar">
+                <div class="hud-info-label">Temperature</div>
+                <div style="color: #FF6B6B; font-size: 10px;">
+                    <span id="temp-value">22°C</span>
+                </div>
+            </div>
+            
+            <!-- Action Button -->
+            <button class="hud-button" id="hud-action-btn">Use Selected Tool</button>
+            </div>
         </div>
     </div>
 
@@ -554,7 +926,9 @@
                 0.1,
                 1000
             );
-            camera.position.set(10, 10, 10);
+            // Position camera to look at house from the front side
+            camera.position.set(0, 3.5, 5);
+            camera.lookAt(0, 3.5, 0);
 
             // Renderer - Optimized for mobile
             renderer = new THREE.WebGLRenderer({ 
@@ -577,6 +951,8 @@
             controls.enableRotate = true;
             controls.enableZoom = false; // Disable OrbitControls zoom - we'll handle it manually
             controls.enablePan = false;
+            // Set target to center of house
+            controls.target.set(0, 3.5, 0);
             
             // Mobile-optimized speeds
             controls.rotateSpeed = 1.0;
@@ -707,6 +1083,13 @@
                             if (child.isMesh && child.name) {
                                 console.log('Found mesh:', child.name);
                                 
+                                // IMPORTANT: Clone the material so each mesh has its own independent material
+                                // This prevents materials from being shared between meshes
+                                if (child.material) {
+                                    child.material = child.material.clone();
+                                    console.log('Cloned material for:', child.name);
+                                }
+                                
                                 // Store all meshes
                                 roomMeshes[child.name] = child;
                                 
@@ -732,6 +1115,7 @@
                                     // Door - bright red (distinctive)
                                     else if (child.name.toLowerCase().includes('door')) {
                                         child.material.color.setHex(0xFF4444); // Bright red door
+                                        console.log('Applied door color to:', child.name);
                                     }
                                     // Glass/windows - light cyan blue
                                     else if (child.name.toLowerCase().includes('glass') || 
@@ -741,6 +1125,7 @@
                                     // Garage - light gray
                                     else if (child.name.toLowerCase().includes('garage')) {
                                         child.material.color.setHex(0xD3D3D3); // Light gray
+                                        console.log('Applied garage color to:', child.name);
                                     }
                                     
                                     // Increase material brightness
@@ -866,29 +1251,32 @@
             const theme = themes[themeName];
             currentTheme = themeName;
 
-            // Update all room mesh colors
+            // Update all room mesh colors - be very specific about matching
             Object.entries(roomMeshes).forEach(([section, mesh]) => {
-                // Map section names to theme color keys
-                let colorKey = section.toLowerCase();
-                if (colorKey.includes('yard') || colorKey.includes('ground')) colorKey = 'yard';
-                else if (colorKey.includes('door')) colorKey = 'door';
-                else if (colorKey.includes('roof')) colorKey = 'roof';
-                else if (colorKey.includes('glass') || colorKey.includes('window')) colorKey = 'glass';
-                else if (colorKey.includes('garage')) colorKey = 'garage';
-                else colorKey = 'home'; // Default to home
+                // Map section names to theme color keys with exact matching
+                let colorKey = null;
+                const nameLower = section.toLowerCase();
+                
+                if (nameLower.includes('yard')) colorKey = 'yard';
+                else if (nameLower.includes('door')) colorKey = 'door';
+                else if (nameLower.includes('roof')) colorKey = 'roof';
+                else if (nameLower.includes('glass') || nameLower.includes('window')) colorKey = 'glass';
+                else if (nameLower.includes('garage')) colorKey = 'garage';
+                else colorKey = 'home';
 
                 const newColor = theme.colors[colorKey];
-                if (newColor) {
+                if (newColor && mesh && mesh.material) {
                     mesh.material.color.setHex(newColor);
-                    mesh.userData.originalColor.setHex(newColor);
+                    mesh.userData.originalColor?.setHex(newColor);
                     mesh.material.emissive.setHex(theme.emissive);
                     mesh.material.emissiveIntensity = theme.emissiveIntensity;
+                    console.log(`Applied ${themeName}: ${section} (${colorKey}) -> #${newColor.toString(16).padStart(6, '0')}`);
                 }
             });
 
             // Update buttons
             updateThemeButtons();
-            console.log('✨ Theme applied:', themeName);
+            console.log('✓ Theme applied:', themeName);
         }
 
         function applyLighting(lightingLevel) {
@@ -939,22 +1327,20 @@
         function initializeThemeUI() {
             console.log('Initializing Theme UI...');
             
-            // Set up minimize/expand button for theme panel
+            // Set up minimize/expand for theme panel by clicking emoji
             const panel = document.getElementById('theme-panel');
-            const minimizeBtn = document.getElementById('minimize-panel-btn');
+            const panelHeader = panel.querySelector('.panel-header');
             const miniBtn = document.getElementById('panel-mini-btn');
             
-            if (minimizeBtn && panel) {
-                minimizeBtn.addEventListener('click', () => {
+            if (panelHeader && panel) {
+                panelHeader.addEventListener('click', () => {
                     panel.classList.toggle('minimized');
-                    minimizeBtn.textContent = panel.classList.contains('minimized') ? '+' : '−';
                 });
             }
             
             if (miniBtn && panel) {
                 miniBtn.addEventListener('click', () => {
                     panel.classList.remove('minimized');
-                    minimizeBtn.textContent = '−';
                 });
             }
             
@@ -1008,10 +1394,200 @@
 
             updateThemeButtons();
             updateLightingButtons();
-            console.log('Theme UI initialized successfully');
+            initializeHUD();
+            console.log('All UI initialized successfully');
         }
         
         let selectedMesh = null;
+        let currentTool = 'paint';
+        let hudTemperature = 22;
+        let hudLightLevel = 0.8;
+        
+        function initializeHUD() {
+            console.log('Initializing Minecraft-style HUD...');
+            
+            // HUD minimize/expand by clicking emoji
+            const hud = document.getElementById('minecraft-hud');
+            const hudHeader = hud.querySelector('.hud-panel-header');
+            if (hudHeader && hud) {
+                hudHeader.addEventListener('click', () => {
+                    hud.classList.toggle('minimized');
+                });
+            }
+            
+            // Navigation Controls
+            const navControls = document.getElementById('navigation-controls');
+            const moveDistance = 0.5; // Very small for subtle movement near origin
+            
+            // Minimize nav controls by clicking emoji
+            const navHeader = navControls.querySelector('.nav-header');
+            if (navHeader) {
+                navHeader.addEventListener('click', () => {
+                    navControls.classList.toggle('minimized');
+                });
+            }
+            
+            if (navControls) {
+                navControls.querySelector('.forward').addEventListener('click', () => {
+                    // Move forward along camera direction
+                    const direction = new THREE.Vector3();
+                    camera.getWorldDirection(direction);
+                    direction.y = 0; // Keep movement horizontal
+                    direction.normalize();
+                    camera.position.add(direction.multiplyScalar(moveDistance));
+                    controls.target.add(direction.multiplyScalar(moveDistance));
+                });
+                
+                navControls.querySelector('.back').addEventListener('click', () => {
+                    // Move backward
+                    const direction = new THREE.Vector3();
+                    camera.getWorldDirection(direction);
+                    direction.y = 0;
+                    direction.normalize();
+                    camera.position.add(direction.multiplyScalar(-moveDistance));
+                    controls.target.add(direction.multiplyScalar(-moveDistance));
+                });
+                
+                navControls.querySelector('.left').addEventListener('click', () => {
+                    // Move left (perpendicular to forward direction)
+                    const forward = new THREE.Vector3();
+                    camera.getWorldDirection(forward);
+                    forward.y = 0;
+                    forward.normalize();
+                    
+                    // Get right vector using proper cross product: right = forward × up
+                    const right = new THREE.Vector3();
+                    right.crossVectors(forward, camera.up).normalize();
+                    
+                    // Move left means negative right direction
+                    camera.position.add(right.multiplyScalar(-moveDistance));
+                    controls.target.add(right.multiplyScalar(-moveDistance));
+                });
+                
+                navControls.querySelector('.right').addEventListener('click', () => {
+                    // Move right
+                    const forward = new THREE.Vector3();
+                    camera.getWorldDirection(forward);
+                    forward.y = 0;
+                    forward.normalize();
+                    
+                    // Get right vector using proper cross product: right = forward × up
+                    const right = new THREE.Vector3();
+                    right.crossVectors(forward, camera.up).normalize();
+                    
+                    // Move right means positive right direction
+                    camera.position.add(right.multiplyScalar(moveDistance));
+                    controls.target.add(right.multiplyScalar(moveDistance));
+                });
+            }
+            
+            // HUD Slot Selection
+            document.querySelectorAll('.hud-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    // Remove active class from all slots
+                    document.querySelectorAll('.hud-slot').forEach(s => s.classList.remove('active'));
+                    // Add active class to clicked slot
+                    slot.classList.add('active');
+                    currentTool = slot.dataset.tool;
+                    console.log('Selected tool:', currentTool);
+                    updateHUDActionButton();
+                });
+            });
+            
+            // HUD Action Button
+            const actionBtn = document.getElementById('hud-action-btn');
+            if (actionBtn) {
+                actionBtn.addEventListener('click', () => {
+                    executeHUDTool(currentTool);
+                });
+            }
+            
+            // Simulate temperature change
+            setInterval(() => {
+                hudTemperature = 20 + Math.random() * 6;
+                document.getElementById('temp-value').textContent = hudTemperature.toFixed(1) + '°C';
+            }, 3000);
+            
+            // Simulate light level changes
+            setInterval(() => {
+                hudLightLevel = 0.5 + Math.random() * 0.5;
+                const fill = document.getElementById('light-level-fill');
+                if (fill) {
+                    fill.style.width = (hudLightLevel * 100) + '%';
+                }
+            }, 4000);
+            
+            updateHUDActionButton();
+        }
+        
+        function updateHUDActionButton() {
+            const btn = document.getElementById('hud-action-btn');
+            const toolNames = {
+                'paint': 'Paint Mode',
+                'light': 'Toggle Lights',
+                'settings': 'Show Settings',
+                'doors': 'Open Doors',
+                'rotate': 'Auto Rotate',
+                'reset': 'Reset Colors'
+            };
+            if (btn) {
+                btn.textContent = toolNames[currentTool] || 'Use Tool';
+            }
+        }
+        
+        function executeHUDTool(tool) {
+            console.log('Executing tool:', tool);
+            
+            switch(tool) {
+                case 'paint':
+                    if (selectedMesh) {
+                        console.log('Paint mode active on:', selectedMesh.name);
+                        const colorPanel = document.getElementById('selected-mesh-color-panel');
+                        if (colorPanel) colorPanel.classList.add('active');
+                    } else {
+                        console.log('No object selected. Click on an object first.');
+                    }
+                    break;
+                    
+                case 'light':
+                    shadowsEnabled = !shadowsEnabled;
+                    renderer.shadowMap.enabled = shadowsEnabled;
+                    const btn = document.getElementById('hud-action-btn');
+                    console.log('Shadows toggled:', shadowsEnabled ? 'ON' : 'OFF');
+                    break;
+                    
+                case 'doors':
+                    console.log('Door control activated');
+                    openDoor();
+                    break;
+                    
+                case 'reset':
+                    resetAllColors();
+                    break;
+                    
+                case 'rotate':
+                    console.log('Auto-rotate view');
+                    break;
+                    
+                case 'settings':
+                    const panel = document.getElementById('theme-panel');
+                    if (panel) {
+                        panel.classList.toggle('minimized');
+                        document.getElementById('minimize-panel-btn').textContent = 
+                            panel.classList.contains('minimized') ? '+' : '−';
+                    }
+                    break;
+            }
+        }
+        
+        function resetAllColors() {
+            Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                if (mesh.userData.originalColor && mesh.material) {
+                    mesh.material.color.copy(mesh.userData.originalColor);
+                }
+            });
+            console.log('All colors reset to defaults');
+        }
         
         function selectMesh(mesh) {
             // Deselect previous mesh
@@ -1032,7 +1608,7 @@
                 meshNameDisplay.textContent = 'Object: ' + mesh.name;
             }
             
-            if (colorInput && hexInput) {
+            if (colorInput && hexInput && mesh.material && mesh.material.color) {
                 const hexColor = '#' + mesh.material.color.getHexString();
                 colorInput.value = hexColor;
                 hexInput.value = hexColor;
@@ -1042,17 +1618,30 @@
                 colorPanel.classList.add('active');
             }
             
-            console.log('Selected mesh:', mesh.name, '- Color:', mesh.material.color.getHexString());
+            console.log('═══ MESH SELECTED ═══');
+            console.log('Name:', mesh.name);
+            console.log('Current Color:', '#' + (mesh.material?.color?.getHexString() || 'unknown'));
+            console.log('Material ID:', mesh.material?.uuid);
+            console.log('Has own material:', mesh.material?.uuid !== undefined);
+            console.log('═══════════════════');
         }
         
         function updateSelectedMeshColor(hexColor) {
-            if (!selectedMesh) return;
+            if (!selectedMesh) {
+                console.warn('⚠️ No mesh selected');
+                return;
+            }
+            
+            if (!selectedMesh.material || !selectedMesh.material.color) {
+                console.error('❌ Selected mesh has no material or color');
+                return;
+            }
             
             const colorValue = parseInt(hexColor.replace('#', ''), 16);
             selectedMesh.material.color.setHex(colorValue);
             meshColorOverrides[selectedMesh.name] = hexColor;
             
-            console.log('Updated', selectedMesh.name, 'to', hexColor);
+            console.log('✓ Updated', selectedMesh.name, 'to', hexColor, '- New Material ID:', selectedMesh.material.uuid);
         }
 
         function animate() {
