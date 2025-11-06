@@ -45,7 +45,7 @@ class AIChatService {
       request.headers['Content-Type'] = 'application/json';
       // Match n8n AI Agent payload format
       request.body = jsonEncode({
-        'chatInput': content,
+        'message': content,
         'sessionId': sessionId,
       });
 
@@ -217,11 +217,11 @@ class AIChatService {
             Uri.parse(_baseUrl),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'chatInput': 'ping',
+              'message': 'ping',
               'sessionId': 'health_check',
             }),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
 
       return response.statusCode == 200;
     } catch (e) {
