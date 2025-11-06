@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/floating_chat_button.dart';
 import '../camera/camera_feed_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -92,42 +93,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-      body: FadeIn(
-        child: Column(
-          children: [
-            // Filter chips
-            _buildFilterChips(),
-            const SizedBox(height: 16),
+      body: Stack(
+        children: [
+          FadeIn(
+            child: Column(
+              children: [
+                // Filter chips
+                _buildFilterChips(),
+                const SizedBox(height: 16),
 
-            // Notifications list
-            Expanded(
-              child: Consumer<NotificationService>(
-                builder: (context, notificationService, child) {
-                  final notifications = _selectedFilter == null
-                      ? notificationService.notifications
-                      : notificationService
-                          .getNotificationsByType(_selectedFilter!);
+                // Notifications list
+                Expanded(
+                  child: Consumer<NotificationService>(
+                    builder: (context, notificationService, child) {
+                      final notifications = _selectedFilter == null
+                          ? notificationService.notifications
+                          : notificationService
+                              .getNotificationsByType(_selectedFilter!);
 
-                  if (notifications.isEmpty) {
-                    return _buildEmptyState();
-                  }
+                      if (notifications.isEmpty) {
+                        return _buildEmptyState();
+                      }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = notifications[index];
-                      return FadeInUp(
-                        delay: Duration(milliseconds: 50 * index),
-                        child: _buildNotificationCard(context, notification),
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = notifications[index];
+                          return FadeInUp(
+                            delay: Duration(milliseconds: 50 * index),
+                            child:
+                                _buildNotificationCard(context, notification),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          // Floating chat button
+          const FloatingChatButton(),
+        ],
       ),
     );
   }
@@ -478,9 +486,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
-    
+
     // Check if this is an unrecognized face notification
-    final isUnrecognizedFace = notification.data?['type'] == 'unrecognized_face';
+    final isUnrecognizedFace =
+        notification.data?['type'] == 'unrecognized_face';
 
     showModalBottomSheet(
       context: context,
@@ -557,7 +566,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            
+
             // Show camera button for unrecognized face notifications
             if (isUnrecognizedFace)
               Column(
@@ -586,16 +595,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   const SizedBox(height: 12),
                 ],
               ),
-            
+
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isUnrecognizedFace 
-                    ? theme.colorScheme.surface 
+                backgroundColor: isUnrecognizedFace
+                    ? theme.colorScheme.surface
                     : AppTheme.primaryColor,
-                foregroundColor: isUnrecognizedFace 
-                    ? textColor 
-                    : Colors.white,
+                foregroundColor: isUnrecognizedFace ? textColor : Colors.white,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
                   borderRadius: AppTheme.mediumRadius,

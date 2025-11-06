@@ -178,6 +178,33 @@ class _AIChatScreenState extends State<AIChatScreen>
                   onTap: () => _showServerConfigDialog(),
                 ),
                 PopupMenuItem(
+                  enabled: false,
+                  child: Consumer<AIChatProvider>(
+                    builder: (context, chatProvider, _) {
+                      return SwitchListTile(
+                        value: chatProvider.showThinkMode,
+                        onChanged: (value) {
+                          chatProvider.toggleThinkMode(value);
+                        },
+                        title: Text(
+                          loc.t('show_think_mode'),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          loc.t('think_mode_description'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: textColor.withOpacity(0.6),
+                          ),
+                        ),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppTheme.primaryColor,
+                      );
+                    },
+                  ),
+                ),
+                PopupMenuItem(
                   child: Row(
                     children: [
                       const Icon(Iconsax.trash, size: 20, color: Colors.red),

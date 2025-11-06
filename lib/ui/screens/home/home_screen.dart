@@ -7,6 +7,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/custom_drawer.dart';
+import '../../widgets/floating_chat_button.dart';
 import 'devices_tab.dart';
 import 'visualization_tab.dart';
 import 'logs_tab.dart';
@@ -139,8 +140,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: FadeIn(
-        child: tabs[_currentIndex],
+      body: Stack(
+        children: [
+          FadeIn(
+            child: tabs[_currentIndex],
+          ),
+          // Floating chat button
+          const FloatingChatButton(),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

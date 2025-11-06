@@ -16,6 +16,8 @@ class AIChatProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isServerAvailable = false;
   String? _error;
+  bool _showThinkMode = false; // Toggle for showing AI reasoning
+  int _unreadCount = 0; // Track unread AI messages
 
   AIChatProvider({required AIChatService chatService})
       : _chatService = chatService {
@@ -27,6 +29,26 @@ class AIChatProvider with ChangeNotifier {
   bool get isServerAvailable => _isServerAvailable;
   String? get error => _error;
   bool get hasMessages => _messages.isNotEmpty;
+  bool get showThinkMode => _showThinkMode;
+  int get unreadMessageCount => _unreadCount;
+
+  /// Toggle think mode visibility
+  void toggleThinkMode(bool value) {
+    _showThinkMode = value;
+    notifyListeners();
+  }
+
+  /// Mark all messages as read
+  void markAllAsRead() {
+    _unreadCount = 0;
+    notifyListeners();
+  }
+
+  /// Increment unread count (called when AI sends a message)
+  void _incrementUnreadCount() {
+    _unreadCount++;
+    notifyListeners();
+  }
 
   /// Check if AI agent server is available
   Future<void> _checkServerHealth() async {
@@ -90,8 +112,12 @@ class AIChatProvider with ChangeNotifier {
       // Receive streamed response
       final buffer = StringBuffer();
 
-      await for (var chunk
-          in _chatService.sendMessageStream(content, userId, sessionId)) {
+      await for (var chunk in _chatService.sendMessageStream(
+        content,
+        userId,
+        sessionId,
+        filterThinkBlocks: !_showThinkMode, // Filter if NOT showing think mode
+      )) {
         buffer.write(chunk);
 
         // Update AI message with accumulated content
@@ -108,6 +134,8 @@ class AIChatProvider with ChangeNotifier {
       // Play receive sound when complete
       if (buffer.toString().trim().isNotEmpty) {
         _playReceiveSound();
+        // Increment unread count when AI responds
+        _incrementUnreadCount();
       }
 
       _isLoading = false;

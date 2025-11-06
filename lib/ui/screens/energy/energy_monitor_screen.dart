@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/floating_chat_button.dart';
 
 class EnergyMonitorScreen extends StatefulWidget {
   const EnergyMonitorScreen({super.key});
@@ -48,42 +49,48 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
           ),
         ),
       ),
-      body: FadeIn(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Period selector
-              _buildPeriodSelector(),
-              const SizedBox(height: 24),
+      body: Stack(
+        children: [
+          FadeIn(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Period selector
+                  _buildPeriodSelector(),
+                  const SizedBox(height: 24),
 
-              // Total consumption card
-              _buildTotalConsumptionCard(),
-              const SizedBox(height: 24),
+                  // Total consumption card
+                  _buildTotalConsumptionCard(),
+                  const SizedBox(height: 24),
 
-              // Consumption chart (placeholder)
-              _buildConsumptionChart(),
-              const SizedBox(height: 24),
+                  // Consumption chart (placeholder)
+                  _buildConsumptionChart(),
+                  const SizedBox(height: 24),
 
-              // Device breakdown
-              _buildSectionTitle('Device Breakdown'),
-              const SizedBox(height: 16),
-              _buildDeviceBreakdownList(),
-              const SizedBox(height: 24),
+                  // Device breakdown
+                  _buildSectionTitle('Device Breakdown'),
+                  const SizedBox(height: 16),
+                  _buildDeviceBreakdownList(),
+                  const SizedBox(height: 24),
 
-              // Cost estimate
-              _buildCostEstimateCard(),
-              const SizedBox(height: 24),
+                  // Cost estimate
+                  _buildCostEstimateCard(),
+                  const SizedBox(height: 24),
 
-              // Tips
-              _buildSectionTitle('Energy Saving Tips'),
-              const SizedBox(height: 16),
-              _buildEnergyTips(),
-              const SizedBox(height: 100),
-            ],
+                  // Tips
+                  _buildSectionTitle('Energy Saving Tips'),
+                  const SizedBox(height: 16),
+                  _buildEnergyTips(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
           ),
-        ),
+          // Floating chat button
+          const FloatingChatButton(),
+        ],
       ),
     );
   }

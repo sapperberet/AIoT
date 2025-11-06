@@ -22,8 +22,13 @@ class AIChatService {
 
   /// Send a message to the AI agent with streaming response
   /// Returns a stream of message chunks
+  /// [filterThinkBlocks] - if true, removes <think>...</think> content
   Stream<String> sendMessageStream(
-      String content, String userId, String sessionId) async* {
+    String content,
+    String userId,
+    String sessionId, {
+    bool filterThinkBlocks = true,
+  }) async* {
     try {
       _logger.d('Sending message to AI agent: $content');
 
@@ -56,24 +61,26 @@ class AIChatService {
               if (data['type'] == 'item') {
                 String content = data['content'] ?? '';
 
-                // Handle <think> blocks
-                if (content.contains('<think>')) {
-                  insideThinkBlock = true;
-                  continue;
-                }
-                if (content.contains('</think>')) {
-                  insideThinkBlock = false;
-                  continue;
-                }
+                // Handle <think> blocks if filtering is enabled
+                if (filterThinkBlocks) {
+                  if (content.contains('<think>')) {
+                    insideThinkBlock = true;
+                    continue;
+                  }
+                  if (content.contains('</think>')) {
+                    insideThinkBlock = false;
+                    continue;
+                  }
 
-                // Skip content inside think blocks
-                if (insideThinkBlock) {
-                  continue;
-                }
+                  // Skip content inside think blocks
+                  if (insideThinkBlock) {
+                    continue;
+                  }
 
-                // Skip markdown code blocks
-                if (content.trim().startsWith('```')) {
-                  continue;
+                  // Skip markdown code blocks
+                  if (content.trim().startsWith('```')) {
+                    continue;
+                  }
                 }
 
                 // Yield the content chunk

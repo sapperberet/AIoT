@@ -208,6 +208,9 @@ class AppLocalizations {
           'Enter the URL of your AI agent server running on your Linux machine',
       'server_url_updated': 'Server URL updated successfully',
       'retry': 'Retry',
+      'show_think_mode': 'Show AI Reasoning',
+      'think_mode_description': 'Display internal AI thought process',
+      'chat_with_me': 'Chat with me',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -407,6 +410,9 @@ class AppLocalizations {
           'Geben Sie die URL Ihres KI-Agentenservers ein, der auf Ihrer Linux-Maschine läuft',
       'server_url_updated': 'Server-URL erfolgreich aktualisiert',
       'retry': 'Wiederholen',
+      'show_think_mode': 'KI-Denken anzeigen',
+      'think_mode_description': 'Internen KI-Denkprozess anzeigen',
+      'chat_with_me': 'Chatte mit mir',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -602,6 +608,9 @@ class AppLocalizations {
           'أدخل عنوان URL لخادم وكيل الذكاء الاصطناعي الذي يعمل على جهاز Linux الخاص بك',
       'server_url_updated': 'تم تحديث عنوان URL للخادم بنجاح',
       'retry': 'إعادة المحاولة',
+      'show_think_mode': 'إظهار تفكير الذكاء الاصطناعي',
+      'think_mode_description': 'عرض عملية تفكير الذكاء الاصطناعي الداخلية',
+      'chat_with_me': 'تحدث معي',
     },
   };
 

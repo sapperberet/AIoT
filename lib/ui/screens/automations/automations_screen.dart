@@ -7,6 +7,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/automation_provider.dart';
 import '../../../core/models/automation_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/floating_chat_button.dart';
 
 class AutomationsScreen extends StatefulWidget {
   const AutomationsScreen({super.key});
@@ -48,28 +49,34 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           ),
         ),
       ),
-      body: FadeIn(
-        child: Consumer<AutomationProvider>(
-          builder: (context, automationProvider, child) {
-            final automations = automationProvider.automations;
+      body: Stack(
+        children: [
+          FadeIn(
+            child: Consumer<AutomationProvider>(
+              builder: (context, automationProvider, child) {
+                final automations = automationProvider.automations;
 
-            if (automations.isEmpty) {
-              return _buildEmptyState();
-            }
+                if (automations.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: automations.length,
-              itemBuilder: (context, index) {
-                final automation = automations[index];
-                return FadeInUp(
-                  delay: Duration(milliseconds: 50 * index),
-                  child: _buildAutomationCard(context, automation),
+                return ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: automations.length,
+                  itemBuilder: (context, index) {
+                    final automation = automations[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 50 * index),
+                      child: _buildAutomationCard(context, automation),
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
+            ),
+          ),
+          // Floating chat button
+          const FloatingChatButton(),
+        ],
       ),
       floatingActionButton: FadeInUp(
         delay: const Duration(milliseconds: 300),

@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/ai_chat_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../screens/camera/camera_feed_screen.dart';
@@ -182,13 +183,23 @@ class CustomDrawer extends StatelessWidget {
                         ),
                         FadeInLeft(
                           delay: const Duration(milliseconds: 300),
-                          child: _buildMenuItem(
-                            context,
-                            icon: Iconsax.message_programming,
-                            title: loc.t('ai_chat'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.pushNamed(context, '/ai-chat');
+                          child: Consumer<AIChatProvider>(
+                            builder: (context, chatProvider, _) {
+                              final unreadCount =
+                                  chatProvider.unreadMessageCount;
+                              return _buildMenuItem(
+                                context,
+                                icon: Iconsax.message_programming,
+                                title: loc.t('ai_chat'),
+                                badge: unreadCount > 0
+                                    ? unreadCount.toString()
+                                    : null,
+                                onTap: () {
+                                  chatProvider.markAllAsRead();
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(context, '/ai-chat');
+                                },
+                              );
                             },
                           ),
                         ),
