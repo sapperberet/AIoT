@@ -6,6 +6,10 @@ class ChatMessage {
   final DateTime timestamp;
   final MessageStatus status;
   final String? error;
+  final MessageType type; // text or voice
+  final String? voiceFilePath; // Path to recorded voice file
+  final int? voiceDurationMs; // Duration of voice message in milliseconds
+  final String? transcription; // Transcribed text from voice
 
   ChatMessage({
     required this.id,
@@ -14,6 +18,10 @@ class ChatMessage {
     required this.timestamp,
     this.status = MessageStatus.sent,
     this.error,
+    this.type = MessageType.text,
+    this.voiceFilePath,
+    this.voiceDurationMs,
+    this.transcription,
   });
 
   ChatMessage copyWith({
@@ -23,6 +31,10 @@ class ChatMessage {
     DateTime? timestamp,
     MessageStatus? status,
     String? error,
+    MessageType? type,
+    String? voiceFilePath,
+    int? voiceDurationMs,
+    String? transcription,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -31,6 +43,10 @@ class ChatMessage {
       timestamp: timestamp ?? this.timestamp,
       status: status ?? this.status,
       error: error ?? this.error,
+      type: type ?? this.type,
+      voiceFilePath: voiceFilePath ?? this.voiceFilePath,
+      voiceDurationMs: voiceDurationMs ?? this.voiceDurationMs,
+      transcription: transcription ?? this.transcription,
     );
   }
 
@@ -42,6 +58,10 @@ class ChatMessage {
       'timestamp': timestamp.toIso8601String(),
       'status': status.toString(),
       'error': error,
+      'type': type.toString(),
+      'voiceFilePath': voiceFilePath,
+      'voiceDurationMs': voiceDurationMs,
+      'transcription': transcription,
     };
   }
 
@@ -56,6 +76,15 @@ class ChatMessage {
         orElse: () => MessageStatus.sent,
       ),
       error: json['error'],
+      type: json['type'] != null
+          ? MessageType.values.firstWhere(
+              (e) => e.toString() == json['type'],
+              orElse: () => MessageType.text,
+            )
+          : MessageType.text,
+      voiceFilePath: json['voiceFilePath'],
+      voiceDurationMs: json['voiceDurationMs'],
+      transcription: json['transcription'],
     );
   }
 }
@@ -65,4 +94,9 @@ enum MessageStatus {
   sent,
   delivered,
   error,
+}
+
+enum MessageType {
+  text,
+  voice,
 }

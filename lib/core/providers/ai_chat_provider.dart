@@ -4,10 +4,12 @@ import 'package:logger/logger.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/chat_message_model.dart';
 import '../services/ai_chat_service.dart';
+import '../services/voice_service.dart';
 
 /// Provider for managing AI chat state
 class AIChatProvider with ChangeNotifier {
   final AIChatService _chatService;
+  final VoiceService _voiceService = VoiceService();
   final Logger _logger = Logger();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final Uuid _uuid = const Uuid();
@@ -18,10 +20,12 @@ class AIChatProvider with ChangeNotifier {
   String? _error;
   bool _showThinkMode = false; // Toggle for showing AI reasoning
   int _unreadCount = 0; // Track unread AI messages
+  String? _currentLocale; // Current locale for speech recognition
 
   AIChatProvider({required AIChatService chatService})
       : _chatService = chatService {
     _checkServerHealth();
+    _initializeVoiceService();
   }
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
@@ -31,6 +35,23 @@ class AIChatProvider with ChangeNotifier {
   bool get hasMessages => _messages.isNotEmpty;
   bool get showThinkMode => _showThinkMode;
   int get unreadMessageCount => _unreadCount;
+  VoiceService get voiceService => _voiceService;
+  String? get currentLocale => _currentLocale;
+
+  /// Initialize voice service
+  Future<void> _initializeVoiceService() async {
+    try {
+      await _voiceService.initialize();
+    } catch (e) {
+      _logger.e('Failed to initialize voice service: $e');
+    }
+  }
+
+  /// Set locale for speech recognition
+  void setLocale(String locale) {
+    _currentLocale = locale;
+    notifyListeners();
+  }
 
   /// Toggle think mode visibility
   void toggleThinkMode(bool value) {
@@ -63,7 +84,10 @@ class AIChatProvider with ChangeNotifier {
   }
 
   /// Send a message to the AI agent with streaming support
-  Future<void> sendMessage(String content, String userId) async {
+  Future<void> sendMessage(String content, String userId,
+      {MessageType type = MessageType.text,
+      String? voiceFilePath,
+      int? voiceDurationMs}) async {
     print('[AI Chat] sendMessage called with content: "$content"');
 
     if (content.trim().isEmpty) {
@@ -83,6 +107,10 @@ class AIChatProvider with ChangeNotifier {
       isUser: true,
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
+      type: type,
+      voiceFilePath: voiceFilePath,
+      voiceDurationMs: voiceDurationMs,
+      transcription: type == MessageType.voice ? content : null,
     );
 
     _messages.add(userMessage);
@@ -171,6 +199,22 @@ class AIChatProvider with ChangeNotifier {
     }
   }
 
+  /// Send a voice message with transcription
+  Future<void> sendVoiceMessage(
+    String voiceFilePath,
+    int durationMs,
+    String transcription,
+    String userId,
+  ) async {
+    await sendMessage(
+      transcription,
+      userId,
+      type: MessageType.voice,
+      voiceFilePath: voiceFilePath,
+      voiceDurationMs: durationMs,
+    );
+  }
+
   /// Load chat history from server
   Future<void> loadChatHistory(String userId) async {
     try {
@@ -239,6 +283,7 @@ class AIChatProvider with ChangeNotifier {
   @override
   void dispose() {
     _audioPlayer.dispose();
+    _voiceService.dispose();
     super.dispose();
   }
 }

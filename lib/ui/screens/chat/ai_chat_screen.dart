@@ -9,6 +9,8 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/voice_recorder_widget.dart';
+import '../../widgets/voice_message_bubble.dart';
 
 class AIChatScreen extends StatefulWidget {
   const AIChatScreen({super.key});
@@ -24,6 +26,9 @@ class _AIChatScreenState extends State<AIChatScreen>
   final FocusNode _focusNode = FocusNode();
   late AnimationController _typingAnimationController;
   bool _showScrollToBottom = false;
+  bool _isRecordingVoice = false;
+  String _liveTranscription = '';
+  int _recordingDuration = 0;
 
   @override
   void initState() {
@@ -34,6 +39,11 @@ class _AIChatScreenState extends State<AIChatScreen>
     )..repeat();
 
     _scrollController.addListener(_onScroll);
+
+    // Listen to text changes to toggle send/voice button
+    _messageController.addListener(() {
+      setState(() {});
+    });
 
     // Load chat history
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -97,6 +107,96 @@ class _AIChatScreenState extends State<AIChatScreen>
 
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  Future<void> _startVoiceRecording() async {
+    final chatProvider = context.read<AIChatProvider>();
+    final voiceService = chatProvider.voiceService;
+
+    // Start recording
+    final started = await voiceService.startRecording(
+      locale: chatProvider.currentLocale,
+    );
+
+    if (started) {
+      setState(() {
+        _isRecordingVoice = true;
+        _liveTranscription = '';
+      });
+
+      // Start live transcription
+      await voiceService.startLiveTranscription(
+        locale: chatProvider.currentLocale,
+        onResult: (text) {
+          setState(() {
+            _liveTranscription = text;
+          });
+        },
+      );
+    } else {
+      // Show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).t('voice_permission_denied')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopVoiceRecording() async {
+    final chatProvider = context.read<AIChatProvider>();
+    final voiceService = chatProvider.voiceService;
+    final authProvider = context.read<AuthProvider>();
+
+    // Stop live transcription
+    await voiceService.stopLiveTranscription();
+
+    // Stop recording
+    final result = await voiceService.stopRecording();
+
+    setState(() {
+      _isRecordingVoice = false;
+    });
+
+    if (result != null) {
+      // Use transcription or a placeholder
+      final transcription = _liveTranscription.trim().isNotEmpty
+          ? _liveTranscription
+          : AppLocalizations.of(context).t('voice_message');
+
+      // Get user ID
+      final userId = authProvider.currentUser?.uid ?? 'debug-user';
+
+      // Send voice message
+      await chatProvider.sendVoiceMessage(
+        result.filePath,
+        result.durationMs,
+        transcription,
+        userId,
+      );
+
+      // Scroll to bottom
+      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    }
+  }
+
+  Future<void> _cancelVoiceRecording() async {
+    final chatProvider = context.read<AIChatProvider>();
+    final voiceService = chatProvider.voiceService;
+
+    // Stop live transcription
+    await voiceService.stopLiveTranscription();
+
+    // Cancel recording
+    await voiceService.cancelRecording();
+
+    setState(() {
+      _isRecordingVoice = false;
+      _liveTranscription = '';
+    });
   }
 
   @override
@@ -451,13 +551,21 @@ class _AIChatScreenState extends State<AIChatScreen>
                       ),
                     ],
                   ),
-                  child: Text(
-                    message.content,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : textColor,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: message.type == MessageType.voice &&
+                          message.voiceFilePath != null
+                      ? VoiceMessageBubble(
+                          voiceFilePath: message.voiceFilePath!,
+                          durationMs: message.voiceDurationMs ?? 0,
+                          isUser: isUser,
+                          transcription: message.transcription,
+                        )
+                      : Text(
+                          message.content,
+                          style: TextStyle(
+                            color: isUser ? Colors.white : textColor,
+                            fontSize: 15,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -602,6 +710,20 @@ class _AIChatScreenState extends State<AIChatScreen>
   }
 
   Widget _buildInputArea(bool isDark, Color textColor, AppLocalizations loc) {
+    // Show voice recorder if recording
+    if (_isRecordingVoice) {
+      return VoiceRecorderWidget(
+        onCancel: _cancelVoiceRecording,
+        onSend: (_) => _stopVoiceRecording(),
+        onDurationUpdate: (duration) {
+          setState(() {
+            _recordingDuration = duration;
+          });
+        },
+      );
+    }
+
+    // Show normal input
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -650,17 +772,33 @@ class _AIChatScreenState extends State<AIChatScreen>
               ),
             ),
             const SizedBox(width: 12),
-            Container(
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: AppTheme.glowShadow,
+
+            // Voice button (if text is empty)
+            if (_messageController.text.trim().isEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: AppTheme.glowShadow,
+                ),
+                child: IconButton(
+                  icon: const Icon(Iconsax.microphone, color: Colors.white),
+                  onPressed: _startVoiceRecording,
+                ),
+              )
+            else
+              // Send button (if text is not empty)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: AppTheme.glowShadow,
+                ),
+                child: IconButton(
+                  icon: const Icon(Iconsax.send_1, color: Colors.white),
+                  onPressed: _sendMessage,
+                ),
               ),
-              child: IconButton(
-                icon: const Icon(Iconsax.send_1, color: Colors.white),
-                onPressed: _sendMessage,
-              ),
-            ),
           ],
         ),
       ),

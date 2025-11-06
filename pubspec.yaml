@@ -63,6 +63,11 @@ dependencies:
   
   # Audio Player
   audioplayers: ^5.2.1
+  
+  # Voice Recording & Speech-to-Text
+  speech_to_text: ^7.0.0
+  flutter_sound: ^9.2.13
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:

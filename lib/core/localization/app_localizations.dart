@@ -211,6 +211,12 @@ class AppLocalizations {
       'show_think_mode': 'Show AI Reasoning',
       'think_mode_description': 'Display internal AI thought process',
       'chat_with_me': 'Chat with me',
+      
+      // Voice Messages
+      'voice_permission_denied': 'Microphone permission denied. Please enable it in settings.',
+      'voice_message': 'Voice message',
+      'recording': 'Recording...',
+      'send_voice': 'Send voice message',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -413,6 +419,12 @@ class AppLocalizations {
       'show_think_mode': 'KI-Denken anzeigen',
       'think_mode_description': 'Internen KI-Denkprozess anzeigen',
       'chat_with_me': 'Chatte mit mir',
+      
+      // Voice Messages
+      'voice_permission_denied': 'Mikrofon-Berechtigung verweigert. Bitte aktivieren Sie sie in den Einstellungen.',
+      'voice_message': 'Sprachnachricht',
+      'recording': 'Aufnahme läuft...',
+      'send_voice': 'Sprachnachricht senden',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -611,6 +623,12 @@ class AppLocalizations {
       'show_think_mode': 'إظهار تفكير الذكاء الاصطناعي',
       'think_mode_description': 'عرض عملية تفكير الذكاء الاصطناعي الداخلية',
       'chat_with_me': 'تحدث معي',
+      
+      // Voice Messages
+      'voice_permission_denied': 'تم رفض إذن الميكروفون. يرجى تمكينه في الإعدادات.',
+      'voice_message': 'رسالة صوتية',
+      'recording': 'جارٍ التسجيل...',
+      'send_voice': 'إرسال رسالة صوتية',
     },
   };
 
