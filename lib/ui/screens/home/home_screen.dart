@@ -145,8 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
           FadeIn(
             child: tabs[_currentIndex],
           ),
-          // Floating chat button
-          const FloatingChatButton(),
+          // Floating chat button (hide on visualization tab - index 1)
+          if (_currentIndex != 1) const FloatingChatButton(),
         ],
       ),
       bottomNavigationBar: Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+import 'dart:async';
 import '../../core/providers/ai_chat_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
@@ -19,6 +20,7 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   bool _isExpanded = false;
+  Timer? _collapseTimer;
 
   @override
   void initState() {
@@ -31,8 +33,20 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
 
   @override
   void dispose() {
+    _collapseTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  void _startCollapseTimer() {
+    _collapseTimer?.cancel();
+    _collapseTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _isExpanded = false;
+        });
+      }
+    });
   }
 
   @override
@@ -49,20 +63,20 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
           bottom: 20,
           child: GestureDetector(
             onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-
-              // Navigate after a short delay if expanded
               if (_isExpanded) {
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  Navigator.pushNamed(context, '/ai-chat');
-                  // Mark messages as read when opening chat
-                  chatProvider.markAllAsRead();
-                  setState(() {
-                    _isExpanded = false;
-                  });
+                // Second tap - navigate to chat
+                _collapseTimer?.cancel();
+                Navigator.pushNamed(context, '/ai-chat');
+                chatProvider.markAllAsRead();
+                setState(() {
+                  _isExpanded = false;
                 });
+              } else {
+                // First tap - expand button
+                setState(() {
+                  _isExpanded = true;
+                });
+                _startCollapseTimer();
               }
             },
             child: AnimatedContainer(
@@ -91,45 +105,48 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
                 children: [
                   // Main content
                   Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Icon
-                        AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: hasUnread
-                                  ? 1.0 + (_pulseController.value * 0.1)
-                                  : 1.0,
-                              child: const Icon(
-                                Iconsax.message_programming5,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            );
-                          },
-                        ),
-
-                        // Text (when expanded)
-                        if (_isExpanded) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: FadeIn(
-                              duration: const Duration(milliseconds: 200),
-                              child: Text(
-                                loc.t('chat_with_me'),
-                                style: const TextStyle(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: _isExpanded ? 12 : 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Icon
+                          AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: hasUnread
+                                    ? 1.0 + (_pulseController.value * 0.1)
+                                    : 1.0,
+                                child: const Icon(
+                                  Iconsax.message_programming5,
                                   color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  size: 24,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          ),
+
+                          // Text (when expanded)
+                          if (_isExpanded) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: FadeIn(
+                                duration: const Duration(milliseconds: 200),
+                                child: Text(
+                                  loc.t('chat_with_me'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
 
