@@ -91,12 +91,12 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textColor = widget.isUser ? Colors.white : theme.colorScheme.onSurface;
+    final textColor =
+        widget.isUser ? Colors.white : theme.colorScheme.onSurface;
 
     return Column(
-      crossAxisAlignment: widget.isUser
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          widget.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         // Voice player
         Container(

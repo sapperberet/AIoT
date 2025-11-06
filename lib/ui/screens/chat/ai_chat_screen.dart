@@ -138,7 +138,8 @@ class _AIChatScreenState extends State<AIChatScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).t('voice_permission_denied')),
+            content:
+                Text(AppLocalizations.of(context).t('voice_permission_denied')),
             backgroundColor: Colors.red,
           ),
         );

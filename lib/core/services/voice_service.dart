@@ -33,7 +33,7 @@ class VoiceService {
 
       // Initialize flutter_sound recorder
       await _recorder.openRecorder();
-      
+
       // Initialize speech-to-text
       _isInitialized = await _speechToText.initialize(
         onError: (error) {
@@ -192,7 +192,7 @@ class VoiceService {
           transcription.clear();
           transcription.write(result.recognizedWords);
           _logger.d('Transcription: ${result.recognizedWords}');
-          
+
           if (result.finalResult) {
             isComplete = true;
           }

@@ -129,7 +129,10 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(20, (index) {
                             final delay = (index * 0.05) % 1.0;
-                            final value = (((_pulseController.value + delay) % 1.0) * 2 - 1).abs();
+                            final value =
+                                (((_pulseController.value + delay) % 1.0) * 2 -
+                                        1)
+                                    .abs();
                             return Container(
                               width: 3,
                               height: 4 + (value * 20),
