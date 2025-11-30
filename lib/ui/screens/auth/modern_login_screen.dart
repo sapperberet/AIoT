@@ -247,100 +247,139 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
                 const SizedBox(height: 32),
 
-                // Biometric Login Button (only show if enabled and available)
-                if (_isBiometricAvailable && _isBiometricEnabled)
+                // Biometric Login Button (show if available, but disable if not enabled in settings)
+                if (_isBiometricAvailable)
                   FadeInUp(
                     delay: const Duration(milliseconds: 250),
                     duration: const Duration(milliseconds: 400),
-                    child: GestureDetector(
-                      onTap: _handleBiometricLogin,
-                      child: GlassmorphicContainer(
-                        width: double.infinity,
-                        height: 80,
-                        borderRadius: 20,
-                        blur: 15,
-                        alignment: Alignment.center,
-                        border: 2,
-                        linearGradient: LinearGradient(
-                          colors: isDark
-                              ? [
-                                  Colors.white.withOpacity(0.1),
-                                  Colors.white.withOpacity(0.05),
-                                ]
-                              : [
-                                  Colors.white.withOpacity(0.8),
-                                  Colors.white.withOpacity(0.6),
-                                ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderGradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryColor.withOpacity(0.5),
-                            AppTheme.accentColor.withOpacity(0.5),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppTheme.primaryColor.withOpacity(0.8),
-                                    AppTheme.accentColor.withOpacity(0.8),
+                    child: Opacity(
+                      opacity: _isBiometricEnabled ? 1.0 : 0.5,
+                      child: GestureDetector(
+                        onTap: _isBiometricEnabled
+                            ? _handleBiometricLogin
+                            : () {
+                                // Show message that biometric needs to be enabled in settings
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(loc.translate(
+                                        'enable_biometric_in_settings')),
+                                    backgroundColor: Colors.orange,
+                                    action: SnackBarAction(
+                                      label: loc.translate('settings'),
+                                      textColor: Colors.white,
+                                      onPressed: () {
+                                        // Note: User needs to login first to access settings
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                        child: GlassmorphicContainer(
+                          width: double.infinity,
+                          height: 80,
+                          borderRadius: 20,
+                          blur: 15,
+                          alignment: Alignment.center,
+                          border: 2,
+                          linearGradient: LinearGradient(
+                            colors: isDark
+                                ? [
+                                    Colors.white.withOpacity(
+                                        _isBiometricEnabled ? 0.1 : 0.05),
+                                    Colors.white.withOpacity(
+                                        _isBiometricEnabled ? 0.05 : 0.02),
+                                  ]
+                                : [
+                                    Colors.white.withOpacity(
+                                        _isBiometricEnabled ? 0.8 : 0.5),
+                                    Colors.white.withOpacity(
+                                        _isBiometricEnabled ? 0.6 : 0.4),
                                   ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderGradient: LinearGradient(
+                            colors: [
+                              (_isBiometricEnabled
+                                      ? AppTheme.primaryColor
+                                      : Colors.grey)
+                                  .withOpacity(0.5),
+                              (_isBiometricEnabled
+                                      ? AppTheme.accentColor
+                                      : Colors.grey)
+                                  .withOpacity(0.5),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.primaryColor.withOpacity(0.8),
+                                      AppTheme.accentColor.withOpacity(0.8),
+                                    ],
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Iconsax.finger_scan,
+                                  color: Colors.white,
+                                  size: 24,
                                 ),
                               ),
-                              child: const Icon(
-                                Iconsax.finger_scan,
-                                color: Colors.white,
-                                size: 24,
+                              const SizedBox(width: 16),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isBiometricEnabled
+                                        ? loc
+                                            .translate('enable_biometric_login')
+                                        : loc.translate('biometric_disabled'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          color: _isBiometricEnabled
+                                              ? (isDark
+                                                  ? AppTheme.lightText
+                                                  : AppTheme.darkText)
+                                              : Colors.grey,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                  Text(
+                                    _isBiometricEnabled
+                                        ? loc.translate('tap_to_authenticate')
+                                        : loc.translate('enable_in_settings'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: _isBiometricEnabled
+                                              ? (isDark
+                                                  ? AppTheme.mutedText
+                                                  : AppTheme.darkText
+                                                      .withOpacity(0.6))
+                                              : Colors.grey.withOpacity(0.7),
+                                          fontSize: 11,
+                                        ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  loc.translate('enable_biometric_login'),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
-                                      ?.copyWith(
-                                        color: isDark
-                                            ? AppTheme.lightText
-                                            : AppTheme.darkText,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                                Text(
-                                  loc.translate('tap_to_authenticate'),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: isDark
-                                            ? AppTheme.mutedText
-                                            : AppTheme.darkText
-                                                .withOpacity(0.6),
-                                        fontSize: 11,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
 
-                if (_isBiometricAvailable && _isBiometricEnabled)
-                  const SizedBox(height: 24),
+                if (_isBiometricAvailable) const SizedBox(height: 24),
 
                 // Info Box - Explaining 2FA
                 FadeInUp(

@@ -33,7 +33,7 @@ import 'ui/screens/chat/ai_chat_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
-const bool DEBUG_MODE = true;
+const bool DEBUG_MODE = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

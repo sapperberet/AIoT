@@ -230,6 +230,10 @@ class AppLocalizations {
       'biometric_not_available':
           'Biometric authentication is not available on this device',
       'biometric_login_failed': 'Biometric authentication failed',
+      'biometric_disabled': 'Biometric Login',
+      'enable_in_settings': 'Enable in Settings after login',
+      'enable_biometric_in_settings':
+          'Enable biometric login in Settings after your first login',
 
       // Chat Theme Settings
       'chat_appearance': 'Chat Appearance',
@@ -473,6 +477,10 @@ class AppLocalizations {
       'biometric_not_available':
           'Biometrische Authentifizierung ist auf diesem Gerät nicht verfügbar',
       'biometric_login_failed': 'Biometrische Authentifizierung fehlgeschlagen',
+      'biometric_disabled': 'Biometrische Anmeldung',
+      'enable_in_settings': 'Nach der Anmeldung in Einstellungen aktivieren',
+      'enable_biometric_in_settings':
+          'Biometrische Anmeldung in den Einstellungen nach der ersten Anmeldung aktivieren',
 
       // Chat Theme Settings
       'chat_appearance': 'Chat-Erscheinung',
@@ -708,6 +716,10 @@ class AppLocalizations {
       'biometric_login_prompt': 'قم بالمصادقة للوصول إلى المنزل الذكي',
       'biometric_not_available': 'المصادقة بالبصمة غير متوفرة على هذا الجهاز',
       'biometric_login_failed': 'فشلت المصادقة بالبصمة',
+      'biometric_disabled': 'تسجيل الدخول بالبصمة',
+      'enable_in_settings': 'تفعيل في الإعدادات بعد تسجيل الدخول',
+      'enable_biometric_in_settings':
+          'تفعيل تسجيل الدخول بالبصمة في الإعدادات بعد أول تسجيل دخول',
       // Chat Theme Settings
       'chat_appearance': 'مظهر المحادثة',
       'themes': 'السمات',

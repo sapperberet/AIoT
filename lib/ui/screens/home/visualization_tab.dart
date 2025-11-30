@@ -67,7 +67,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
   Future<void> _loadGlbModel() async {
     try {
       debugPrint('📦 Loading .glb model from assets...');
-      final ByteData data = await rootBundle.load('assets/3d/home_model.glb');
+      // Use newer model from web folder
+      final ByteData data = await rootBundle.load('assets/web/home_model.glb');
       final List<int> bytes = data.buffer.asUint8List();
       final String base64String = base64Encode(bytes);
 

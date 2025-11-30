@@ -464,10 +464,12 @@
         }
         
         .hud-slot-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            display: flex;
+            flex-direction: row;
+            gap: 6px;
             margin-bottom: 12px;
+            justify-content: center;
+            flex-wrap: nowrap;
         }
         
         .hud-slot {
@@ -791,7 +793,7 @@
             </div>
             
             <div class="hud-panel-content">
-            <!-- Inventory Slots -->
+            <!-- Inventory Slots (Navbar Layout) -->
             <div class="hud-slot-container">
                 <div class="hud-slot active" data-tool="paint" title="Paint Tool">🎨</div>
                 <div class="hud-slot" data-tool="light" title="Light Control">💡</div>
@@ -800,7 +802,6 @@
                 <div class="hud-slot" data-tool="garage" title="Toggle Garage">🚗</div>
                 <div class="hud-slot" data-tool="windows" title="Toggle Windows">🪟</div>
                 <div class="hud-slot" data-tool="daynight" title="Day/Night Cycle">🌅</div>
-                <div class="hud-slot" data-tool="rotate" title="Rotate View">🔄</div>
                 <div class="hud-slot" data-tool="reset" title="Reset Colors">↺</div>
             </div>
             
@@ -1024,11 +1025,53 @@
         }
 
         function loadHomeModel() {
-            // Initial fallback to placeholder
-            // The actual model will be loaded via loadModelFromBase64() called from Flutter
-            console.log('⏳ Waiting for Flutter to send .glb model...');
-            createPlaceholderHouse();
-            document.getElementById('loading').style.display = 'none';
+            // Try to load the GLB model directly for standalone preview
+            const loader = new GLTFLoader();
+            const modelPath = 'home_model.glb';
+            
+            console.log('🏠 Attempting to load model from:', modelPath);
+            
+            loader.load(
+                modelPath,
+                (gltf) => {
+                    console.log('✅ Model loaded successfully for standalone preview');
+                    if (homeModel) {
+                        scene.remove(homeModel);
+                    }
+                    homeModel = gltf.scene;
+                    
+                    // Center and scale the model
+                    const box = new THREE.Box3().setFromObject(homeModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 10 / maxDim;
+                    
+                    homeModel.scale.setScalar(scale);
+                    homeModel.position.sub(center.multiplyScalar(scale));
+                    homeModel.position.y = 0;
+                    
+                    // Enable shadows
+                    homeModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    scene.add(homeModel);
+                    document.getElementById('loading').style.display = 'none';
+                },
+                (progress) => {
+                    console.log('📦 Loading progress:', (progress.loaded / progress.total * 100).toFixed(1) + '%');
+                },
+                (error) => {
+                    console.log('⚠️ Could not load GLB directly, using placeholder. Error:', error.message);
+                    console.log('⏳ Waiting for Flutter to send .glb model...');
+                    createPlaceholderHouse();
+                    document.getElementById('loading').style.display = 'none';
+                }
+            );
         }
 
         // Load 3D model from base64 string (called from Flutter)
@@ -2200,42 +2243,68 @@
         
         // Initialize day/night cycle with sun and moon
         function initializeDayNightCycle() {
-            // Create sun (yellow sphere)
-            const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
-            const sunMaterial = new THREE.MeshBasicMaterial({ 
+            // Create sun (larger yellow sphere with glow effect)
+            const sunGeometry = new THREE.SphereGeometry(12, 64, 64);
+            const sunMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0xFFDD00,
-                emissive: 0xFFDD00,
-                emissiveIntensity: 1
+                emissive: 0xFFAA00,
+                emissiveIntensity: 2.0,
+                roughness: 0.1,
+                metalness: 0.0
             });
             sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
-            sunMesh.position.set(50, 30, 0);
+            sunMesh.position.set(150, 80, 0);
             scene.add(sunMesh);
             
+            // Sun glow effect (outer halo)
+            const sunGlowGeometry = new THREE.SphereGeometry(18, 32, 32);
+            const sunGlowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFFDD44,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+            sunMesh.add(sunGlow);
+            
             // Sun light (directional, warm)
-            sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.5);
+            sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.8);
             sunLight.position.copy(sunMesh.position);
             sunLight.castShadow = true;
             sunLight.shadow.mapSize.width = 2048;
             sunLight.shadow.mapSize.height = 2048;
             scene.add(sunLight);
             
-            // Create moon (white/pale blue sphere)
-            const moonGeometry = new THREE.SphereGeometry(1.5, 32, 32);
-            const moonMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xCCCCFF,
-                emissive: 0xAAAAFF,
-                emissiveIntensity: 0.3
+            // Create moon (larger pale sphere with crater texture simulation)
+            const moonGeometry = new THREE.SphereGeometry(8, 64, 64);
+            const moonMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xDDDDEE,
+                emissive: 0x8888AA,
+                emissiveIntensity: 0.5,
+                roughness: 0.8,
+                metalness: 0.1
             });
             moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
-            moonMesh.position.set(-50, -30, 0);
+            moonMesh.position.set(-150, -80, 0);
             scene.add(moonMesh);
             
+            // Moon glow effect (subtle outer halo)
+            const moonGlowGeometry = new THREE.SphereGeometry(11, 32, 32);
+            const moonGlowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xAAAACC,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.BackSide
+            });
+            const moonGlow = new THREE.Mesh(moonGlowGeometry, moonGlowMaterial);
+            moonMesh.add(moonGlow);
+            
             // Moon light (directional, cool blue)
-            moonLight = new THREE.DirectionalLight(0x6677BB, 0.3);
+            moonLight = new THREE.DirectionalLight(0x6677BB, 0.4);
             moonLight.position.copy(moonMesh.position);
             scene.add(moonLight);
             
-            console.log('🌅 Day/Night cycle initialized');
+            console.log('🌅 Day/Night cycle initialized with enhanced sun and moon');
         }
         
         // Update sun/moon positions based on time of day (0-24)
@@ -2258,18 +2327,18 @@
             // Calculate sun position (rises at 6, sets at 18)
             // Convert hour to radians (0-24 -> 0-2π)
             const sunAngle = ((hour - 6) / 12) * Math.PI;
-            const orbitRadius = 50;
+            const orbitRadius = 180; // Much larger orbit for better visual
             
             // Sun position on circular path
             const sunX = Math.cos(sunAngle) * orbitRadius;
-            const sunY = Math.sin(sunAngle) * orbitRadius * 0.6 + 10;
+            const sunY = Math.sin(sunAngle) * orbitRadius * 0.6 + 30;
             const sunZ = Math.sin(sunAngle) * orbitRadius * 0.3;
             
-            sunMesh.position.set(sunX, Math.max(sunY, -20), sunZ);
+            sunMesh.position.set(sunX, Math.max(sunY, -50), sunZ);
             sunLight.position.copy(sunMesh.position);
             
-            // Moon is opposite to sun
-            moonMesh.position.set(-sunX, -sunY + 20, -sunZ);
+            // Moon is opposite to sun with larger separation
+            moonMesh.position.set(-sunX, -sunY + 60, -sunZ);
             moonLight.position.copy(moonMesh.position);
             
             // Calculate day/night intensity (0 = midnight, 1 = noon)
