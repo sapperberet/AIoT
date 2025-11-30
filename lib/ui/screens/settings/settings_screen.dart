@@ -7,6 +7,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/services/biometric_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,17 +18,30 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _sessionDuration = 2; // Default value
+  final BiometricService _biometricService = BiometricService();
+  bool _isBiometricAvailable = false;
+  String _biometricTypeDescription = '';
   
   @override
   void initState() {
     super.initState();
     _loadSessionDuration();
+    _checkBiometricAvailability();
   }
   
   Future<void> _loadSessionDuration() async {
     final duration = await SessionService.getSessionDuration();
     setState(() {
       _sessionDuration = duration;
+    });
+  }
+  
+  Future<void> _checkBiometricAvailability() async {
+    final isAvailable = await _biometricService.isBiometricAvailable();
+    final description = await _biometricService.getBiometricTypeDescription();
+    setState(() {
+      _isBiometricAvailable = isAvailable;
+      _biometricTypeDescription = description;
     });
   }
   
@@ -194,6 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAuthenticationSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
     final _emailController =
         TextEditingController(text: settingsProvider.userEmail);
@@ -290,6 +305,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          // Biometric Authentication Toggle
+          if (_isBiometricAvailable) ...[
+            _buildSwitchTile(
+              loc.t('biometric_login'),
+              settingsProvider.enableBiometricAuth,
+              (value) async {
+                if (value) {
+                  // Verify biometric before enabling
+                  final authenticated = await _biometricService.authenticate(
+                    localizedReason: loc.t('authenticate_to_enable'),
+                  );
+                  if (authenticated) {
+                    settingsProvider.toggleBiometricAuth(true);
+                    await _biometricService.setBiometricEnabled(true);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(loc.t('biometric_enabled')),
+                          backgroundColor: AppTheme.successColor,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  settingsProvider.toggleBiometricAuth(false);
+                  await _biometricService.setBiometricEnabled(false);
+                }
+              },
+              icon: Iconsax.finger_scan,
+            ),
+            // Biometric info
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(top: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withOpacity(0.1),
+                borderRadius: AppTheme.smallRadius,
+                border: Border.all(
+                  color: AppTheme.successColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.finger_scan,
+                    color: AppTheme.successColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${loc.t('biometric_info')} ($_biometricTypeDescription)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          loc.t('biometric_initial_auth_required'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: textColor.withOpacity(0.5),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Biometric not available info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.mutedText.withOpacity(0.1),
+                borderRadius: AppTheme.smallRadius,
+                border: Border.all(
+                  color: AppTheme.mutedText.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.finger_scan,
+                    color: AppTheme.mutedText,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      loc.t('biometric_not_available'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           // Email/Password fields (only shown when enabled)
           if (settingsProvider.enableEmailPasswordAuth) ...[

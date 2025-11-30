@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/settings_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/services/biometric_service.dart';
 import '../../main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,6 +18,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final BiometricService _biometricService = BiometricService();
+  
   @override
   void initState() {
     super.initState();
@@ -33,15 +38,51 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     // Normal authentication flow
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
 
+    // Check if user was previously authenticated and has biometric enabled
     if (authProvider.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/home');
-    } else {
+      return;
+    }
+
+    // Check if biometric login is enabled and user has completed initial auth
+    final biometricEnabled = await _biometricService.isBiometricEnabled();
+    final hasCompletedInitialAuth = await _biometricService.hasCompletedInitialAuth();
+    final biometricAvailable = await _biometricService.isBiometricAvailable();
+    
+    if (kDebugMode) {
+      debugPrint('🔐 Biometric enabled: $biometricEnabled');
+      debugPrint('🔐 Has completed initial auth: $hasCompletedInitialAuth');
+      debugPrint('🔐 Biometric available: $biometricAvailable');
+    }
+
+    if (biometricEnabled && hasCompletedInitialAuth && biometricAvailable) {
+      // Try biometric authentication to bypass face recognition
+      final authenticated = await _biometricService.authenticate(
+        localizedReason: 'Authenticate to access Smart Home',
+      );
+      
+      if (authenticated && mounted) {
+        if (kDebugMode) {
+          debugPrint('✅ Biometric authentication successful - bypassing face auth');
+        }
+        Navigator.of(context).pushReplacementNamed('/home');
+        return;
+      } else {
+        if (kDebugMode) {
+          debugPrint('⚠️ Biometric authentication failed - falling back to normal auth');
+        }
+      }
+    }
+
+    // Fall back to normal login flow
+    if (mounted) {
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }
