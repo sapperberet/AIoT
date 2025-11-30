@@ -1146,56 +1146,56 @@
         // Theme Configuration
         const themes = {
             modern: {
-                name: 'Modern Light',
+                name: 'Modern Wood',
                 colors: {
-                    yard: 0x90EE90,      // Light green
-                    home: 0xF5DEB3,      // Light cream
-                    roof: 0xD4A574,      // Light tan
-                    door: 0xFF4444,      // Bright red
+                    yard: 0x7CCD7C,      // Light grass green
+                    home: 0xDEB887,      // Burlywood (light wood)
+                    roof: 0x8B4513,      // Saddle brown
+                    door: 0xCD853F,      // Peru (wooden door)
                     glass: 0xADD8E6,     // Light cyan
-                    garage: 0xD3D3D3     // Light gray
+                    garage: 0xA0522D     // Sienna (wood)
                 },
-                emissive: 0x666666,
-                emissiveIntensity: 0.4
+                emissive: 0x222222,
+                emissiveIntensity: 0.1
             },
             classic: {
-                name: 'Classic Warm',
+                name: 'Classic Cabin',
                 colors: {
-                    yard: 0x2d8a2d,      // Forest green
-                    home: 0x8B5A3C,      // Warm brown
-                    roof: 0x6B4423,      // Dark brown
-                    door: 0xD4A574,      // Warm tan door
+                    yard: 0x90EE90,      // Light green grass
+                    home: 0x8B4513,      // Saddle brown (dark wood)
+                    roof: 0x5D3A1A,      // Dark brown wood
+                    door: 0xB8860B,      // Dark goldenrod
                     glass: 0x87CEEB,     // Sky blue
-                    garage: 0x6B7280     // Medium gray
+                    garage: 0x654321     // Dark brown
                 },
-                emissive: 0x444444,
-                emissiveIntensity: 0.3
+                emissive: 0x111111,
+                emissiveIntensity: 0.05
             },
             minimal: {
-                name: 'Minimal Cool',
+                name: 'Modern White',
                 colors: {
-                    yard: 0xC0C0C0,      // Light silver
-                    home: 0xE8E8E8,      // Very light gray
-                    roof: 0xA9A9A9,      // Dark gray
-                    door: 0x4169E1,      // Royal blue door
+                    yard: 0x98FB98,      // Pale green
+                    home: 0xFAF0E6,      // Linen white
+                    roof: 0x2F4F4F,      // Dark slate gray
+                    door: 0x4169E1,      // Royal blue
                     glass: 0xB0E0E6,     // Powder blue
-                    garage: 0x808080     // Medium gray
+                    garage: 0x696969     // Dim gray
                 },
-                emissive: 0x333333,
-                emissiveIntensity: 0.2
+                emissive: 0x111111,
+                emissiveIntensity: 0.05
             },
             vibrant: {
-                name: 'Vibrant',
+                name: 'Colorful',
                 colors: {
-                    yard: 0x00FF00,      // Neon green
-                    home: 0xFF6B6B,      // Coral red
-                    roof: 0xFF8C00,      // Dark orange
-                    door: 0xFFD700,      // Gold door
+                    yard: 0x32CD32,      // Lime green
+                    home: 0xFFB347,      // Pastel orange
+                    roof: 0xDC143C,      // Crimson
+                    door: 0xFFD700,      // Gold
                     glass: 0x00CED1,     // Turquoise
                     garage: 0x9370DB     // Medium purple
                 },
-                emissive: 0x777777,
-                emissiveIntensity: 0.5
+                emissive: 0x222222,
+                emissiveIntensity: 0.15
             }
         };
 
@@ -1366,6 +1366,28 @@
                                 // Clone material for independent control
                                 if (child.material) {
                                     child.material = child.material.clone();
+                                    
+                                    // Apply woody theme colors
+                                    const nameLower = child.name.toLowerCase();
+                                    if (nameLower.includes('yard') || nameLower.includes('ground') || nameLower.includes('grass')) {
+                                        child.material.color.setHex(0x7CCD7C); // Light grass green
+                                    } else if (nameLower.includes('wall') || nameLower.includes('body') || nameLower.includes('level') || nameLower.includes('home')) {
+                                        child.material.color.setHex(0xDEB887); // Burlywood
+                                    } else if (nameLower.includes('roof')) {
+                                        child.material.color.setHex(0x8B4513); // Saddle brown
+                                    } else if (nameLower.includes('door') && !nameLower.includes('garage')) {
+                                        child.material.color.setHex(0xCD853F); // Peru
+                                    } else if (nameLower.includes('glass') || nameLower.includes('window')) {
+                                        child.material.color.setHex(0xADD8E6); // Light blue
+                                    } else if (nameLower.includes('garage')) {
+                                        child.material.color.setHex(0xA0522D); // Sienna
+                                    }
+                                    
+                                    // Natural emissive
+                                    if (child.material.emissive) {
+                                        child.material.emissive.setHex(0x222222);
+                                        child.material.emissiveIntensity = 0.1;
+                                    }
                                 }
                                 
                                 // Store mesh for interaction
@@ -1492,28 +1514,28 @@
                                 // Store all meshes
                                 roomMeshes[child.name] = child;
                                 
-                                // Apply color adjustments based on mesh name
+                                // Apply color adjustments based on mesh name (woody theme)
                                 if (child.material) {
-                                    // Yard/ground meshes - make them light green grass
+                                    // Yard/ground meshes - light grass green
                                     if (child.name.toLowerCase().includes('yard') || 
                                         child.name.toLowerCase().includes('ground') ||
                                         child.name.toLowerCase().includes('grass')) {
-                                        child.material.color.setHex(0x90EE90); // Light green
+                                        child.material.color.setHex(0x7CCD7C); // Light grass green
                                     }
-                                    // House walls and structure - light cream/tan color
+                                    // House walls and structure - burlywood (light wood)
                                     else if (child.name.toLowerCase().includes('home') || 
                                              child.name.toLowerCase().includes('wall') ||
                                              child.name.toLowerCase().includes('body') ||
                                              child.name.toLowerCase().includes('level')) {
-                                        child.material.color.setHex(0xF5DEB3); // Light wheat/cream
+                                        child.material.color.setHex(0xDEB887); // Burlywood
                                     }
-                                    // Roof - light brown/tan
+                                    // Roof - saddle brown
                                     else if (child.name.toLowerCase().includes('roof')) {
-                                        child.material.color.setHex(0xD4A574); // Light brown roof
+                                        child.material.color.setHex(0x8B4513); // Saddle brown
                                     }
-                                    // Door - bright red (distinctive)
-                                    else if (child.name.toLowerCase().includes('door')) {
-                                        child.material.color.setHex(0xFF4444); // Bright red door
+                                    // Door - peru (wooden door)
+                                    else if (child.name.toLowerCase().includes('door') && !child.name.toLowerCase().includes('garage')) {
+                                        child.material.color.setHex(0xCD853F); // Peru
                                         console.log('Applied door color to:', child.name);
                                     }
                                     // Glass/windows - light cyan blue
@@ -1521,16 +1543,17 @@
                                              child.name.toLowerCase().includes('window')) {
                                         child.material.color.setHex(0xADD8E6); // Light blue glass
                                     }
-                                    // Garage - light gray
+                                    // Garage - sienna (wood)
                                     else if (child.name.toLowerCase().includes('garage')) {
-                                        child.material.color.setHex(0xD3D3D3); // Light gray
+                                        child.material.color.setHex(0xA0522D); // Sienna
                                         console.log('Applied garage color to:', child.name);
                                     }
                                     
-                                    // Increase material brightness
-                                    child.material.emissive.setHex(0x666666); // Even brighter emissive
-                                    child.material.emissiveIntensity = 0.4; // Higher intensity for brighter look
-                                    child.material.shininess = 100; // More reflective
+                                    // Lower emissive for more natural look
+                                    if (child.material.emissive) {
+                                        child.material.emissive.setHex(0x222222);
+                                        child.material.emissiveIntensity = 0.1;
+                                    }
                                     
                                     // Store original color for reset
                                     if (child.material.color) {
@@ -2060,34 +2083,33 @@
             if (starsGroup) return starsGroup;
             
             starsGroup = new THREE.Group();
-            const starGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            
+            // Simple white dot stars
+            const starGeometry = new THREE.SphereGeometry(0.8, 4, 4);
             const starMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
             
-            // Create 200 stars scattered in the sky dome
-            for (let i = 0; i < 200; i++) {
+            // Create 300 white dot stars
+            for (let i = 0; i < 300; i++) {
                 const star = new THREE.Mesh(starGeometry, starMaterial.clone());
                 
-                // Random position on a large sphere
-                const radius = 300 + Math.random() * 100;
+                // Random position on sky dome
+                const radius = 250 + Math.random() * 100;
                 const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI * 0.4; // Upper hemisphere only
+                const phi = Math.random() * Math.PI * 0.5;
                 
                 star.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                star.position.y = radius * Math.cos(phi) + 50; // Above horizon
+                star.position.y = radius * Math.cos(phi) + 30;
                 star.position.z = radius * Math.sin(phi) * Math.sin(theta);
                 
-                // Random size variation
-                const scale = 0.3 + Math.random() * 0.7;
-                star.scale.setScalar(scale);
-                
-                // Random brightness
-                star.material.opacity = 0.5 + Math.random() * 0.5;
+                // Slight random brightness
+                star.material.opacity = 0.7 + Math.random() * 0.3;
                 star.material.transparent = true;
                 
                 starsGroup.add(star);
             }
             
             scene.add(starsGroup);
+            console.log('⭐ Created', starsGroup.children.length, 'white stars');
             // Initially visible based on current time
             const now = new Date();
             const currentHour = now.getHours();
@@ -2466,30 +2488,36 @@
                 return;
             }
 
-            console.log('🚗 Opening garage (sliding up)...');
+            console.log('🚗 Opening garage (tilting up)...');
             garageAnimating = true;
 
-            // Garage door slides up - increased height for better visibility
-            const openHeight = 3.5;
-            const targetY = garageMesh.userData.originalPosition.y + openHeight;
-            const startY = garageMesh.position.y;
+            // Ensure originalRotation is set
+            if (!garageMesh.userData.originalRotation) {
+                garageMesh.userData.originalRotation = garageMesh.rotation.clone();
+            }
+            
+            // Garage door tilts up on X axis (like overhead door)
+            const rotationAmount = -Math.PI / 3;  // -60 degrees (tilt up and back)
+            const startRotX = garageMesh.rotation.x;
+            const targetRotX = garageMesh.userData.originalRotation.x + rotationAmount;
             const duration = 1000;
             const startTime = Date.now();
+            
+            console.log('🚗 Garage start rotX:', startRotX, 'target rotX:', targetRotX);
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                // Smooth ease-out animation
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                garageMesh.position.y = startY + (targetY - startY) * easeProgress;
+                garageMesh.rotation.x = startRotX + (targetRotX - startRotX) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
                 } else {
                     garageAnimating = false;
                     garageOpen = true;
-                    console.log('✅ Garage opened');
+                    console.log('✅ Garage opened at rotX:', garageMesh.rotation.x);
                 }
             }
 
@@ -2499,25 +2527,25 @@
         function closeGarage() {
             if (!garageMesh || garageAnimating || !garageOpen) return;
 
-            console.log('🚗 Closing garage (sliding down)...');
+            console.log('🚗 Closing garage (tilting down)...');
             garageAnimating = true;
 
-            const targetY = garageMesh.userData.originalPosition.y;
-            const startY = garageMesh.position.y;
+            const targetRotX = garageMesh.userData.originalRotation?.x || 0;
+            const startRotX = garageMesh.rotation.x;
             const duration = 1000;
             const startTime = Date.now();
 
             function animateClose() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                // Smooth ease-out animation
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                garageMesh.position.y = startY + (targetY - startY) * easeProgress;
+                garageMesh.rotation.x = startRotX + (targetRotX - startRotX) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
+                    garageMesh.rotation.x = targetRotX;
                     garageAnimating = false;
                     garageOpen = false;
                     console.log('✅ Garage closed');
@@ -2533,23 +2561,24 @@
             console.log('🪟 Opening window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            // Simple 90 degree Y rotation from original position
-            const originalY = windowMesh.userData.originalRotation?.y || 0;
-            const targetRotation = originalY + Math.PI / 2;  // Just add 90 degrees
-            const startRotation = originalY;  // Always start from original
+            // Store original rotation if not already stored
+            if (windowMesh.userData.originalRotationY === undefined) {
+                windowMesh.userData.originalRotationY = windowMesh.rotation.y;
+            }
+            
+            // Simple Y rotation - 45 degrees outward
+            const targetAngle = Math.PI / 4;  // 45 degrees
+            const startRotY = windowMesh.rotation.y;
+            const targetRotY = windowMesh.userData.originalRotationY + targetAngle;
             const duration = 500;
             const startTime = Date.now();
-
-            // Reset to original first to ensure clean animation
-            windowMesh.rotation.y = originalY;
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                // Simple interpolation from original to target
-                windowMesh.rotation.y = originalY + (Math.PI / 2) * easeProgress;
+                windowMesh.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
@@ -2570,9 +2599,8 @@
             console.log('🪟 Closing window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            // Simple rotation back to original
-            const originalY = windowMesh.userData.originalRotation?.y || 0;
-            const startRotation = windowMesh.rotation.y;
+            const startRotY = windowMesh.rotation.y;
+            const targetRotY = windowMesh.userData.originalRotationY || 0;
             const duration = 500;
             const startTime = Date.now();
 
@@ -2581,12 +2609,12 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                windowMesh.rotation.y = startRotation + (originalY - startRotation) * easeProgress;
+                windowMesh.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
-                    windowMesh.rotation.y = originalY;  // Ensure exact original position
+                    windowMesh.rotation.y = targetRotY;
                     windowMesh.userData.isAnimating = false;
                     windowMesh.userData.isOpen = false;
                     console.log('✅ Window closed:', windowMesh.name);
@@ -2658,13 +2686,9 @@
             if (!doorMesh) {
                 if (!findDoor()) {
                     console.log('❌ Cannot animate door - mesh not found. Searching all meshes...');
-                    // Try to find any mesh with door-like name
                     Object.entries(roomMeshes).forEach(([name, mesh]) => {
                         if (name.toLowerCase().includes('door') && !name.toLowerCase().includes('garage')) {
                             doorMesh = mesh;
-                            if (!doorMesh.userData.originalRotation) {
-                                doorMesh.userData.originalRotation = doorMesh.rotation.clone();
-                            }
                             console.log('🚪 Found alternative door mesh:', name);
                         }
                     });
@@ -2677,23 +2701,66 @@
                 return;
             }
 
-            console.log('🚪 Opening door...');
+            console.log('🚪 Opening door:', doorMesh.name);
             doorAnimating = true;
 
-            // Smooth rotation animation (door swings open)
-            const targetRotation = doorMesh.userData.originalRotation.y + Math.PI / 2; // 90 degrees
-            const startRotation = doorMesh.rotation.y;
-            const duration = 1000; // 1 second
+            // Create pivot group if not exists
+            if (!doorMesh.userData.pivotGroup) {
+                // Get door's world position and dimensions
+                const worldPos = new THREE.Vector3();
+                doorMesh.getWorldPosition(worldPos);
+                
+                const bbox = new THREE.Box3().setFromObject(doorMesh);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                bbox.getSize(size);
+                bbox.getCenter(center);
+                
+                console.log('🚪 Door world pos:', worldPos.x.toFixed(3), worldPos.y.toFixed(3), worldPos.z.toFixed(3));
+                console.log('🚪 Door bbox center:', center.x.toFixed(3), center.y.toFixed(3), center.z.toFixed(3));
+                console.log('🚪 Door size:', size.x.toFixed(3), size.y.toFixed(3), size.z.toFixed(3));
+                
+                // Find hinge edge - it's at center + half width on the appropriate axis
+                // Door width is 0.6, so hinge is 0.3 from center
+                // We need to figure out which direction based on door orientation
+                const hingePos = center.clone();
+                
+                // Try +Z first (right edge when looking at door)
+                hingePos.z += size.z / 2;
+                
+                console.log('🚪 Hinge position:', hingePos.x.toFixed(3), hingePos.y.toFixed(3), hingePos.z.toFixed(3));
+                
+                // Create pivot group at hinge position
+                const pivotGroup = new THREE.Group();
+                pivotGroup.position.copy(hingePos);
+                scene.add(pivotGroup);
+                
+                // Store door's original parent and world matrix
+                const originalParent = doorMesh.parent;
+                const doorWorldMatrix = doorMesh.matrixWorld.clone();
+                
+                // Reparent door to pivot group
+                pivotGroup.attach(doorMesh);
+                
+                // Store references
+                doorMesh.userData.pivotGroup = pivotGroup;
+                doorMesh.userData.originalParent = originalParent;
+                doorMesh.userData.originalWorldMatrix = doorWorldMatrix;
+                doorMesh.userData.hingePos = hingePos.clone();
+            }
+            
+            const pivotGroup = doorMesh.userData.pivotGroup;
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = -Math.PI / 2;  // -90 degrees
+            const duration = 800;
             const startTime = Date.now();
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                // Easing function for smooth animation
-                const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-                
-                doorMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
@@ -2701,11 +2768,6 @@
                     doorAnimating = false;
                     doorOpen = true;
                     console.log('✅ Door opened');
-                    
-                    // Auto-close after 5 seconds
-                    setTimeout(() => {
-                        closeDoor();
-                    }, 5000);
                 }
             }
 
@@ -2720,22 +2782,28 @@
             console.log('🚪 Closing door...');
             doorAnimating = true;
 
-            const targetRotation = doorMesh.userData.originalRotation.y;
-            const startRotation = doorMesh.rotation.y;
-            const duration = 1000;
+            const pivotGroup = doorMesh.userData.pivotGroup;
+            if (!pivotGroup) {
+                doorAnimating = false;
+                return;
+            }
+            
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = 0;
+            const duration = 800;
             const startTime = Date.now();
 
             function animateClose() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                doorMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
+                    pivotGroup.rotation.y = 0;
                     doorAnimating = false;
                     doorOpen = false;
                     console.log('✅ Door closed');
@@ -2858,7 +2926,7 @@
             // Create ground plane at yard level (will be adjusted when model loads)
             const groundGeometry = new THREE.PlaneGeometry(500, 500);
             const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x3a6a3a,  // Grass green color
+                color: 0x7CCD7C,  // Light grass green (matches theme)
                 roughness: 0.9,
                 metalness: 0.0
             });
