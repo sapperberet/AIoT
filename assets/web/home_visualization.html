@@ -1223,6 +1223,7 @@
         let sunMesh = null;
         let moonMesh = null;
         let skyDome = null;
+        let groundPlane = null;
         let isAutoTimeEnabled = true;
         let manualTimeOfDay = 12; // 0-24 hours
         let dayNightSpeed = 1; // Multiplier for time progression
@@ -1832,10 +1833,8 @@
                             break;
                             
                         case 'light':
-                            shadowsEnabled = !shadowsEnabled;
-                            renderer.shadowMap.enabled = shadowsEnabled;
-                            btn.classList.toggle('active', shadowsEnabled);
-                            console.log('Shadows:', shadowsEnabled ? 'ON' : 'OFF');
+                            toggleLights();
+                            btn.classList.toggle('active');
                             break;
                             
                         case 'doors':
@@ -1923,12 +1922,107 @@
                 });
             }
             
-            // Simulate temperature change
+            // Simulate gradual temperature change (realistic small variations around base)
+            const baseTemperature = 22;
             setInterval(() => {
-                hudTemperature = 20 + Math.random() * 6;
-                const tempEl = document.getElementById('temp-value');
-                if (tempEl) tempEl.textContent = hudTemperature.toFixed(1);
-            }, 5000);
+                // Small random variation from base (+/- 1.5 degrees max)
+                const variation = (Math.random() - 0.5) * 3;
+                hudTemperature = baseTemperature + variation;
+                hudTemperature = Math.round(hudTemperature * 10) / 10; // Round to 1 decimal
+                updateTemperatureDisplay(hudTemperature);
+            }, 10000);
+            
+            // Initial temperature display
+            updateTemperatureDisplay(hudTemperature);
+        }
+        
+        // Get temperature color based on value
+        function getTemperatureColor(temp) {
+            if (temp < 0) return '#0000FF';        // Pure blue (freezing)
+            if (temp < 10) return '#0066FF';       // Blue (cold)
+            if (temp < 15) return '#00AAFF';       // Cyan-blue (cool)
+            if (temp < 18) return '#00DDFF';       // Cyan (slightly cool)
+            if (temp < 22) return '#00FFAA';       // Cyan-green (comfortable cool)
+            if (temp < 25) return '#66FF66';       // Green (ideal)
+            if (temp < 28) return '#AAFF00';       // Yellow-green (warm)
+            if (temp < 32) return '#FFDD00';       // Yellow (hot)
+            if (temp < 36) return '#FFAA00';       // Orange (very hot)
+            if (temp < 40) return '#FF6600';       // Orange-red (extreme)
+            return '#FF0000';                       // Red (dangerous)
+        }
+        
+        // Update temperature display with color
+        function updateTemperatureDisplay(temp) {
+            const tempEl = document.getElementById('temp-value');
+            if (tempEl) {
+                tempEl.textContent = temp.toFixed(1);
+                tempEl.style.color = getTemperatureColor(temp);
+            }
+        }
+        
+        // Get time color based on hour
+        function getTimeColor(hour) {
+            if (hour >= 21 || hour < 5) return '#AAAACC';      // Night - pale blue/white
+            if (hour < 7) return '#FFB366';                     // Dawn - soft orange
+            if (hour < 9) return '#FFDD66';                     // Morning - golden yellow
+            if (hour < 17) return '#FFFFFF';                    // Day - white
+            if (hour < 19) return '#FFB366';                    // Evening - warm orange
+            return '#CC99FF';                                   // Dusk - purple
+        }
+        
+        // Stars for night sky
+        let starsGroup = null;
+        
+        function createStars() {
+            if (starsGroup) return starsGroup;
+            
+            starsGroup = new THREE.Group();
+            const starGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const starMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+            
+            // Create 200 stars scattered in the sky dome
+            for (let i = 0; i < 200; i++) {
+                const star = new THREE.Mesh(starGeometry, starMaterial.clone());
+                
+                // Random position on a large sphere
+                const radius = 300 + Math.random() * 100;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.4; // Upper hemisphere only
+                
+                star.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                star.position.y = radius * Math.cos(phi) + 50; // Above horizon
+                star.position.z = radius * Math.sin(phi) * Math.sin(theta);
+                
+                // Random size variation
+                const scale = 0.3 + Math.random() * 0.7;
+                star.scale.setScalar(scale);
+                
+                // Random brightness
+                star.material.opacity = 0.5 + Math.random() * 0.5;
+                star.material.transparent = true;
+                
+                starsGroup.add(star);
+            }
+            
+            scene.add(starsGroup);
+            starsGroup.visible = false;
+            console.log('⭐ Stars created');
+            return starsGroup;
+        }
+        
+        function updateStarsVisibility(hour) {
+            if (!starsGroup) createStars();
+            
+            // Stars visible between 21:00 and 5:00
+            const isNightTime = hour >= 21 || hour < 5;
+            starsGroup.visible = isNightTime;
+            
+            // Twinkle effect
+            if (isNightTime) {
+                starsGroup.children.forEach(star => {
+                    star.material.opacity = 0.3 + Math.random() * 0.7;
+                });
+            }
         }
         
         function resetAllColors() {
@@ -2102,24 +2196,38 @@
         };
 
         function findDoor() {
-            // Try to find door mesh by common names
+            // First try exact names
             const doorNames = ['door', 'Door', 'DOOR', 'entrance_door', 'front_door', 'main_door', 'porte', 'Porte'];
             for (const name of doorNames) {
                 if (roomMeshes[name]) {
                     doorMesh = roomMeshes[name];
-                    // Store original rotation for animation
                     if (!doorMesh.userData.originalRotation) {
                         doorMesh.userData.originalRotation = doorMesh.rotation.clone();
                     }
-                    console.log('🚪 Found door mesh:', name);
+                    console.log('🚪 Found door mesh (exact):', name);
                     return true;
                 }
             }
+            
+            // Then try partial matches (but exclude garage doors)
+            for (const [name, mesh] of Object.entries(roomMeshes)) {
+                const nameLower = name.toLowerCase();
+                if (nameLower.includes('door') && !nameLower.includes('garage')) {
+                    doorMesh = mesh;
+                    if (!doorMesh.userData.originalRotation) {
+                        doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                    }
+                    console.log('🚪 Found door mesh (partial):', name);
+                    return true;
+                }
+            }
+            
             console.log('⚠️ Door mesh not found. Available meshes:', Object.keys(roomMeshes));
             return false;
         }
 
         function findGarage() {
+            // First try exact names
             const garageNames = ['garage', 'Garage', 'GARAGE', 'garage_door', 'garagedoor'];
             for (const name of garageNames) {
                 if (roomMeshes[name]) {
@@ -2127,10 +2235,23 @@
                     if (!garageMesh.userData.originalPosition) {
                         garageMesh.userData.originalPosition = garageMesh.position.clone();
                     }
-                    console.log('🚗 Found garage mesh:', name);
+                    console.log('🚗 Found garage mesh (exact):', name);
                     return true;
                 }
             }
+            
+            // Then try partial matches
+            for (const [name, mesh] of Object.entries(roomMeshes)) {
+                if (name.toLowerCase().includes('garage')) {
+                    garageMesh = mesh;
+                    if (!garageMesh.userData.originalPosition) {
+                        garageMesh.userData.originalPosition = garageMesh.position.clone();
+                    }
+                    console.log('🚗 Found garage mesh (partial):', name);
+                    return true;
+                }
+            }
+            
             console.log('⚠️ Garage mesh not found');
             return false;
         }
@@ -2185,6 +2306,20 @@
 
         // Toggle door open/close
         function toggleDoor() {
+            if (!doorMesh) {
+                if (!findDoor()) {
+                    // Try harder to find door
+                    Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                        if (name.toLowerCase().includes('door') && !name.toLowerCase().includes('garage')) {
+                            doorMesh = mesh;
+                            if (!doorMesh.userData.originalRotation) {
+                                doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                            }
+                            console.log('🚪 Found door mesh:', name);
+                        }
+                    });
+                }
+            }
             if (doorOpen) {
                 closeDoor();
             } else {
@@ -2194,6 +2329,23 @@
 
         // Toggle garage open/close
         function toggleGarage() {
+            if (!garageMesh) {
+                if (!findGarage()) {
+                    // Try harder to find garage
+                    Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                        if (name.toLowerCase().includes('garage')) {
+                            garageMesh = mesh;
+                            if (!garageMesh.userData.originalPosition) {
+                                garageMesh.userData.originalPosition = garageMesh.position.clone();
+                            }
+                            if (!garageMesh.userData.originalRotation) {
+                                garageMesh.userData.originalRotation = garageMesh.rotation.clone();
+                            }
+                            console.log('🚗 Found garage mesh:', name);
+                        }
+                    });
+                }
+            }
             if (garageOpen) {
                 closeGarage();
             } else {
@@ -2216,6 +2368,8 @@
             if (!garageMesh) {
                 if (!findGarage()) {
                     console.log('❌ Cannot animate garage - mesh not found');
+                    // List available meshes for debugging
+                    console.log('Available meshes:', Object.keys(roomMeshes).join(', '));
                     return;
                 }
             }
@@ -2225,18 +2379,20 @@
                 return;
             }
 
-            console.log('🚗 Opening garage...');
+            console.log('🚗 Opening garage (sliding up)...');
             garageAnimating = true;
 
-            // Garage door slides up
-            const targetY = garageMesh.userData.originalPosition.y + 2.5;
+            // Garage door slides up - increased height for better visibility
+            const openHeight = 3.5;
+            const targetY = garageMesh.userData.originalPosition.y + openHeight;
             const startY = garageMesh.position.y;
-            const duration = 1200;
+            const duration = 1000;
             const startTime = Date.now();
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
+                // Smooth ease-out animation
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
                 garageMesh.position.y = startY + (targetY - startY) * easeProgress;
@@ -2256,17 +2412,18 @@
         function closeGarage() {
             if (!garageMesh || garageAnimating || !garageOpen) return;
 
-            console.log('🚗 Closing garage...');
+            console.log('🚗 Closing garage (sliding down)...');
             garageAnimating = true;
 
             const targetY = garageMesh.userData.originalPosition.y;
             const startY = garageMesh.position.y;
-            const duration = 1200;
+            const duration = 1000;
             const startTime = Date.now();
 
             function animateClose() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
+                // Smooth ease-out animation
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
                 garageMesh.position.y = startY + (targetY - startY) * easeProgress;
@@ -2289,10 +2446,10 @@
             console.log('🪟 Opening window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            // Windows rotate open (like hinged windows)
-            const targetRotation = (windowMesh.userData.originalRotation?.y || 0) + Math.PI / 4;
+            // Windows rotate open 90 degrees on Y axis (like hinged windows)
+            const targetRotation = (windowMesh.userData.originalRotation?.y || 0) + Math.PI / 2;
             const startRotation = windowMesh.rotation.y;
-            const duration = 800;
+            const duration = 600;
             const startTime = Date.now();
 
             function animateOpen() {
@@ -2356,24 +2513,67 @@
         }
 
         function toggleAllWindows() {
+            if (windowMeshes.length === 0) findWindows();
             if (windowsOpen) {
                 closeAllWindows();
             } else {
                 openAllWindows();
             }
         }
+        
+        // Toggle interior lights on/off
+        let lightsOn = true;
+        function toggleLights() {
+            lightsOn = !lightsOn;
+            
+            // Toggle point lights
+            if (pointLight1) pointLight1.intensity = lightsOn ? 0.8 : 0;
+            if (pointLight2) pointLight2.intensity = lightsOn ? 0.5 : 0;
+            
+            // Adjust ambient light
+            if (ambientLight) {
+                ambientLight.intensity = lightsOn ? 0.6 : 0.2;
+            }
+            
+            // Make windows glow when lights are on at night
+            if (!lightsOn) {
+                windowMeshes.forEach(w => {
+                    if (w.material) {
+                        w.material.emissive = new THREE.Color(0x000000);
+                        w.material.emissiveIntensity = 0;
+                    }
+                });
+            } else {
+                const hour = isAutoTimeEnabled ? new Date().getHours() : manualTimeOfDay;
+                const isNight = hour >= 18 || hour < 6;
+                if (isNight) {
+                    windowMeshes.forEach(w => {
+                        if (w.material) {
+                            w.material.emissive = new THREE.Color(0xFFDD88);
+                            w.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                }
+            }
+            
+            console.log('💡 Lights:', lightsOn ? 'ON' : 'OFF');
+        }
 
         function openDoor() {
             if (!doorMesh) {
                 if (!findDoor()) {
-                    console.log('❌ Cannot animate door - mesh not found');
-                    // Try to animate any entrance-related mesh
-                    const entrance = roomMeshes['entrance'] || roomMeshes['Entrance'] || roomMeshes['hallway'];
-                    if (entrance) {
-                        console.log('✅ Animating entrance area instead');
-                        animateMesh(entrance, true);
-                    }
-                    return;
+                    console.log('❌ Cannot animate door - mesh not found. Searching all meshes...');
+                    // Try to find any mesh with door-like name
+                    Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                        if (name.toLowerCase().includes('door') && !name.toLowerCase().includes('garage')) {
+                            doorMesh = mesh;
+                            if (!doorMesh.userData.originalRotation) {
+                                doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                            }
+                            console.log('🚪 Found alternative door mesh:', name);
+                        }
+                    });
+                    if (!doorMesh) return;
                 }
             }
 
@@ -2560,7 +2760,23 @@
             moonLight.position.copy(moonMesh.position);
             scene.add(moonLight);
             
-            console.log('🌅 Day/Night cycle initialized with enhanced sun and moon');
+            // Create ground plane that receives light and shadows
+            const groundGeometry = new THREE.PlaneGeometry(500, 500);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4a7a4a,  // Lighter green grass color
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundPlane.rotation.x = -Math.PI / 2;
+            groundPlane.position.y = -0.5;
+            groundPlane.receiveShadow = true;
+            scene.add(groundPlane);
+            
+            // Create stars for night sky
+            createStars();
+            
+            console.log('🌅 Day/Night cycle initialized with sun, moon, ground, and stars');
         }
         
         // Update sun/moon positions based on time of day (0-24)
@@ -2614,13 +2830,17 @@
             sunMesh.visible = isSunTime;
             moonMesh.visible = isMoonTime;
             
-            // Update navbar time display
+            // Update navbar time display with color
             const navbarTime = document.getElementById('navbar-time');
             if (navbarTime) {
                 const displayHour = Math.floor(hour);
                 const displayMin = Math.floor((hour % 1) * 60);
                 navbarTime.textContent = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+                navbarTime.style.color = getTimeColor(hour);
             }
+            
+            // Update stars visibility
+            updateStarsVisibility(hour);
             
             // Update ambient light based on time
             if (ambientLight) {
@@ -2628,6 +2848,13 @@
                 const ambientNight = new THREE.Color(0x222244);
                 ambientLight.color.lerpColors(ambientNight, ambientDay, dayIntensity * 0.8 + 0.2);
                 ambientLight.intensity = 0.4 + dayIntensity * 0.8;
+            }
+            
+            // Update ground color based on time
+            if (groundPlane && groundPlane.material) {
+                const groundDay = new THREE.Color(0x5a9a5a);   // Bright grass green
+                const groundNight = new THREE.Color(0x1a3a1a); // Dark grass
+                groundPlane.material.color.lerpColors(groundNight, groundDay, dayIntensity * 0.7 + 0.3);
             }
             
             // Update sky color based on time
@@ -2715,6 +2942,7 @@
         window.openAllWindows = openAllWindows;
         window.closeAllWindows = closeAllWindows;
         window.toggleAllWindows = toggleAllWindows;
+        window.toggleLights = toggleLights;
         window.toggleInteractiveElement = toggleInteractiveElement;
         window.updateAlarms = updateAlarms;
         window.loadModelFromBase64 = loadModelFromBase64;
