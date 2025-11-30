@@ -1215,6 +1215,8 @@
         let currentTheme = 'modern';
         let currentLighting = 'bright';
         let shadowsEnabled = true;
+        let gridHelper = null;
+        let gridVisible = false;
         let meshColorOverrides = {}; // Store color overrides for individual meshes
         
         // Day/Night cycle variables
@@ -1305,6 +1307,11 @@
             // Raycaster for interaction
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
+            
+            // Grid helper (hidden by default, toggled via UI)
+            gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x888888);
+            gridHelper.visible = false;
+            scene.add(gridHelper);
             
             // Initialize theme UI after a brief delay to ensure DOM is ready
             setTimeout(initializeThemeUI, 100);
@@ -1623,11 +1630,6 @@
             floor.receiveShadow = true;
             floor.visible = false; // Hide the floor
             scene.add(floor);
-
-            // Grid helper (hidden)
-            const gridHelper = new THREE.GridHelper(20, 20);
-            gridHelper.visible = false; // Hide the grid
-            scene.add(gridHelper);
         }
 
         function onWindowResize() {
@@ -1641,11 +1643,18 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            // Raycast - check all objects in scene
+            // Raycast - check all objects in scene (including pivot groups)
             raycaster.setFromCamera(mouse, camera);
             const allObjects = [];
+            // Include meshes from homeModel
             homeModel.traverse((child) => {
                 if (child.isMesh) allObjects.push(child);
+            });
+            // Also include meshes that were reparented to pivot groups
+            scene.traverse((child) => {
+                if (child.isMesh && !allObjects.includes(child)) {
+                    allObjects.push(child);
+                }
             });
             const intersects = raycaster.intersectObjects(allObjects);
 
@@ -1733,13 +1742,42 @@
             shadowsEnabled = !shadowsEnabled;
             renderer.shadowMap.enabled = shadowsEnabled;
             
+            // Update all meshes to cast/receive shadows
+            scene.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = shadowsEnabled;
+                    child.receiveShadow = shadowsEnabled;
+                }
+            });
+            
+            // Force shadow map update
+            if (directionalLight && directionalLight.shadow) {
+                directionalLight.shadow.needsUpdate = true;
+            }
+            renderer.shadowMap.needsUpdate = true;
+            
             const btn = document.getElementById('toggle-shadows');
             if (btn) {
-                btn.textContent = 'Shadows: ' + (shadowsEnabled ? 'ON' : 'OFF');
+                btn.textContent = '🌑 Shadows: ' + (shadowsEnabled ? 'ON' : 'OFF');
                 btn.classList.toggle('active', shadowsEnabled);
             }
 
             console.log('🌑 Shadows:', shadowsEnabled ? 'enabled' : 'disabled');
+        }
+        
+        function toggleGrid() {
+            gridVisible = !gridVisible;
+            if (gridHelper) {
+                gridHelper.visible = gridVisible;
+            }
+            
+            const btn = document.getElementById('toggle-grid');
+            if (btn) {
+                btn.textContent = '📐 Grid: ' + (gridVisible ? 'ON' : 'OFF');
+                btn.classList.toggle('active', gridVisible);
+            }
+            
+            console.log('📐 Grid:', gridVisible ? 'visible' : 'hidden');
         }
 
         function updateThemeButtons() {
@@ -1822,6 +1860,12 @@
             const shadowToggle = document.getElementById('toggle-shadows');
             if (shadowToggle) {
                 shadowToggle.addEventListener('click', toggleShadows);
+            }
+            
+            // Set up grid toggle listener
+            const gridToggle = document.getElementById('toggle-grid');
+            if (gridToggle) {
+                gridToggle.addEventListener('click', toggleGrid);
             }
 
             updateThemeButtons();
@@ -2557,19 +2601,53 @@
 
         function openWindowMesh(windowMesh) {
             if (!windowMesh || windowMesh.userData.isAnimating) return;
+            if (windowMesh.userData.isOpen) return;
 
             console.log('🪟 Opening window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            // Store original rotation if not already stored
-            if (windowMesh.userData.originalRotationY === undefined) {
-                windowMesh.userData.originalRotationY = windowMesh.rotation.y;
+            // Create pivot group if not exists
+            if (!windowMesh.userData.pivotGroup) {
+                // Get window's world position and dimensions
+                const bbox = new THREE.Box3().setFromObject(windowMesh);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                bbox.getSize(size);
+                bbox.getCenter(center);
+                
+                console.log('🪟 Window bbox center:', center.x.toFixed(3), center.y.toFixed(3), center.z.toFixed(3));
+                console.log('🪟 Window size:', size.x.toFixed(3), size.y.toFixed(3), size.z.toFixed(3));
+                
+                // Find hinge edge - use the larger horizontal dimension for width
+                const hingePos = center.clone();
+                
+                // Determine which axis is the width (larger of X or Z)
+                if (size.z > size.x) {
+                    // Width is on Z axis, hinge at +Z edge
+                    hingePos.z += size.z / 2;
+                } else {
+                    // Width is on X axis, hinge at +X edge
+                    hingePos.x += size.x / 2;
+                }
+                
+                console.log('🪟 Hinge position:', hingePos.x.toFixed(3), hingePos.y.toFixed(3), hingePos.z.toFixed(3));
+                
+                // Create pivot group at hinge position
+                const pivotGroup = new THREE.Group();
+                pivotGroup.position.copy(hingePos);
+                scene.add(pivotGroup);
+                
+                // Reparent window to pivot group (preserves world transform)
+                pivotGroup.attach(windowMesh);
+                
+                // Store references
+                windowMesh.userData.pivotGroup = pivotGroup;
             }
             
-            // Simple Y rotation - 45 degrees outward
-            const targetAngle = Math.PI / 4;  // 45 degrees
-            const startRotY = windowMesh.rotation.y;
-            const targetRotY = windowMesh.userData.originalRotationY + targetAngle;
+            const pivotGroup = windowMesh.userData.pivotGroup;
+            const startRotY = pivotGroup.rotation.y;
+            // upper_window_mesh_1 opens at +45°, others at -45°
+            const targetRotY = windowMesh.name === 'upper_window_mesh_1' ? Math.PI / 4 : -Math.PI / 4;
             const duration = 500;
             const startTime = Date.now();
 
@@ -2578,7 +2656,7 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                windowMesh.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
@@ -2599,8 +2677,14 @@
             console.log('🪟 Closing window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            const startRotY = windowMesh.rotation.y;
-            const targetRotY = windowMesh.userData.originalRotationY || 0;
+            const pivotGroup = windowMesh.userData.pivotGroup;
+            if (!pivotGroup) {
+                windowMesh.userData.isAnimating = false;
+                return;
+            }
+            
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = 0;
             const duration = 500;
             const startTime = Date.now();
 
@@ -2609,12 +2693,12 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                windowMesh.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
-                    windowMesh.rotation.y = targetRotY;
+                    pivotGroup.rotation.y = 0;
                     windowMesh.userData.isAnimating = false;
                     windowMesh.userData.isOpen = false;
                     console.log('✅ Window closed:', windowMesh.name);
