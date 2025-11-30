@@ -59,6 +59,7 @@ class SettingsProvider with ChangeNotifier {
     _userEmail = '';
     _userPassword = '';
     _enableAuthAudio = true;
+    _enableBiometricLogin = false;
     notifyListeners();
   }
 
@@ -114,11 +115,14 @@ class SettingsProvider with ChangeNotifier {
   String _userEmail = '';
   String _userPassword = '';
   bool _enableAuthAudio = true; // Default: ON (audio notifications during auth)
+  bool _enableBiometricLogin =
+      false; // Default: OFF (enable after first successful auth)
 
   bool get enableEmailPasswordAuth => _enableEmailPasswordAuth;
   String get userEmail => _userEmail;
   String get userPassword => _userPassword;
   bool get enableAuthAudio => _enableAuthAudio;
+  bool get enableBiometricLogin => _enableBiometricLogin;
 
   // AI Chat settings - use same backend as MQTT broker (where n8n is running)
   // Production API endpoint (always active when workflow is active)
@@ -242,6 +246,13 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
+  // Toggle biometric login (fingerprint/face id)
+  void toggleBiometricLogin(bool value) {
+    _enableBiometricLogin = value;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
   // Set AI server URL
   void setAiServerUrl(String url) {
     _aiServerUrl = url;
@@ -290,6 +301,8 @@ class SettingsProvider with ChangeNotifier {
           _userEmail = userSettings['userEmail'] as String? ?? '';
           _userPassword = userSettings['userPassword'] as String? ?? '';
           _enableAuthAudio = userSettings['enableAuthAudio'] as bool? ?? true;
+          _enableBiometricLogin =
+              userSettings['enableBiometricLogin'] as bool? ?? false;
 
           // AI Chat settings
           _aiServerUrl = userSettings['aiServerUrl'] as String? ??
@@ -363,6 +376,7 @@ class SettingsProvider with ChangeNotifier {
           'userEmail': _userEmail,
           'userPassword': _userPassword,
           'enableAuthAudio': _enableAuthAudio,
+          'enableBiometricLogin': _enableBiometricLogin,
           'aiServerUrl': _aiServerUrl,
           'updatedAt': DateTime.now().toIso8601String(),
         });
@@ -411,6 +425,7 @@ class SettingsProvider with ChangeNotifier {
       _userEmail = prefs.getString('userEmail') ?? '';
       _userPassword = prefs.getString('userPassword') ?? '';
       _enableAuthAudio = prefs.getBool('enableAuthAudio') ?? true;
+      _enableBiometricLogin = prefs.getBool('enableBiometricLogin') ?? false;
 
       _aiServerUrl =
           prefs.getString('aiServerUrl') ?? 'http://192.168.1.100:8000';
@@ -449,6 +464,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setString('userEmail', _userEmail);
       await prefs.setString('userPassword', _userPassword);
       await prefs.setBool('enableAuthAudio', _enableAuthAudio);
+      await prefs.setBool('enableBiometricLogin', _enableBiometricLogin);
       await prefs.setString('aiServerUrl', _aiServerUrl);
     } catch (e) {
       debugPrint('Error saving settings to local storage: $e');

@@ -16,6 +16,7 @@ import 'core/providers/home_visualization_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/automation_provider.dart';
 import 'core/providers/ai_chat_provider.dart';
+import 'core/providers/chat_theme_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
@@ -122,6 +123,9 @@ class SmartHomeApp extends StatelessWidget {
           create: (context) => AIChatProvider(
             chatService: context.read<AIChatService>(),
           ),
+        ),
+        ChangeNotifierProvider<ChatThemeProvider>(
+          create: (_) => ChatThemeProvider(),
         ),
       ],
       child: Consumer<SettingsProvider>(

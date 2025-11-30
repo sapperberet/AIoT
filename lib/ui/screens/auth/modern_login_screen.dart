@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/biometric_service.dart';
 
 class ModernLoginScreen extends StatefulWidget {
   const ModernLoginScreen({super.key});
@@ -15,6 +19,9 @@ class ModernLoginScreen extends StatefulWidget {
 class _ModernLoginScreenState extends State<ModernLoginScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  final BiometricService _biometricService = BiometricService();
+  bool _isBiometricAvailable = false;
+  bool _isBiometricEnabled = false;
 
   @override
   void initState() {
@@ -23,6 +30,42 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..forward();
+    _checkBiometricAvailability();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final isAvailable = await _biometricService.isBiometricAvailable();
+    if (mounted) {
+      final settingsProvider = context.read<SettingsProvider>();
+      setState(() {
+        _isBiometricAvailable = isAvailable;
+        _isBiometricEnabled = settingsProvider.enableBiometricLogin;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final loc = AppLocalizations.of(context);
+
+    final success = await _biometricService.authenticate(
+      localizedReason: loc.translate('biometric_login_prompt'),
+    );
+
+    if (success && mounted) {
+      // Check if there's an existing Firebase session
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.currentUser != null) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        // No existing session, show message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(loc.translate('biometric_login_failed')),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -203,6 +246,101 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                 ),
 
                 const SizedBox(height: 32),
+
+                // Biometric Login Button (only show if enabled and available)
+                if (_isBiometricAvailable && _isBiometricEnabled)
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 400),
+                    child: GestureDetector(
+                      onTap: _handleBiometricLogin,
+                      child: GlassmorphicContainer(
+                        width: double.infinity,
+                        height: 80,
+                        borderRadius: 20,
+                        blur: 15,
+                        alignment: Alignment.center,
+                        border: 2,
+                        linearGradient: LinearGradient(
+                          colors: isDark
+                              ? [
+                                  Colors.white.withOpacity(0.1),
+                                  Colors.white.withOpacity(0.05),
+                                ]
+                              : [
+                                  Colors.white.withOpacity(0.8),
+                                  Colors.white.withOpacity(0.6),
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderGradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withOpacity(0.5),
+                            AppTheme.accentColor.withOpacity(0.5),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.primaryColor.withOpacity(0.8),
+                                    AppTheme.accentColor.withOpacity(0.8),
+                                  ],
+                                ),
+                              ),
+                              child: const Icon(
+                                Iconsax.finger_scan,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  loc.translate('enable_biometric_login'),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? AppTheme.lightText
+                                            : AppTheme.darkText,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                Text(
+                                  loc.translate('tap_to_authenticate'),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? AppTheme.mutedText
+                                            : AppTheme.darkText
+                                                .withOpacity(0.6),
+                                        fontSize: 11,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                if (_isBiometricAvailable && _isBiometricEnabled)
+                  const SizedBox(height: 24),
 
                 // Info Box - Explaining 2FA
                 FadeInUp(

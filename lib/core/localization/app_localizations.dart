@@ -218,6 +218,38 @@ class AppLocalizations {
       'voice_message': 'Voice message',
       'recording': 'Recording...',
       'send_voice': 'Send voice message',
+
+      // Biometric Authentication
+      'enable_biometric_login': 'Enable Biometric Login',
+      'biometric_verify_to_enable':
+          'Verify your identity to enable biometric login',
+      'biometric_enabled_success': 'Biometric login enabled successfully',
+      'biometric_login_description':
+          'Use {biometricType} to quickly log in and bypass face recognition',
+      'biometric_login_prompt': 'Authenticate to access Smart Home',
+      'biometric_not_available':
+          'Biometric authentication is not available on this device',
+      'biometric_login_failed': 'Biometric authentication failed',
+
+      // Chat Theme Settings
+      'chat_appearance': 'Chat Appearance',
+      'themes': 'Themes',
+      'colors': 'Colors',
+      'style': 'Style',
+      'reset': 'Reset',
+      'your_messages': 'Your Messages',
+      'customize_your_bubble_color': 'Customize your bubble color',
+      'ai_messages': 'AI Messages',
+      'customize_ai_bubble_color': 'Customize AI bubble color',
+      'quick_colors': 'Quick Colors',
+      'font_size': 'Font Size',
+      'bubble_roundness': 'Bubble Roundness',
+      'font_family': 'Font Family',
+      'show_timestamps': 'Show Timestamps',
+      'show_message_time': 'Display time on each message',
+      'show_avatars': 'Show Avatars',
+      'show_profile_pictures': 'Display profile pictures',
+      'preview': 'Preview',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -427,6 +459,40 @@ class AppLocalizations {
       'voice_message': 'Sprachnachricht',
       'recording': 'Aufnahme läuft...',
       'send_voice': 'Sprachnachricht senden',
+
+      // Biometric Authentication
+      'enable_biometric_login': 'Biometrische Anmeldung aktivieren',
+      'biometric_verify_to_enable':
+          'Bestätigen Sie Ihre Identität, um die biometrische Anmeldung zu aktivieren',
+      'biometric_enabled_success':
+          'Biometrische Anmeldung erfolgreich aktiviert',
+      'biometric_login_description':
+          'Verwenden Sie {biometricType}, um sich schnell anzumelden und die Gesichtserkennung zu umgehen',
+      'biometric_login_prompt':
+          'Authentifizieren Sie sich, um auf Smart Home zuzugreifen',
+      'biometric_not_available':
+          'Biometrische Authentifizierung ist auf diesem Gerät nicht verfügbar',
+      'biometric_login_failed': 'Biometrische Authentifizierung fehlgeschlagen',
+
+      // Chat Theme Settings
+      'chat_appearance': 'Chat-Erscheinung',
+      'themes': 'Themen',
+      'colors': 'Farben',
+      'style': 'Stil',
+      'reset': 'Zurücksetzen',
+      'your_messages': 'Ihre Nachrichten',
+      'customize_your_bubble_color': 'Passen Sie Ihre Sprechblasenfarbe an',
+      'ai_messages': 'AI-Nachrichten',
+      'customize_ai_bubble_color': 'AI-Sprechblasenfarbe anpassen',
+      'quick_colors': 'Schnellfarben',
+      'font_size': 'Schriftgröße',
+      'bubble_roundness': 'Blasenrundheit',
+      'font_family': 'Schriftart',
+      'show_timestamps': 'Zeitstempel anzeigen',
+      'show_message_time': 'Zeit bei jeder Nachricht anzeigen',
+      'show_avatars': 'Avatare anzeigen',
+      'show_profile_pictures': 'Profilbilder anzeigen',
+      'preview': 'Vorschau',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -632,6 +698,35 @@ class AppLocalizations {
       'voice_message': 'رسالة صوتية',
       'recording': 'جارٍ التسجيل...',
       'send_voice': 'إرسال رسالة صوتية',
+
+      // Biometric Authentication
+      'enable_biometric_login': 'تفعيل تسجيل الدخول بالبصمة',
+      'biometric_verify_to_enable': 'تحقق من هويتك لتفعيل تسجيل الدخول بالبصمة',
+      'biometric_enabled_success': 'تم تفعيل تسجيل الدخول بالبصمة بنجاح',
+      'biometric_login_description':
+          'استخدم {biometricType} لتسجيل الدخول بسرعة وتجاوز التعرف على الوجه',
+      'biometric_login_prompt': 'قم بالمصادقة للوصول إلى المنزل الذكي',
+      'biometric_not_available': 'المصادقة بالبصمة غير متوفرة على هذا الجهاز',
+      'biometric_login_failed': 'فشلت المصادقة بالبصمة',
+      // Chat Theme Settings
+      'chat_appearance': 'مظهر المحادثة',
+      'themes': 'السمات',
+      'colors': 'الألوان',
+      'style': 'النمط',
+      'reset': 'إعادة تعيين',
+      'your_messages': 'رسائلك',
+      'customize_your_bubble_color': 'تخصيص لون فقاعة رسائلك',
+      'ai_messages': 'رسائل المساعد',
+      'customize_ai_bubble_color': 'تخصيص لون فقاعة رسائل المساعد',
+      'quick_colors': 'ألوان سريعة',
+      'font_size': 'حجم الخط',
+      'bubble_roundness': 'استدارة الفقاعة',
+      'font_family': 'نوع الخط',
+      'show_timestamps': 'إظهار الوقت',
+      'show_message_time': 'إظهار وقت الرسالة',
+      'show_avatars': 'إظهار الصور الرمزية',
+      'show_profile_pictures': 'إظهار صور الملف الشخصي',
+      'preview': 'معاينة',
     },
   };
 

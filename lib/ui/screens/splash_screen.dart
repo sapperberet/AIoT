@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/settings_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/services/biometric_service.dart';
 import '../../main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,6 +16,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final BiometricService _biometricService = BiometricService();
+
   @override
   void initState() {
     super.initState();
@@ -38,10 +41,38 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
 
     if (authProvider.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
+      // Check if biometric login is enabled
+      if (settingsProvider.enableBiometricLogin) {
+        final isBiometricAvailable =
+            await _biometricService.isBiometricAvailable();
+
+        if (isBiometricAvailable) {
+          // Try biometric authentication
+          final success = await _biometricService.authenticate(
+            localizedReason: 'Authenticate to access Smart Home',
+          );
+
+          if (success && mounted) {
+            // Biometric auth successful - go directly to home
+            // We need to sign in silently if there's a previous session
+            debugPrint(
+                '🔐 Biometric auth successful, checking for previous session...');
+
+            // Check if user was previously authenticated (session exists)
+            if (authProvider.currentUser != null) {
+              Navigator.of(context).pushReplacementNamed('/home');
+              return;
+            }
+          }
+        }
+      }
+
+      // If biometric is not enabled or failed, go to normal login
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }

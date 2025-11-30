@@ -7,6 +7,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/services/biometric_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,25 +18,37 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _sessionDuration = 2; // Default value
-  
+  final BiometricService _biometricService = BiometricService();
+  bool _isBiometricAvailable = false;
+  String _biometricTypeName = 'Biometric';
+
   @override
   void initState() {
     super.initState();
     _loadSessionDuration();
+    _checkBiometricAvailability();
   }
-  
+
   Future<void> _loadSessionDuration() async {
     final duration = await SessionService.getSessionDuration();
     setState(() {
       _sessionDuration = duration;
     });
   }
-  
+
+  Future<void> _checkBiometricAvailability() async {
+    final isAvailable = await _biometricService.isBiometricAvailable();
+    final typeName = await _biometricService.getBiometricTypeName();
+    setState(() {
+      _isBiometricAvailable = isAvailable;
+      _biometricTypeName = typeName;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
 
     return Scaffold(
@@ -201,6 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         TextEditingController(text: settingsProvider.userPassword);
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
+    final loc = AppLocalizations.of(context);
 
     return FadeInUp(
       delay: const Duration(milliseconds: 150),
@@ -249,6 +263,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 16),
+
+          // Enable Biometric Login Toggle (only show if device supports it)
+          if (_isBiometricAvailable) ...[
+            _buildSwitchTile(
+              loc.translate('enable_biometric_login'),
+              settingsProvider.enableBiometricLogin,
+              (value) async {
+                if (value) {
+                  // Verify biometric before enabling
+                  final authenticated = await _biometricService.authenticate(
+                    localizedReason:
+                        loc.translate('biometric_verify_to_enable'),
+                  );
+                  if (authenticated) {
+                    settingsProvider.toggleBiometricLogin(true);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text(loc.translate('biometric_enabled_success')),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  settingsProvider.toggleBiometricLogin(false);
+                }
+              },
+              icon: Iconsax.finger_scan,
+            ),
+            // Biometric info
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(top: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: AppTheme.smallRadius,
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.finger_scan,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      loc
+                          .translate('biometric_login_description')
+                          .replaceAll('{biometricType}', _biometricTypeName),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Enable Authentication Audio Toggle
           _buildSwitchTile(
@@ -671,7 +752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final loc = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
-    
+
     return FadeInUp(
       delay: const Duration(milliseconds: 600),
       child: _buildSection(
@@ -740,17 +821,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     min: 1,
                     max: 30,
                     divisions: 29,
-                    label: '$_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}',
+                    label:
+                        '$_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}',
                     onChanged: (value) async {
                       setState(() {
                         _sessionDuration = value.toInt();
                       });
                       await SessionService.setSessionDuration(_sessionDuration);
-                      
+
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Session duration set to $_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}'),
+                            content: Text(
+                                'Session duration set to $_sessionDuration ${_sessionDuration == 1 ? 'day' : 'days'}'),
                             backgroundColor: AppTheme.successColor,
                             behavior: SnackBarBehavior.floating,
                             duration: const Duration(seconds: 2),
@@ -791,7 +874,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 final expiry = snapshot.data!;
                 final now = DateTime.now();
                 final remaining = expiry.difference(now);
-                
+
                 String expiryText;
                 if (remaining.inHours < 1) {
                   expiryText = 'Expires in ${remaining.inMinutes} minutes';
@@ -800,7 +883,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 } else {
                   expiryText = 'Expires in ${remaining.inDays} days';
                 }
-                
+
                 return _buildSettingTile(
                   'Current Session',
                   expiryText,

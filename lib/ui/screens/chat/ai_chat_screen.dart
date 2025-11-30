@@ -10,6 +10,9 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/voice_recorder_widget.dart';
+import 'chat_theme_settings_dialog.dart';
+import '../../../core/providers/chat_theme_provider.dart';
+import '../../widgets/formatted_text_widget.dart';
 import '../../widgets/voice_message_bubble.dart';
 
 class AIChatScreen extends StatefulWidget {
@@ -279,6 +282,16 @@ class _AIChatScreenState extends State<AIChatScreen>
                 PopupMenuItem(
                   child: Row(
                     children: [
+                      const Icon(Iconsax.paintbucket, size: 20),
+                      const SizedBox(width: 12),
+                      Text(loc.t('chat_appearance')),
+                    ],
+                  ),
+                  onTap: () => ChatThemeSettingsDialog.show(context),
+                ),
+                PopupMenuItem(
+                  child: Row(
+                    children: [
                       const Icon(Iconsax.setting_2, size: 20),
                       const SizedBox(width: 12),
                       Text(loc.t('configure_server')),
@@ -514,109 +527,118 @@ class _AIChatScreenState extends State<AIChatScreen>
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: isUser
-                        ? AppTheme.primaryGradient
-                        : LinearGradient(
-                            colors: isDark
-                                ? [
-                                    Colors.grey.shade800,
-                                    Colors.grey.shade900,
-                                  ]
-                                : [
-                                    Colors.grey.shade100,
-                                    Colors.grey.shade200,
-                                  ],
+            child: Consumer<ChatThemeProvider>(
+              builder: (context, chatTheme, _) {
+                final bubbleRadius = chatTheme.bubbleRadius;
+                return Column(
+                  crossAxisAlignment: isUser
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.7,
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: isUser
+                            ? chatTheme.userBubbleGradient
+                            : chatTheme.aiBubbleGradient,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(bubbleRadius),
+                          topRight: Radius.circular(bubbleRadius),
+                          bottomLeft:
+                              Radius.circular(isUser ? bubbleRadius : 4),
+                          bottomRight:
+                              Radius.circular(isUser ? 4 : bubbleRadius),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isUser
+                                    ? (chatTheme.customUserBubbleColor ??
+                                        chatTheme.currentTheme.userBubbleColor)
+                                    : Colors.black)
+                                .withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: Radius.circular(isUser ? 20 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 20),
+                        ],
+                      ),
+                      child: message.type == MessageType.voice &&
+                              message.voiceFilePath != null
+                          ? VoiceMessageBubble(
+                              voiceFilePath: message.voiceFilePath!,
+                              durationMs: message.voiceDurationMs ?? 0,
+                              isUser: isUser,
+                              transcription: message.transcription,
+                            )
+                          : ChatFormattedText(
+                              text: message.content,
+                              isUser: isUser,
+                              baseStyle: TextStyle(
+                                color: isUser
+                                    ? chatTheme.currentTheme.userTextColor
+                                    : chatTheme.currentTheme.aiTextColor,
+                                fontSize: chatTheme.fontSize,
+                                fontFamily: chatTheme.fontFamily == 'Default'
+                                    ? null
+                                    : chatTheme.fontFamily,
+                              ),
+                            ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isUser ? AppTheme.primaryColor : Colors.black)
-                            .withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                    if (chatTheme.showTimestamps) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DateFormat('HH:mm').format(message.timestamp),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textColor.withOpacity(0.5),
+                            ),
+                          ),
+                          if (isUser) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              message.status == MessageStatus.error
+                                  ? Iconsax.close_circle
+                                  : message.status == MessageStatus.sending
+                                      ? Iconsax.clock
+                                      : Iconsax.tick_circle,
+                              size: 12,
+                              color: message.status == MessageStatus.error
+                                  ? Colors.red
+                                  : textColor.withOpacity(0.5),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
-                  ),
-                  child: message.type == MessageType.voice &&
-                          message.voiceFilePath != null
-                      ? VoiceMessageBubble(
-                          voiceFilePath: message.voiceFilePath!,
-                          durationMs: message.voiceDurationMs ?? 0,
-                          isUser: isUser,
-                          transcription: message.transcription,
-                        )
-                      : Text(
-                          message.content,
-                          style: TextStyle(
-                            color: isUser ? Colors.white : textColor,
-                            fontSize: 15,
-                          ),
+                    if (message.status == MessageStatus.error) ...[
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: () {
+                          final authProvider = context.read<AuthProvider>();
+                          final chatProvider = context.read<AIChatProvider>();
+                          if (authProvider.currentUser != null) {
+                            chatProvider.retryMessage(
+                              message.id,
+                              authProvider.currentUser!.uid,
+                            );
+                          }
+                        },
+                        icon: const Icon(Iconsax.refresh, size: 14),
+                        label: Text(AppLocalizations.of(context).t('retry')),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: EdgeInsets.zero,
                         ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      DateFormat('HH:mm').format(message.timestamp),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: textColor.withOpacity(0.5),
-                      ),
-                    ),
-                    if (isUser) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        message.status == MessageStatus.error
-                            ? Iconsax.close_circle
-                            : message.status == MessageStatus.sending
-                                ? Iconsax.clock
-                                : Iconsax.tick_circle,
-                        size: 12,
-                        color: message.status == MessageStatus.error
-                            ? Colors.red
-                            : textColor.withOpacity(0.5),
                       ),
                     ],
                   ],
-                ),
-                if (message.status == MessageStatus.error) ...[
-                  const SizedBox(height: 4),
-                  TextButton.icon(
-                    onPressed: () {
-                      final authProvider = context.read<AuthProvider>();
-                      final chatProvider = context.read<AIChatProvider>();
-                      if (authProvider.currentUser != null) {
-                        chatProvider.retryMessage(
-                          message.id,
-                          authProvider.currentUser!.uid,
-                        );
-                      }
-                    },
-                    icon: const Icon(Iconsax.refresh, size: 14),
-                    label: Text(AppLocalizations.of(context).t('retry')),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              ],
+                );
+              },
             ),
           ),
           if (isUser) ...[

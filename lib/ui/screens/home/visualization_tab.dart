@@ -3,13 +3,11 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/providers/home_visualization_provider.dart';
-import '../../../core/providers/auth_provider.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/settings_provider.dart';
 
 class VisualizationTab extends StatefulWidget {
   const VisualizationTab({super.key});
@@ -30,6 +28,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
     _initializeWebView();
     _listenToAlarms();
     _listenToDoorState();
+    _listenToThemeChanges();
   }
 
   void _initializeWebView() {
@@ -57,6 +56,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
             });
             // Load the .glb model after page loads
             _loadGlbModel();
+            // Sync theme with visualization
+            _syncThemeWithVisualization();
           },
         ),
       )
@@ -146,6 +147,47 @@ class _VisualizationTabState extends State<VisualizationTab> {
     });
   }
 
+  void _listenToThemeChanges() {
+    final settingsProvider = context.read<SettingsProvider>();
+    settingsProvider.addListener(() {
+      _syncThemeWithVisualization();
+    });
+  }
+
+  void _syncThemeWithVisualization() {
+    final settingsProvider = context.read<SettingsProvider>();
+    final theme = Theme.of(context);
+
+    // Get the primary color from the current theme
+    final primaryColor = theme.colorScheme.primary;
+    final r = primaryColor.red;
+    final g = primaryColor.green;
+    final b = primaryColor.blue;
+
+    // Sync background color with theme
+    final isDarkMode = settingsProvider.themeMode == ThemeMode.dark ||
+        (settingsProvider.themeMode == ThemeMode.system &&
+            MediaQuery.of(context).platformBrightness == Brightness.dark);
+
+    if (isDarkMode) {
+      // For dark mode, use a darker version of the primary color
+      _webViewController.runJavaScript('''
+        if (window.setBackgroundColor) {
+          window.setBackgroundColor(${(r * 0.2).round()}, ${(g * 0.2).round()}, ${(b * 0.2).round()});
+        }
+      ''');
+    } else {
+      // For light mode, use a lighter background
+      _webViewController.runJavaScript('''
+        if (window.setBackgroundColor) {
+          window.setBackgroundColor(240, 240, 245);
+        }
+      ''');
+    }
+
+    debugPrint('🎨 Theme synced with 3D visualization');
+  }
+
   void _updateVisualization(String command) {
     _webViewController.runJavaScript(
       'updateAlarms($command)',
@@ -196,54 +238,6 @@ class _VisualizationTabState extends State<VisualizationTab> {
     );
   }
 
-  Future<void> _openDoor() async {
-    if (_isDoorAnimating || _isDoorOpen) return;
-
-    setState(() {
-      _isDoorAnimating = true;
-      _isDoorOpen = true;
-    });
-
-    // Trigger 3D door animation
-    debugPrint('🚪 Triggering 3D door animation');
-    _webViewController.runJavaScript('openDoor()');
-
-    // Also trigger actual door opening via API
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.openDoor();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? '✅ Door opened successfully!' : '❌ Failed to open door',
-          ),
-          backgroundColor:
-              success ? AppTheme.successColor : AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      // Reset after animation completes
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          setState(() {
-            _isDoorAnimating = false;
-          });
-        }
-      });
-
-      // Auto-close door state after 6 seconds
-      Future.delayed(const Duration(seconds: 6), () {
-        if (mounted) {
-          setState(() {
-            _isDoorOpen = false;
-          });
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -260,7 +254,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
             ),
           ),
 
-        // Control buttons row
+        // Control buttons row - simplified, door control now integrated with 3D clicks
         Positioned(
           bottom: 16,
           right: 16,
@@ -268,39 +262,6 @@ class _VisualizationTabState extends State<VisualizationTab> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Door control button
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: FloatingActionButton.extended(
-                  onPressed:
-                      (_isDoorAnimating || _isDoorOpen) ? null : _openDoor,
-                  backgroundColor: _isDoorOpen
-                      ? AppTheme.successColor
-                      : (_isDoorAnimating
-                          ? AppTheme.warningColor
-                          : AppTheme.primaryColor),
-                  icon: Icon(
-                    _isDoorOpen
-                        ? Iconsax.tick_circle
-                        : (_isDoorAnimating
-                            ? Iconsax.timer_1
-                            : Iconsax.lock_slash),
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    _isDoorOpen
-                        ? 'Door Opened'
-                        : (_isDoorAnimating ? 'Opening...' : 'Open Door'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
               // Reset camera button
               FadeInUp(
                 delay: const Duration(milliseconds: 100),

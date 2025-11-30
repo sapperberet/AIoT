@@ -382,7 +382,7 @@
             border: 2px solid rgba(76, 175, 80, 0.5);
             border-radius: 8px;
             padding: 8px;
-            z-index: 999;
+            z-index: 1001;
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -403,7 +403,7 @@
             position: fixed;
             top: 10px;
             left: 175px;
-            z-index: 999;
+            z-index: 1001;
             font-family: 'Arial', sans-serif;
             user-select: none;
             transition: all 0.3s ease;
@@ -796,7 +796,10 @@
                 <div class="hud-slot active" data-tool="paint" title="Paint Tool">🎨</div>
                 <div class="hud-slot" data-tool="light" title="Light Control">💡</div>
                 <div class="hud-slot" data-tool="settings" title="Settings">⚙</div>
-                <div class="hud-slot" data-tool="doors" title="Door Control">🚪</div>
+                <div class="hud-slot" data-tool="doors" title="Toggle Door">🚪</div>
+                <div class="hud-slot" data-tool="garage" title="Toggle Garage">🚗</div>
+                <div class="hud-slot" data-tool="windows" title="Toggle Windows">🪟</div>
+                <div class="hud-slot" data-tool="daynight" title="Day/Night Cycle">🌅</div>
                 <div class="hud-slot" data-tool="rotate" title="Rotate View">🔄</div>
                 <div class="hud-slot" data-tool="reset" title="Reset Colors">↺</div>
             </div>
@@ -913,6 +916,16 @@
         let currentLighting = 'bright';
         let shadowsEnabled = true;
         let meshColorOverrides = {}; // Store color overrides for individual meshes
+        
+        // Day/Night cycle variables
+        let sunLight = null;
+        let moonLight = null;
+        let sunMesh = null;
+        let moonMesh = null;
+        let skyDome = null;
+        let isAutoTimeEnabled = true;
+        let manualTimeOfDay = 12; // 0-24 hours
+        let dayNightSpeed = 1; // Multiplier for time progression
 
         function init() {
             // Scene
@@ -1001,6 +1014,10 @@
 
             // Load model or create placeholder
             loadHomeModel();
+            
+            // Initialize day/night cycle with real time
+            initializeDayNightCycle();
+            updateDayNightCycle();
 
             // Animation loop
             animate();
@@ -1230,13 +1247,23 @@
             if (intersects.length > 0) {
                 const clickedObject = intersects[0].object;
                 
+                // Try to toggle interactive elements (doors, windows, garage)
+                const wasInteractive = toggleInteractiveElement(clickedObject);
+                
                 // Select mesh for color customization
                 selectMesh(clickedObject);
                 
                 // Also send message to Flutter if it's a room
                 const clickedRoom = roomMeshes[clickedObject.name];
                 if (clickedRoom && window.FlutterBridge) {
-                    window.FlutterBridge.postMessage('tap:' + clickedObject.name);
+                    // Send animation state along with tap info
+                    const nameLower = clickedObject.name.toLowerCase();
+                    let animationType = 'room';
+                    if (nameLower.includes('door') && !nameLower.includes('garage')) animationType = 'door';
+                    else if (nameLower.includes('garage')) animationType = 'garage';
+                    else if (nameLower.includes('window') || nameLower.includes('glass')) animationType = 'window';
+                    
+                    window.FlutterBridge.postMessage('tap:' + clickedObject.name + ':' + animationType);
                 }
             }
         }
@@ -1526,7 +1553,10 @@
                 'paint': 'Paint Mode',
                 'light': 'Toggle Lights',
                 'settings': 'Show Settings',
-                'doors': 'Open Doors',
+                'doors': 'Toggle Door',
+                'garage': 'Toggle Garage',
+                'windows': 'Toggle Windows',
+                'daynight': 'Toggle Day/Night',
                 'rotate': 'Auto Rotate',
                 'reset': 'Reset Colors'
             };
@@ -1558,7 +1588,29 @@
                     
                 case 'doors':
                     console.log('Door control activated');
-                    openDoor();
+                    toggleDoor();
+                    break;
+                    
+                case 'garage':
+                    console.log('Garage control activated');
+                    toggleGarage();
+                    break;
+                    
+                case 'windows':
+                    console.log('Window control activated');
+                    toggleAllWindows();
+                    break;
+                    
+                case 'daynight':
+                    // Cycle through time periods: morning, noon, evening, night
+                    const currentTime = getCurrentTimeOfDay();
+                    let newTime;
+                    if (currentTime < 8) newTime = 12;
+                    else if (currentTime < 14) newTime = 18;
+                    else if (currentTime < 20) newTime = 22;
+                    else newTime = 6;
+                    setTimeOfDay(newTime);
+                    console.log('Day/Night cycle changed to', newTime + ':00');
                     break;
                     
                 case 'reset':
@@ -1644,9 +1696,21 @@
             console.log('✓ Updated', selectedMesh.name, 'to', hexColor, '- New Material ID:', selectedMesh.material.uuid);
         }
 
+        // Track time for day/night updates
+        let lastDayNightUpdate = 0;
+        const dayNightUpdateInterval = 60000; // Update every 60 seconds
+
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+            
+            // Update day/night cycle periodically
+            const now = Date.now();
+            if (isAutoTimeEnabled && now - lastDayNightUpdate > dayNightUpdateInterval) {
+                updateDayNightCycle();
+                lastDayNightUpdate = now;
+            }
+            
             renderer.render(scene, camera);
         }
 
@@ -1721,18 +1785,283 @@
         let doorAnimating = false;
         let doorOpen = false;
 
+        // Garage animation variables
+        let garageMesh = null;
+        let garageAnimating = false;
+        let garageOpen = false;
+
+        // Window animation variables
+        let windowMeshes = [];
+        let windowAnimating = false;
+        let windowsOpen = false;
+
+        // Animation state tracking for all interactive elements
+        const animationStates = {
+            doors: {},
+            garages: {},
+            windows: {}
+        };
+
         function findDoor() {
             // Try to find door mesh by common names
             const doorNames = ['door', 'Door', 'DOOR', 'entrance_door', 'front_door', 'main_door', 'porte', 'Porte'];
             for (const name of doorNames) {
                 if (roomMeshes[name]) {
                     doorMesh = roomMeshes[name];
+                    // Store original rotation for animation
+                    if (!doorMesh.userData.originalRotation) {
+                        doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                    }
                     console.log('🚪 Found door mesh:', name);
                     return true;
                 }
             }
             console.log('⚠️ Door mesh not found. Available meshes:', Object.keys(roomMeshes));
             return false;
+        }
+
+        function findGarage() {
+            const garageNames = ['garage', 'Garage', 'GARAGE', 'garage_door', 'garagedoor'];
+            for (const name of garageNames) {
+                if (roomMeshes[name]) {
+                    garageMesh = roomMeshes[name];
+                    if (!garageMesh.userData.originalPosition) {
+                        garageMesh.userData.originalPosition = garageMesh.position.clone();
+                    }
+                    console.log('🚗 Found garage mesh:', name);
+                    return true;
+                }
+            }
+            console.log('⚠️ Garage mesh not found');
+            return false;
+        }
+
+        function findWindows() {
+            windowMeshes = [];
+            const windowPatterns = ['window', 'Window', 'WINDOW', 'glass', 'Glass'];
+            Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                for (const pattern of windowPatterns) {
+                    if (name.toLowerCase().includes(pattern.toLowerCase())) {
+                        if (!mesh.userData.originalPosition) {
+                            mesh.userData.originalPosition = mesh.position.clone();
+                        }
+                        if (!mesh.userData.originalRotation) {
+                            mesh.userData.originalRotation = mesh.rotation.clone();
+                        }
+                        windowMeshes.push(mesh);
+                        console.log('🪟 Found window mesh:', name);
+                        break;
+                    }
+                }
+            });
+            return windowMeshes.length > 0;
+        }
+
+        // Toggle any interactive element when clicked
+        function toggleInteractiveElement(mesh) {
+            if (!mesh || !mesh.name) return false;
+            
+            const nameLower = mesh.name.toLowerCase();
+            
+            // Check if it's a door
+            if (nameLower.includes('door') && !nameLower.includes('garage')) {
+                toggleDoor();
+                return true;
+            }
+            
+            // Check if it's a garage
+            if (nameLower.includes('garage')) {
+                toggleGarage();
+                return true;
+            }
+            
+            // Check if it's a window
+            if (nameLower.includes('window') || nameLower.includes('glass')) {
+                toggleWindow(mesh);
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Toggle door open/close
+        function toggleDoor() {
+            if (doorOpen) {
+                closeDoor();
+            } else {
+                openDoor();
+            }
+        }
+
+        // Toggle garage open/close
+        function toggleGarage() {
+            if (garageOpen) {
+                closeGarage();
+            } else {
+                openGarage();
+            }
+        }
+
+        // Toggle individual window
+        function toggleWindow(windowMesh) {
+            if (!windowMesh) return;
+            const isOpen = windowMesh.userData.isOpen || false;
+            if (isOpen) {
+                closeWindowMesh(windowMesh);
+            } else {
+                openWindowMesh(windowMesh);
+            }
+        }
+
+        function openGarage() {
+            if (!garageMesh) {
+                if (!findGarage()) {
+                    console.log('❌ Cannot animate garage - mesh not found');
+                    return;
+                }
+            }
+
+            if (garageAnimating || garageOpen) {
+                console.log('⚠️ Garage already open or animating');
+                return;
+            }
+
+            console.log('🚗 Opening garage...');
+            garageAnimating = true;
+
+            // Garage door slides up
+            const targetY = garageMesh.userData.originalPosition.y + 2.5;
+            const startY = garageMesh.position.y;
+            const duration = 1200;
+            const startTime = Date.now();
+
+            function animateOpen() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                garageMesh.position.y = startY + (targetY - startY) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateOpen);
+                } else {
+                    garageAnimating = false;
+                    garageOpen = true;
+                    console.log('✅ Garage opened');
+                }
+            }
+
+            animateOpen();
+        }
+
+        function closeGarage() {
+            if (!garageMesh || garageAnimating || !garageOpen) return;
+
+            console.log('🚗 Closing garage...');
+            garageAnimating = true;
+
+            const targetY = garageMesh.userData.originalPosition.y;
+            const startY = garageMesh.position.y;
+            const duration = 1200;
+            const startTime = Date.now();
+
+            function animateClose() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                garageMesh.position.y = startY + (targetY - startY) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateClose);
+                } else {
+                    garageAnimating = false;
+                    garageOpen = false;
+                    console.log('✅ Garage closed');
+                }
+            }
+
+            animateClose();
+        }
+
+        function openWindowMesh(windowMesh) {
+            if (!windowMesh || windowMesh.userData.isAnimating) return;
+
+            console.log('🪟 Opening window:', windowMesh.name);
+            windowMesh.userData.isAnimating = true;
+
+            // Windows rotate open (like hinged windows)
+            const targetRotation = (windowMesh.userData.originalRotation?.y || 0) + Math.PI / 4;
+            const startRotation = windowMesh.rotation.y;
+            const duration = 800;
+            const startTime = Date.now();
+
+            function animateOpen() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                windowMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateOpen);
+                } else {
+                    windowMesh.userData.isAnimating = false;
+                    windowMesh.userData.isOpen = true;
+                    console.log('✅ Window opened:', windowMesh.name);
+                }
+            }
+
+            animateOpen();
+        }
+
+        function closeWindowMesh(windowMesh) {
+            if (!windowMesh || windowMesh.userData.isAnimating || !windowMesh.userData.isOpen) return;
+
+            console.log('🪟 Closing window:', windowMesh.name);
+            windowMesh.userData.isAnimating = true;
+
+            const targetRotation = windowMesh.userData.originalRotation?.y || 0;
+            const startRotation = windowMesh.rotation.y;
+            const duration = 800;
+            const startTime = Date.now();
+
+            function animateClose() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                windowMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateClose);
+                } else {
+                    windowMesh.userData.isAnimating = false;
+                    windowMesh.userData.isOpen = false;
+                    console.log('✅ Window closed:', windowMesh.name);
+                }
+            }
+
+            animateClose();
+        }
+
+        function openAllWindows() {
+            if (windowMeshes.length === 0) findWindows();
+            windowMeshes.forEach(w => openWindowMesh(w));
+            windowsOpen = true;
+        }
+
+        function closeAllWindows() {
+            windowMeshes.forEach(w => closeWindowMesh(w));
+            windowsOpen = false;
+        }
+
+        function toggleAllWindows() {
+            if (windowsOpen) {
+                closeAllWindows();
+            } else {
+                openAllWindows();
+            }
         }
 
         function openDoor() {
@@ -1850,12 +2179,215 @@
             animate();
         }
 
+        // ============================================
+        // RGB THEME BACKGROUND & DAY/NIGHT CYCLE SYSTEM
+        // ============================================
+        
+        // Set background color from Flutter (RGB values)
+        function setBackgroundColor(r, g, b) {
+            if (!scene) return;
+            const color = new THREE.Color(r / 255, g / 255, b / 255);
+            scene.background = color;
+            console.log(`🎨 Background color set to RGB(${r}, ${g}, ${b})`);
+        }
+        
+        // Set background color from hex
+        function setBackgroundColorHex(hexColor) {
+            if (!scene) return;
+            scene.background = new THREE.Color(hexColor);
+            console.log(`🎨 Background color set to ${hexColor}`);
+        }
+        
+        // Initialize day/night cycle with sun and moon
+        function initializeDayNightCycle() {
+            // Create sun (yellow sphere)
+            const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xFFDD00,
+                emissive: 0xFFDD00,
+                emissiveIntensity: 1
+            });
+            sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+            sunMesh.position.set(50, 30, 0);
+            scene.add(sunMesh);
+            
+            // Sun light (directional, warm)
+            sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.5);
+            sunLight.position.copy(sunMesh.position);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+            
+            // Create moon (white/pale blue sphere)
+            const moonGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const moonMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xCCCCFF,
+                emissive: 0xAAAAFF,
+                emissiveIntensity: 0.3
+            });
+            moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+            moonMesh.position.set(-50, -30, 0);
+            scene.add(moonMesh);
+            
+            // Moon light (directional, cool blue)
+            moonLight = new THREE.DirectionalLight(0x6677BB, 0.3);
+            moonLight.position.copy(moonMesh.position);
+            scene.add(moonLight);
+            
+            console.log('🌅 Day/Night cycle initialized');
+        }
+        
+        // Update sun/moon positions based on time of day (0-24)
+        function updateDayNightCycle(timeOfDay = null) {
+            if (!sunMesh || !moonMesh) {
+                initializeDayNightCycle();
+            }
+            
+            // Use real time if autoTime is enabled
+            let hour = timeOfDay;
+            if (hour === null) {
+                if (isAutoTimeEnabled) {
+                    const now = new Date();
+                    hour = now.getHours() + now.getMinutes() / 60;
+                } else {
+                    hour = manualTimeOfDay;
+                }
+            }
+            
+            // Calculate sun position (rises at 6, sets at 18)
+            // Convert hour to radians (0-24 -> 0-2π)
+            const sunAngle = ((hour - 6) / 12) * Math.PI;
+            const orbitRadius = 50;
+            
+            // Sun position on circular path
+            const sunX = Math.cos(sunAngle) * orbitRadius;
+            const sunY = Math.sin(sunAngle) * orbitRadius * 0.6 + 10;
+            const sunZ = Math.sin(sunAngle) * orbitRadius * 0.3;
+            
+            sunMesh.position.set(sunX, Math.max(sunY, -20), sunZ);
+            sunLight.position.copy(sunMesh.position);
+            
+            // Moon is opposite to sun
+            moonMesh.position.set(-sunX, -sunY + 20, -sunZ);
+            moonLight.position.copy(moonMesh.position);
+            
+            // Calculate day/night intensity (0 = midnight, 1 = noon)
+            const dayProgress = Math.sin(sunAngle);
+            const dayIntensity = Math.max(0, dayProgress);
+            const nightIntensity = Math.max(0, -dayProgress);
+            
+            // Update light intensities
+            sunLight.intensity = dayIntensity * 1.5;
+            moonLight.intensity = nightIntensity * 0.4;
+            
+            // Update sun/moon visibility
+            sunMesh.visible = sunY > -10;
+            moonMesh.visible = sunY < 10;
+            
+            // Update ambient light based on time
+            if (ambientLight) {
+                const ambientDay = new THREE.Color(0xFFFFFF);
+                const ambientNight = new THREE.Color(0x222244);
+                ambientLight.color.lerpColors(ambientNight, ambientDay, dayIntensity * 0.8 + 0.2);
+                ambientLight.intensity = 0.4 + dayIntensity * 0.8;
+            }
+            
+            // Update sky color based on time
+            updateSkyColor(hour, dayIntensity);
+        }
+        
+        // Update sky/background color based on time
+        function updateSkyColor(hour, dayIntensity) {
+            if (!scene) return;
+            
+            // Define sky colors for different times
+            const nightColor = new THREE.Color(0x0a0a1a);     // Dark blue/black
+            const dawnColor = new THREE.Color(0xFF7F50);      // Coral/orange
+            const morningColor = new THREE.Color(0x87CEEB);   // Light blue
+            const noonColor = new THREE.Color(0x6BB3F8);      // Clear blue
+            const eveningColor = new THREE.Color(0xFF6347);   // Tomato red
+            const duskColor = new THREE.Color(0x4B0082);      // Indigo
+            
+            let skyColor = new THREE.Color();
+            
+            if (hour < 5 || hour > 21) {
+                // Night
+                skyColor = nightColor;
+            } else if (hour < 7) {
+                // Dawn (5-7)
+                const t = (hour - 5) / 2;
+                skyColor.lerpColors(nightColor, dawnColor, t);
+            } else if (hour < 10) {
+                // Morning (7-10)
+                const t = (hour - 7) / 3;
+                skyColor.lerpColors(dawnColor, morningColor, t);
+            } else if (hour < 16) {
+                // Day (10-16)
+                const t = (hour - 10) / 6;
+                skyColor.lerpColors(morningColor, noonColor, t);
+            } else if (hour < 18) {
+                // Afternoon (16-18)
+                const t = (hour - 16) / 2;
+                skyColor.lerpColors(noonColor, eveningColor, t);
+            } else if (hour < 20) {
+                // Evening (18-20)
+                const t = (hour - 18) / 2;
+                skyColor.lerpColors(eveningColor, duskColor, t);
+            } else {
+                // Dusk to night (20-21)
+                const t = (hour - 20);
+                skyColor.lerpColors(duskColor, nightColor, t);
+            }
+            
+            scene.background = skyColor;
+        }
+        
+        // Set time of day manually (0-24)
+        function setTimeOfDay(hour) {
+            manualTimeOfDay = Math.max(0, Math.min(24, hour));
+            isAutoTimeEnabled = false;
+            updateDayNightCycle(manualTimeOfDay);
+            console.log(`⏰ Time set to ${manualTimeOfDay}:00`);
+        }
+        
+        // Enable real-time auto mode
+        function enableAutoTime() {
+            isAutoTimeEnabled = true;
+            console.log('🕐 Auto time mode enabled');
+        }
+        
+        // Get current time of day
+        function getCurrentTimeOfDay() {
+            if (isAutoTimeEnabled) {
+                const now = new Date();
+                return now.getHours() + now.getMinutes() / 60;
+            }
+            return manualTimeOfDay;
+        }
+
         // Expose functions to global scope for Flutter to call
         window.resetCamera = resetCamera;
         window.openDoor = openDoor;
         window.closeDoor = closeDoor;
+        window.toggleDoor = toggleDoor;
+        window.openGarage = openGarage;
+        window.closeGarage = closeGarage;
+        window.toggleGarage = toggleGarage;
+        window.openAllWindows = openAllWindows;
+        window.closeAllWindows = closeAllWindows;
+        window.toggleAllWindows = toggleAllWindows;
+        window.toggleInteractiveElement = toggleInteractiveElement;
         window.updateAlarms = updateAlarms;
         window.loadModelFromBase64 = loadModelFromBase64;
+        // Day/Night cycle and background functions
+        window.setBackgroundColor = setBackgroundColor;
+        window.setBackgroundColorHex = setBackgroundColorHex;
+        window.setTimeOfDay = setTimeOfDay;
+        window.enableAutoTime = enableAutoTime;
+        window.getCurrentTimeOfDay = getCurrentTimeOfDay;
+        window.updateDayNightCycle = updateDayNightCycle;
+        window.initializeDayNightCycle = initializeDayNightCycle;
 
         // Setup proper two-finger controls
         function setupTwoFingerControls() {
