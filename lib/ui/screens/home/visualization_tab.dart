@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
@@ -197,14 +199,22 @@ class _VisualizationTabState extends State<VisualizationTab> {
 
   void _handleJavaScriptMessage(String message) {
     // Handle tap events from 3D view
-    // Example: User taps on a room to control lights
+    // Format: tap:FormattedName:elementType (e.g., "tap:Front Door:door")
     if (message.startsWith('tap:')) {
-      final room = message.substring(4);
-      _showRoomControls(room);
+      final parts = message.substring(4).split(':');
+      final objectName = parts.isNotEmpty ? parts[0] : 'Unknown';
+      final objectType = parts.length > 1 ? parts[1] : 'room';
+      _showRoomControls(objectName, objectType);
     }
   }
 
-  void _showRoomControls(String room) {
+  void _showRoomControls(String objectName, String objectType) {
+    // Skip showing controls for interactive elements - they have their own panel in 3D
+    if (objectType == 'door' || objectType == 'garage' || objectType == 'window') {
+      debugPrint('📍 Selected $objectType: $objectName - controls shown in 3D panel');
+      return;
+    }
+    
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -214,7 +224,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              room,
+              objectName,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
@@ -242,10 +252,19 @@ class _VisualizationTabState extends State<VisualizationTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Stack(
       children: [
-        WebViewWidget(controller: _webViewController),
+        WebViewWidget(
+          controller: _webViewController,
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<OneSequenceGestureRecognizer>(
+              () => EagerGestureRecognizer(),
+            ),
+          },
+        ),
         if (_isLoading)
           Center(
             child: CircularProgressIndicator(
@@ -255,29 +274,30 @@ class _VisualizationTabState extends State<VisualizationTab> {
             ),
           ),
 
-        // Control buttons row - simplified, door control now integrated with 3D clicks
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Reset camera button
-              FadeInUp(
-                delay: const Duration(milliseconds: 100),
-                child: FloatingActionButton(
-                  mini: true,
-                  onPressed: () {
-                    debugPrint('🎥 Resetting camera view');
-                    _webViewController.runJavaScript('resetCamera()');
-                  },
-                  child: const Icon(Icons.center_focus_strong),
+        // Control buttons row - hidden on mobile (controls are in the drawer)
+        if (!isMobile)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Reset camera button
+                FadeInUp(
+                  delay: const Duration(milliseconds: 100),
+                  child: FloatingActionButton(
+                    mini: true,
+                    onPressed: () {
+                      debugPrint('🎥 Resetting camera view');
+                      _webViewController.runJavaScript('resetCamera()');
+                    },
+                    child: const Icon(Icons.center_focus_strong),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

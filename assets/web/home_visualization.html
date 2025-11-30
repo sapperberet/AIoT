@@ -284,11 +284,13 @@
             border-radius: 4px;
             background: linear-gradient(to right, #1a1a3a, #FFD700, #87CEEB, #FFD700, #1a1a3a);
             -webkit-appearance: none;
+            appearance: none;
             cursor: pointer;
         }
         
         .time-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
+            appearance: none;
             width: 20px;
             height: 20px;
             border-radius: 50%;
@@ -329,76 +331,539 @@
         }
 
         /* Hide old panels - keeping for JS compatibility */
-        #theme-panel, #navigation-controls, #selected-mesh-color-panel, .panel-mini-btn {
+        #theme-panel, #navigation-controls, #selected-mesh-color-panel, .panel-mini-btn, #minecraft-hud {
             display: none !important;
         }
-            display: block !important;
-            visibility: visible !important;
-            max-height: 500px;
-            overflow-y: auto;
-            transition: all 0.3s ease;
+        
+        /* ============ MOBILE DRAWER NAVIGATION ============ */
+        #mobile-menu-btn {
+            display: none;
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(145deg, #3a3a4a, #2a2a3a);
+            border: 2px solid #555;
+            border-radius: 10px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            transition: all 0.2s ease;
         }
         
-        #theme-panel.minimized {
-            left: 120px;
-            width: 50px;
-            height: 50px;
-            padding: 0;
+        #mobile-menu-btn:hover {
+            background: linear-gradient(145deg, #4a4a5a, #3a3a4a);
+            border-color: #FFD700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        /* Mobile Drawer Overlay */
+        #drawer-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        #drawer-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+        
+        /* Mobile Drawer Panel */
+        #mobile-drawer {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 300px;
+            max-width: 85vw;
+            height: 100%;
+            max-height: 100vh;
+            max-height: 100dvh;
+            background: linear-gradient(180deg, #1a1a2e, #16213e, #0f0f23);
+            z-index: 2000;
+            transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
+            touch-action: pan-y;
+        }
+        
+        .drawer-content {
+            flex: 1;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            padding-bottom: 40px;
+            touch-action: pan-y;
+        }
+        
+        #mobile-drawer.active {
+            right: 0;
+        }
+        
+        .drawer-header {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .drawer-title {
+            color: #FFD700;
+            font-size: 22px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .drawer-close {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            max-height: 50px;
-            overflow: hidden;
+            transition: all 0.2s ease;
         }
         
-        #theme-panel.minimized .theme-section {
-            display: none;
+        .drawer-close:hover {
+            background: rgba(255, 100, 100, 0.3);
+            border-color: #ff6b6b;
+            transform: rotate(90deg);
         }
         
-        #theme-panel.minimized #theme-panel-content {
-            display: none;
+        .drawer-section {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .panel-header {
+        .drawer-section-title {
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .drawer-item {
             display: flex;
-            justify-content: center;
             align-items: center;
-            margin: 0;
-            gap: 0;
+            gap: 14px;
+            padding: 14px 16px;
+            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 15px;
         }
         
-        #theme-panel h3 {
-            margin: 0;
+        .drawer-item:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+            transform: translateX(5px);
+        }
+        
+        .drawer-item.active {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+            border-color: #FFD700;
+        }
+        
+        .drawer-item-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .drawer-item.active .drawer-item-icon {
+            background: linear-gradient(145deg, #FFD700, #E6C200);
+        }
+        
+        .drawer-item-text {
+            flex: 1;
+        }
+        
+        .drawer-item-arrow {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .drawer-info-bar {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .drawer-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .drawer-info-item .icon {
+            font-size: 18px;
+        }
+        
+        .drawer-info-item.time .value {
+            color: #FFD700;
+            font-weight: bold;
+        }
+        
+        .drawer-info-item.temp .value {
+            color: #FF6B6B;
+            font-weight: bold;
+        }
+        
+        /* Drawer sub-sections and controls */
+        .drawer-subsection {
+            padding: 10px 0;
+        }
+        
+        .drawer-label {
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .drawer-btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .drawer-btn-grid.cols-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .drawer-btn {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        
+        .drawer-btn:hover, .drawer-btn:active {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: rgba(255, 215, 0, 0.4);
+        }
+        
+        .drawer-btn.active {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.15));
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+        
+        .drawer-btn.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .drawer-slider {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            outline: none;
+            margin: 10px 0;
+        }
+        
+        .drawer-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(145deg, #FFD700, #E6C200);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .drawer-time-display {
+            text-align: center;
             font-size: 28px;
             font-weight: bold;
+            color: #FFD700;
+            margin: 10px 0;
+        }
+        
+        .drawer-color-row {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .drawer-color-input {
+            width: 50px;
+            height: 40px;
             border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        .drawer-color-input::-webkit-color-swatch-wrapper {
             padding: 0;
         }
         
-        .minimize-btn {
-            display: none;
+        .drawer-color-input::-webkit-color-swatch {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
         }
         
-        .minimize-btn:hover {
-            background: rgba(76, 175, 80, 0.6);
+        .drawer-hex-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .drawer-hex-input:focus {
+            outline: none;
+            border-color: #FFD700;
+        }
+        
+        /* ============ TOAST NOTIFICATION ============ */
+        #toast-container {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* ============ MOBILE RESPONSIVE STYLES ============ */
+        @media screen and (max-width: 768px) {
+            /* Hide desktop navbar center buttons on mobile */
+            #main-navbar .navbar-section.center {
+                display: none;
+            }
+            
+            #main-navbar {
+                height: 56px;
+                padding: 0 12px;
+            }
+            
+            /* Show mobile menu button */
+            #mobile-menu-btn {
+                display: flex;
+            }
+            
+            .navbar-title {
+                font-size: 16px;
+            }
+            
+            .navbar-divider {
+                display: none;
+            }
+            
+            .dropdown-panel {
+                display: none !important; /* Use drawer instead */
+            }
+        }
+        
+        @media screen and (max-width: 480px) {
+            #main-navbar {
+                height: 52px;
+                padding: 0 10px;
+            }
+            
+            .navbar-title {
+                font-size: 14px;
+            }
+            
+            #mobile-menu-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+            
+            #mobile-drawer {
+                width: 280px;
+            }
+        }
+        
+        /* ============ SELECTION PANEL FOR INTERACTIVE ELEMENTS ============ */
+        #selection-panel {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 12px;
+            padding: 15px 20px;
+            z-index: 1003;
+            display: none;
+            min-width: 200px;
+            max-width: 320px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+        }
+        
+        #selection-panel.active {
+            display: block;
+        }
+        
+        .selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .selection-title {
+            color: #FFD700;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .selection-close {
+            width: 28px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .selection-close:hover {
+            background: rgba(255, 100, 100, 0.3);
+            border-color: rgba(255, 100, 100, 0.6);
+        }
+        
+        .selection-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .selection-btn {
+            padding: 12px 16px;
+            background: linear-gradient(145deg, #3a3a4a, #2a2a3a);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+        
+        .selection-btn:hover {
+            background: linear-gradient(145deg, #4a4a5a, #3a3a4a);
+            border-color: #FFD700;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+        }
+        
+        .selection-btn.primary {
+            background: linear-gradient(145deg, #4CAF50, #388E3C);
             border-color: #4CAF50;
         }
         
-        #theme-panel.minimized {
-            max-height: 50px;
-            padding: 10px 15px;
-            overflow: hidden;
-            min-width: auto;
-            width: 40px;
-            padding: 5px;
+        .selection-btn.primary:hover {
+            background: linear-gradient(145deg, #66BB6A, #43A047);
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.5);
         }
         
-        #theme-panel.minimized .panel-header {
-            display: none;
+        .selection-btn.danger {
+            background: linear-gradient(145deg, #f44336, #d32f2f);
+            border-color: #f44336;
         }
         
-        #theme-panel.minimized #theme-panel-content {
-            display: none;
+        .selection-btn.danger:hover {
+            background: linear-gradient(145deg, #ef5350, #e53935);
+            box-shadow: 0 0 12px rgba(244, 67, 54, 0.5);
+        }
+        
+        .selection-btn .btn-icon {
+            font-size: 18px;
+        }
+        
+        .selection-status {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 12px;
+            color: #aaa;
+            text-align: center;
+        }
+        
+        .selection-status.open {
+            color: #4CAF50;
+        }
+        
+        .selection-status.closed {
+            color: #FF9800;
         }
         
         .theme-section {
@@ -1022,6 +1487,7 @@
     <div id="canvas-container"></div>
     <div id="info">Click on rooms to control devices</div>
     <div class="loading" id="loading">Loading 3D Model...</div>
+    <div id="toast-container"></div>
 
     <!-- ============ UNIFIED TOP NAVBAR ============ -->
     <div id="main-navbar">
@@ -1030,7 +1496,7 @@
             <span class="navbar-title">🏠 Smart Home</span>
         </div>
         
-        <!-- Center Section: Control Buttons -->
+        <!-- Center Section: Control Buttons (Desktop only) -->
         <div class="navbar-section center">
             <div class="nav-btn active" data-tool="paint" title="Paint Tool">🎨</div>
             <div class="nav-btn" data-tool="theme" title="Theme Settings">🎭</div>
@@ -1056,9 +1522,103 @@
             </div>
         </div>
         
-        <!-- Right Section: Settings -->
+        <!-- Right Section: Settings (Desktop) + Mobile Menu -->
         <div class="navbar-section right">
             <div class="nav-btn nav-btn-small" data-tool="settings" title="Settings">⚙️</div>
+            <button id="mobile-menu-btn" title="Menu">☰</button>
+        </div>
+    </div>
+    
+    <!-- ============ MOBILE DRAWER ============ -->
+    <div id="drawer-overlay"></div>
+    <div id="mobile-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title">🏠 Controls</div>
+            <button class="drawer-close" id="drawer-close">✕</button>
+        </div>
+        
+        <div class="drawer-content">
+            <div class="drawer-section">
+                <div class="drawer-section-title">Quick Info</div>
+                <div class="drawer-info-bar">
+                    <div class="drawer-info-item time">
+                        <span class="icon">🕐</span>
+                        <span class="value" id="drawer-time">--:--</span>
+                    </div>
+                    <div class="drawer-info-item temp">
+                        <span class="icon">🌡️</span>
+                        <span class="value" id="drawer-temp">22°C</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Theme Section with Sub-panel -->
+            <div class="drawer-section">
+                <div class="drawer-section-title">🎭 Theme & Appearance</div>
+                <div class="drawer-subsection">
+                    <div class="drawer-label">Color Palette</div>
+                    <div class="drawer-btn-grid">
+                        <button class="drawer-btn active" data-theme="modern">Modern</button>
+                        <button class="drawer-btn" data-theme="classic">Classic</button>
+                        <button class="drawer-btn" data-theme="minimal">Minimal</button>
+                        <button class="drawer-btn" data-theme="vibrant">Vibrant</button>
+                    </div>
+                </div>
+                <div class="drawer-subsection">
+                    <div class="drawer-label">Lighting</div>
+                    <div class="drawer-btn-grid">
+                        <button class="drawer-btn active" data-lighting="bright">☀️ Bright</button>
+                        <button class="drawer-btn" data-lighting="normal">🌤️ Normal</button>
+                        <button class="drawer-btn" data-lighting="dim">🌙 Dim</button>
+                    </div>
+                </div>
+                <div class="drawer-subsection">
+                    <button class="drawer-btn full-width" id="drawer-toggle-shadows">☀️ Shadows: ON</button>
+                </div>
+            </div>
+            
+            <!-- Day/Night Section with Slider -->
+            <div class="drawer-section">
+                <div class="drawer-section-title">🌅 Day/Night Cycle</div>
+                <div class="drawer-subsection">
+                    <div class="drawer-time-display" id="drawer-time-display">12:00</div>
+                    <input type="range" class="drawer-slider" id="drawer-time-slider" min="0" max="24" step="0.5" value="12">
+                    <button class="drawer-btn full-width" id="drawer-auto-time">🕐 Auto Time: ON</button>
+                </div>
+            </div>
+            
+            <!-- Paint Section -->
+            <div class="drawer-section">
+                <div class="drawer-section-title">🎨 Paint Objects</div>
+                <div class="drawer-subsection">
+                    <div class="drawer-label" id="drawer-mesh-name">Tap an object to paint</div>
+                    <div class="drawer-color-row">
+                        <input type="color" id="drawer-color-picker" value="#ff4444" class="drawer-color-input">
+                        <input type="text" id="drawer-hex-input" placeholder="#ff4444" maxlength="7" class="drawer-hex-input">
+                    </div>
+                    <button class="drawer-btn full-width" id="drawer-reset-colors">↺ Reset All Colors</button>
+                </div>
+            </div>
+            
+            <!-- Home Controls Section -->
+            <div class="drawer-section">
+                <div class="drawer-section-title">🏠 Home Controls</div>
+                <div class="drawer-btn-grid cols-2">
+                    <button class="drawer-btn" id="drawer-toggle-lights">💡 Lights</button>
+                    <button class="drawer-btn" id="drawer-toggle-door">🚪 Door</button>
+                    <button class="drawer-btn" id="drawer-toggle-garage">🚗 Garage</button>
+                    <button class="drawer-btn" id="drawer-toggle-windows">🪟 Windows</button>
+                </div>
+            </div>
+            
+            <!-- View Controls Section -->
+            <div class="drawer-section">
+                <div class="drawer-section-title">📷 View Options</div>
+                <div class="drawer-btn-grid cols-2">
+                    <button class="drawer-btn" id="drawer-reset-camera">🎯 Reset View</button>
+                    <button class="drawer-btn" id="drawer-toggle-grid">📐 Grid</button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -1119,6 +1679,21 @@
                 <button class="dropdown-btn" id="toggle-grid">📐 Toggle Grid</button>
             </div>
         </div>
+    </div>
+
+    <!-- Selection Panel for Doors/Garages/Windows -->
+    <div id="selection-panel">
+        <div class="selection-header">
+            <div class="selection-title">
+                <span id="selection-icon">🚪</span>
+                <span id="selection-name">Door</span>
+            </div>
+            <button class="selection-close" id="selection-close">✕</button>
+        </div>
+        <div class="selection-actions" id="selection-actions">
+            <!-- Actions dynamically populated -->
+        </div>
+        <div class="selection-status" id="selection-status">Status: Closed</div>
     </div>
 
     <!-- Old panels hidden but kept for JS compatibility -->
@@ -1237,14 +1812,16 @@
 
             // Camera
             camera = new THREE.PerspectiveCamera(
-                75,
+                60, // Good FOV for 3D view
                 window.innerWidth / window.innerHeight,
                 0.1,
-                1000
+                2000
             );
-            // Position camera to look at house from the front side
-            camera.position.set(0, 3.5, 5);
-            camera.lookAt(0, 3.5, 0);
+            // Position camera to see house nicely
+            const isMobile = window.innerWidth <= 768;
+            // Mobile: closer view, Desktop: slightly further
+            camera.position.set(18, 12, 22);
+            camera.lookAt(0, 2, 0);
 
             // Renderer - Optimized for mobile
             renderer = new THREE.WebGLRenderer({ 
@@ -1260,31 +1837,31 @@
             canvas.style.touchAction = 'none'; // Prevent default touch behaviors
             document.getElementById('canvas-container').appendChild(canvas);
 
-            // Controls - Optimized for mobile touch
+            // Controls - Standard OrbitControls with zoom enabled
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.1;
+            controls.dampingFactor = 0.05;
             controls.enableRotate = true;
-            controls.enableZoom = false; // Disable OrbitControls zoom - we'll handle it manually
-            controls.enablePan = false;
-            // Set target to center of house
-            controls.target.set(0, 3.5, 0);
+            controls.enableZoom = true;
+            controls.enablePan = true;
+            controls.target.set(0, 2, 0);
             
-            // Mobile-optimized speeds
-            controls.rotateSpeed = 1.0;
+            // Speeds
+            controls.rotateSpeed = 0.5;
+            controls.zoomSpeed = 0.8;
+            controls.panSpeed = 0.5;
             
             // Zoom limits
-            controls.minDistance = 10;
-            controls.maxDistance = 500;
+            controls.minDistance = 5;
+            controls.maxDistance = 100;
             
-            // Touch-specific settings - only one finger rotation
-            controls.touches = {
-                ONE: THREE.TOUCH.ROTATE
-            };
+            // Vertical angle limits (prevent going under ground)
+            controls.minPolarAngle = 0.1;
+            controls.maxPolarAngle = Math.PI / 2 + 0.3;
             
-            controls.screenSpacePanning = false;
+            controls.screenSpacePanning = true;
             
-            console.log('🎮 Controls initialized - one finger rotation, manual two-finger zoom');
+            console.log('🎮 Controls: rotate, zoom, pan all enabled');
 
             // Lights - Much brighter for better visibility
             ambientLight = new THREE.AmbientLight(0xffffff, 1.4); // Bright preset
@@ -1638,6 +2215,35 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // Format mesh name for display (remove _mesh, underscores, etc.)
+        function formatMeshName(name) {
+            if (!name) return 'Unknown';
+            // Remove common suffixes like _mesh, _1, :meshname
+            let formatted = name
+                .replace(/_mesh.*$/i, '')
+                .replace(/:\w+$/i, '')
+                .replace(/_\d+$/i, '')
+                .replace(/_/g, ' ')
+                .trim();
+            // Capitalize first letter of each word
+            return formatted.split(' ').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
+        }
+        
+        // Get element type from mesh name
+        function getElementType(name) {
+            if (!name) return null;
+            const nameLower = name.toLowerCase();
+            if (nameLower.includes('door') && !nameLower.includes('garage')) return 'door';
+            if (nameLower.includes('garage')) return 'garage';
+            if (nameLower.includes('window') || nameLower.includes('glass')) return 'window';
+            return null;
+        }
+        
+        // Currently selected interactive element
+        let selectedInteractiveElement = null;
+        
         function onMouseClick(event) {
             // Calculate mouse position in normalized device coordinates
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -1647,9 +2253,11 @@
             raycaster.setFromCamera(mouse, camera);
             const allObjects = [];
             // Include meshes from homeModel
-            homeModel.traverse((child) => {
-                if (child.isMesh) allObjects.push(child);
-            });
+            if (homeModel) {
+                homeModel.traverse((child) => {
+                    if (child.isMesh) allObjects.push(child);
+                });
+            }
             // Also include meshes that were reparented to pivot groups
             scene.traverse((child) => {
                 if (child.isMesh && !allObjects.includes(child)) {
@@ -1660,26 +2268,130 @@
 
             if (intersects.length > 0) {
                 const clickedObject = intersects[0].object;
+                const elementType = getElementType(clickedObject.name);
                 
-                // Try to toggle interactive elements (doors, windows, garage)
-                const wasInteractive = toggleInteractiveElement(clickedObject);
-                
-                // Select mesh for color customization
-                selectMesh(clickedObject);
+                // If it's an interactive element (door, garage, window), show selection panel
+                if (elementType) {
+                    showSelectionPanel(clickedObject, elementType);
+                } else {
+                    // For non-interactive elements, just select for color customization
+                    selectMesh(clickedObject);
+                    hideSelectionPanel();
+                }
                 
                 // Also send message to Flutter if it's a room
                 const clickedRoom = roomMeshes[clickedObject.name];
                 if (clickedRoom && window.FlutterBridge) {
-                    // Send animation state along with tap info
-                    const nameLower = clickedObject.name.toLowerCase();
-                    let animationType = 'room';
-                    if (nameLower.includes('door') && !nameLower.includes('garage')) animationType = 'door';
-                    else if (nameLower.includes('garage')) animationType = 'garage';
-                    else if (nameLower.includes('window') || nameLower.includes('glass')) animationType = 'window';
-                    
-                    window.FlutterBridge.postMessage('tap:' + clickedObject.name + ':' + animationType);
+                    const formattedName = formatMeshName(clickedObject.name);
+                    window.FlutterBridge.postMessage('tap:' + formattedName + ':' + (elementType || 'room'));
                 }
+            } else {
+                // Clicked on empty space - hide selection panel
+                hideSelectionPanel();
             }
+        }
+        
+        // Show selection panel for interactive elements
+        function showSelectionPanel(mesh, elementType) {
+            const panel = document.getElementById('selection-panel');
+            const iconEl = document.getElementById('selection-icon');
+            const nameEl = document.getElementById('selection-name');
+            const actionsEl = document.getElementById('selection-actions');
+            const statusEl = document.getElementById('selection-status');
+            
+            if (!panel) return;
+            
+            selectedInteractiveElement = mesh;
+            
+            // Set icon and name based on type
+            const displayName = formatMeshName(mesh.name);
+            nameEl.textContent = displayName;
+            
+            // Clear previous actions
+            actionsEl.innerHTML = '';
+            
+            // Get current state
+            let isOpen = false;
+            let statusText = '';
+            
+            switch (elementType) {
+                case 'door':
+                    iconEl.textContent = '🚪';
+                    isOpen = doorOpen;
+                    statusText = isOpen ? 'Status: Open' : 'Status: Closed';
+                    
+                    // Add open/close button
+                    const doorBtn = document.createElement('button');
+                    doorBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
+                    doorBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '🔒' : '🔓') + '</span>' + (isOpen ? 'Close Door' : 'Open Door');
+                    doorBtn.onclick = () => {
+                        toggleDoor();
+                        setTimeout(() => showSelectionPanel(mesh, elementType), 100);
+                    };
+                    actionsEl.appendChild(doorBtn);
+                    break;
+                    
+                case 'garage':
+                    iconEl.textContent = '🚗';
+                    isOpen = garageOpen;
+                    statusText = isOpen ? 'Status: Open' : 'Status: Closed';
+                    
+                    // Add open/close button
+                    const garageBtn = document.createElement('button');
+                    garageBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
+                    garageBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '⬇️' : '⬆️') + '</span>' + (isOpen ? 'Close Garage' : 'Open Garage');
+                    garageBtn.onclick = () => {
+                        toggleGarage();
+                        setTimeout(() => showSelectionPanel(mesh, elementType), 100);
+                    };
+                    actionsEl.appendChild(garageBtn);
+                    break;
+                    
+                case 'window':
+                    iconEl.textContent = '🪟';
+                    isOpen = mesh.userData.isOpen || false;
+                    statusText = isOpen ? 'Status: Open' : 'Status: Closed';
+                    
+                    // Add open/close button for this window
+                    const windowBtn = document.createElement('button');
+                    windowBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
+                    windowBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '🔒' : '🔓') + '</span>' + (isOpen ? 'Close Window' : 'Open Window');
+                    windowBtn.onclick = () => {
+                        toggleWindow(mesh);
+                        setTimeout(() => showSelectionPanel(mesh, elementType), 600);
+                    };
+                    actionsEl.appendChild(windowBtn);
+                    
+                    // Add toggle all windows button
+                    const allWindowsBtn = document.createElement('button');
+                    allWindowsBtn.className = 'selection-btn';
+                    allWindowsBtn.innerHTML = '<span class="btn-icon">🪟</span>' + (windowsOpen ? 'Close All Windows' : 'Open All Windows');
+                    allWindowsBtn.onclick = () => {
+                        toggleAllWindows();
+                        setTimeout(() => showSelectionPanel(mesh, elementType), 600);
+                    };
+                    actionsEl.appendChild(allWindowsBtn);
+                    break;
+            }
+            
+            // Update status
+            statusEl.textContent = statusText;
+            statusEl.className = 'selection-status ' + (isOpen ? 'open' : 'closed');
+            
+            // Show panel
+            panel.classList.add('active');
+            
+            // Also select mesh for color customization
+            selectMesh(mesh);
+        }
+        
+        // Hide selection panel
+        function hideSelectionPanel() {
+            const panel = document.getElementById('selection-panel');
+            if (panel) {
+                panel.classList.remove('active');
+            }
+            selectedInteractiveElement = null;
         }
 
         // Theme Management Functions
@@ -1871,7 +2583,247 @@
             updateThemeButtons();
             updateLightingButtons();
             initializeNavbar();
+            initializeSelectionPanel();
+            initializeMobileDrawer();
             console.log('All UI initialized successfully');
+        }
+        
+        // Toast notification function for feedback
+        function showToast(message, duration = 2500) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+        
+        // Initialize Mobile Drawer
+        function initializeMobileDrawer() {
+            const menuBtn = document.getElementById('mobile-menu-btn');
+            const drawer = document.getElementById('mobile-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            const closeBtn = document.getElementById('drawer-close');
+            
+            function openDrawer() {
+                if (drawer) drawer.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            function closeDrawer() {
+                if (drawer) drawer.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            if (menuBtn) {
+                menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDrawer();
+                });
+            }
+            
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeDrawer);
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', closeDrawer);
+            }
+            
+            // ====== THEME BUTTONS ======
+            drawer.querySelectorAll('[data-theme]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyTheme(btn.dataset.theme);
+                    // Update active states
+                    drawer.querySelectorAll('[data-theme]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    showToast('🎭 Theme: ' + btn.dataset.theme);
+                });
+            });
+            
+            // ====== LIGHTING BUTTONS ======
+            drawer.querySelectorAll('[data-lighting]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyLighting(btn.dataset.lighting);
+                    // Update active states
+                    drawer.querySelectorAll('[data-lighting]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    showToast('💡 Lighting: ' + btn.dataset.lighting);
+                });
+            });
+            
+            // ====== SHADOWS TOGGLE ======
+            const shadowsBtn = document.getElementById('drawer-toggle-shadows');
+            if (shadowsBtn) {
+                shadowsBtn.addEventListener('click', () => {
+                    toggleShadows();
+                    shadowsBtn.textContent = renderer.shadowMap.enabled ? '☀️ Shadows: ON' : '🌑 Shadows: OFF';
+                });
+            }
+            
+            // ====== TIME SLIDER ======
+            const timeSlider = document.getElementById('drawer-time-slider');
+            const timeDisplay = document.getElementById('drawer-time-display');
+            const autoTimeBtn = document.getElementById('drawer-auto-time');
+            
+            if (timeSlider) {
+                timeSlider.addEventListener('input', () => {
+                    const hour = parseFloat(timeSlider.value);
+                    const displayHour = Math.floor(hour);
+                    const displayMin = Math.floor((hour % 1) * 60);
+                    const timeStr = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+                    if (timeDisplay) timeDisplay.textContent = timeStr;
+                    setTimeOfDay(hour);
+                    if (autoTimeBtn) {
+                        autoTimeBtn.classList.remove('active');
+                        autoTimeBtn.textContent = '🕐 Auto Time: OFF';
+                    }
+                });
+            }
+            
+            if (autoTimeBtn) {
+                autoTimeBtn.addEventListener('click', () => {
+                    isAutoTimeEnabled = !isAutoTimeEnabled;
+                    autoTimeBtn.classList.toggle('active', isAutoTimeEnabled);
+                    autoTimeBtn.textContent = isAutoTimeEnabled ? '🕐 Auto Time: ON' : '🕐 Auto Time: OFF';
+                    if (isAutoTimeEnabled) {
+                        updateDayNightCycle();
+                        showToast('🌅 Auto time enabled');
+                    } else {
+                        showToast('🌅 Manual time mode');
+                    }
+                });
+            }
+            
+            // ====== COLOR PICKER ======
+            const colorPicker = document.getElementById('drawer-color-picker');
+            const hexInput = document.getElementById('drawer-hex-input');
+            
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (e) => {
+                    if (hexInput) hexInput.value = e.target.value;
+                    updateSelectedMeshColor(e.target.value);
+                });
+            }
+            
+            if (hexInput) {
+                hexInput.addEventListener('change', (e) => {
+                    let hex = e.target.value.trim();
+                    if (!hex.startsWith('#')) hex = '#' + hex;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                        if (colorPicker) colorPicker.value = hex;
+                        updateSelectedMeshColor(hex);
+                    }
+                });
+            }
+            
+            // ====== RESET COLORS ======
+            const resetColorsBtn = document.getElementById('drawer-reset-colors');
+            if (resetColorsBtn) {
+                resetColorsBtn.addEventListener('click', () => {
+                    resetAllColors();
+                    showToast('↺ All colors reset');
+                });
+            }
+            
+            // ====== HOME CONTROLS ======
+            const lightsBtn = document.getElementById('drawer-toggle-lights');
+            if (lightsBtn) {
+                lightsBtn.addEventListener('click', () => {
+                    toggleLights();
+                    showToast('💡 Lights toggled');
+                });
+            }
+            
+            const doorBtn = document.getElementById('drawer-toggle-door');
+            if (doorBtn) {
+                doorBtn.addEventListener('click', () => {
+                    if (!doorMesh) findDoor();
+                    if (doorMesh) {
+                        toggleDoor();
+                        showToast(doorOpen ? '🚪 Door opened' : '🚪 Door closed');
+                    } else {
+                        showToast('🚪 No door in model');
+                    }
+                });
+            }
+            
+            const garageBtn = document.getElementById('drawer-toggle-garage');
+            if (garageBtn) {
+                garageBtn.addEventListener('click', () => {
+                    if (!garageMesh) findGarage();
+                    if (garageMesh) {
+                        toggleGarage();
+                        showToast(garageOpen ? '🚗 Garage opened' : '🚗 Garage closed');
+                    } else {
+                        showToast('🚗 No garage in model');
+                    }
+                });
+            }
+            
+            const windowsBtn = document.getElementById('drawer-toggle-windows');
+            if (windowsBtn) {
+                windowsBtn.addEventListener('click', () => {
+                    if (windowMeshes.length === 0) findWindows();
+                    if (windowMeshes.length > 0) {
+                        toggleAllWindows();
+                        showToast('🪟 Windows toggled');
+                    } else {
+                        showToast('🪟 No windows in model');
+                    }
+                });
+            }
+            
+            // ====== VIEW CONTROLS ======
+            const resetCameraBtn = document.getElementById('drawer-reset-camera');
+            if (resetCameraBtn) {
+                resetCameraBtn.addEventListener('click', () => {
+                    resetCamera();
+                    showToast('🎯 View reset');
+                });
+            }
+            
+            const gridBtn = document.getElementById('drawer-toggle-grid');
+            if (gridBtn) {
+                gridBtn.addEventListener('click', () => {
+                    toggleGrid();
+                    showToast('📐 Grid toggled');
+                });
+            }
+            
+            console.log('Mobile drawer initialized with full controls');
+        }
+        
+        function initializeSelectionPanel() {
+            const closeBtn = document.getElementById('selection-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    hideSelectionPanel();
+                });
+            }
+            
+            // Close panel when clicking outside
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('selection-panel');
+                if (panel && panel.classList.contains('active')) {
+                    if (!e.target.closest('#selection-panel') && !e.target.closest('#canvas-container')) {
+                        hideSelectionPanel();
+                    }
+                }
+            });
         }
         
         let selectedMesh = null;
@@ -1944,15 +2896,33 @@
                             break;
                             
                         case 'doors':
-                            toggleDoor();
+                            // Find a door mesh and show selection panel
+                            if (!doorMesh) findDoor();
+                            if (doorMesh) {
+                                showSelectionPanel(doorMesh, 'door');
+                            } else {
+                                console.log('No door found in model');
+                            }
                             break;
                             
                         case 'garage':
-                            toggleGarage();
+                            // Find garage mesh and show selection panel
+                            if (!garageMesh) findGarage();
+                            if (garageMesh) {
+                                showSelectionPanel(garageMesh, 'garage');
+                            } else {
+                                console.log('No garage found in model');
+                            }
                             break;
                             
                         case 'windows':
-                            toggleAllWindows();
+                            // Find windows and show selection panel for the first one
+                            if (windowMeshes.length === 0) findWindows();
+                            if (windowMeshes.length > 0) {
+                                showSelectionPanel(windowMeshes[0], 'window');
+                            } else {
+                                console.log('No windows found in model');
+                            }
                             break;
                             
                         case 'reset':
@@ -1997,7 +2967,11 @@
                     const hour = parseFloat(timeSlider.value);
                     const displayHour = Math.floor(hour);
                     const displayMin = Math.floor((hour % 1) * 60);
-                    timeDisplay.textContent = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+                    const timeStr = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+                    timeDisplay.textContent = timeStr;
+                    // Sync drawer time
+                    const drawerTime = document.getElementById('drawer-time');
+                    if (drawerTime) drawerTime.textContent = timeStr;
                     setTimeOfDay(hour);
                     if (autoTimeBtn) {
                         autoTimeBtn.classList.remove('active');
@@ -2021,9 +2995,7 @@
             const resetCameraBtn = document.getElementById('reset-camera');
             if (resetCameraBtn) {
                 resetCameraBtn.addEventListener('click', () => {
-                    camera.position.set(15, 12, 15);
-                    controls.target.set(0, 0, 0);
-                    controls.update();
+                    resetCamera();
                     console.log('Camera reset');
                 });
             }
@@ -2107,6 +3079,12 @@
             }
             if (unitEl) {
                 unitEl.style.color = color;
+            }
+            // Sync drawer temperature
+            const drawerTemp = document.getElementById('drawer-temp');
+            if (drawerTemp) {
+                drawerTemp.textContent = temp.toFixed(0) + '°C';
+                drawerTemp.style.color = color;
             }
         }
         
@@ -2203,7 +3181,8 @@
             const colorPanel = document.getElementById('selected-mesh-color-panel');
             
             if (meshNameDisplay) {
-                meshNameDisplay.textContent = 'Object: ' + mesh.name;
+                // Use formatted name for display
+                meshNameDisplay.textContent = 'Object: ' + formatMeshName(mesh.name);
             }
             
             if (colorInput && hexInput && mesh.material && mesh.material.color) {
@@ -2321,8 +3300,8 @@
 
         // Function to reset camera view
         function resetCamera() {
-            camera.position.set(10, 10, 10);
-            controls.target.set(0, 0, 0);
+            camera.position.set(18, 12, 22);
+            controls.target.set(0, 2, 0);
             controls.update();
         }
 
@@ -3079,11 +4058,27 @@
             
             // Update navbar time display with color
             const navbarTime = document.getElementById('navbar-time');
+            const displayHour = Math.floor(hour);
+            const displayMin = Math.floor((hour % 1) * 60);
+            const timeStr = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+            const timeColor = getTimeColor(hour);
+            
             if (navbarTime) {
-                const displayHour = Math.floor(hour);
-                const displayMin = Math.floor((hour % 1) * 60);
-                navbarTime.textContent = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
-                navbarTime.style.color = getTimeColor(hour);
+                navbarTime.textContent = timeStr;
+                navbarTime.style.color = timeColor;
+            }
+            
+            // Sync drawer time display
+            const drawerTime = document.getElementById('drawer-time');
+            if (drawerTime) {
+                drawerTime.textContent = timeStr;
+                drawerTime.style.color = timeColor;
+            }
+            
+            // Sync time slider display
+            const timeDisplay = document.getElementById('time-display');
+            if (timeDisplay) {
+                timeDisplay.textContent = timeStr;
             }
             
             // Update stars visibility
@@ -3201,100 +4196,15 @@
         window.getCurrentTimeOfDay = getCurrentTimeOfDay;
         window.updateDayNightCycle = updateDayNightCycle;
         window.initializeDayNightCycle = initializeDayNightCycle;
-
-        // Setup proper two-finger controls
-        function setupTwoFingerControls() {
-            const canvas = renderer.domElement;
-            let lastTouchDistance = 0;
-            let lastTouchAngle = 0;
-            
-            function getTouchDistance(touch1, touch2) {
-                const dx = touch2.clientX - touch1.clientX;
-                const dy = touch2.clientY - touch1.clientY;
-                return Math.sqrt(dx * dx + dy * dy);
-            }
-            
-            function getTouchAngle(touch1, touch2) {
-                return Math.atan2(
-                    touch2.clientY - touch1.clientY,
-                    touch2.clientX - touch1.clientX
-                );
-            }
-            
-            canvas.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    lastTouchDistance = getTouchDistance(touch1, touch2);
-                    lastTouchAngle = getTouchAngle(touch1, touch2);
-                }
-            }, { passive: false });
-            
-            canvas.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const currentDistance = getTouchDistance(touch1, touch2);
-                    const currentAngle = getTouchAngle(touch1, touch2);
-                    
-                    // PINCH ZOOM - smooth and centered between fingers
-                    if (lastTouchDistance > 0) {
-                        const ratio = currentDistance / lastTouchDistance;
-                        const zoomFactor = 1 / ratio; // Invert so pinch-in = zoom in
-                        
-                        // Apply zoom smoothly
-                        const distance = camera.position.length();
-                        const newDistance = distance * zoomFactor;
-                        
-                        // Apply with limits
-                        if (newDistance >= controls.minDistance && newDistance <= controls.maxDistance) {
-                            camera.position.multiplyScalar(zoomFactor);
-                        }
-                    }
-                    
-                    // TWO-FINGER TWIST ROTATION
-                    const angleDelta = currentAngle - lastTouchAngle;
-                    if (Math.abs(angleDelta) > 0.02) { // Only rotate on significant angle change
-                        const rotationAxis = new THREE.Vector3(0, 1, 0); // Y axis (up)
-                        const rotationAngle = angleDelta * 3; // Rotation sensitivity
-                        
-                        // Rotate camera around the target
-                        const relativePos = camera.position.clone().sub(controls.target);
-                        const quat = new THREE.Quaternion();
-                        quat.setFromAxisAngle(rotationAxis, rotationAngle);
-                        relativePos.applyQuaternion(quat);
-                        camera.position.copy(controls.target).add(relativePos);
-                    }
-                    
-                    lastTouchDistance = currentDistance;
-                    lastTouchAngle = currentAngle;
-                }
-            }, { passive: false });
-            
-            canvas.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    lastTouchDistance = 0;
-                    lastTouchAngle = 0;
-                }
-            }, { passive: false });
-            
-            console.log('📱 Two-finger zoom and twist rotation enabled');
-        }
+        // Selection panel functions
+        window.showSelectionPanel = showSelectionPanel;
+        window.hideSelectionPanel = hideSelectionPanel;
+        window.formatMeshName = formatMeshName;
 
         // Initialize the scene
         init();
         
-        // Setup two-finger controls
-        setTimeout(() => {
-            if (renderer && renderer.domElement) {
-                setupTwoFingerControls();
-            }
-        }, 100);
-    </script>
-</body>
-</html>
+        console.log('📱 Touch controls: One finger rotates, two fingers zoom');
     </script>
 </body>
 </html>
