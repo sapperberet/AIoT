@@ -383,26 +383,24 @@
             right: -320px;
             width: 300px;
             max-width: 85vw;
-            height: 100%;
-            max-height: 100vh;
-            max-height: 100dvh;
+            height: 100vh;
             background: linear-gradient(180deg, #1a1a2e, #16213e, #0f0f23);
             z-index: 2000;
             transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
-            touch-action: pan-y;
+            overflow: hidden;
         }
         
         .drawer-content {
-            flex: 1;
-            overflow-y: scroll;
+            flex: 1 1 auto;
+            height: 0;
+            min-height: 0;
+            overflow-y: scroll !important;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            padding-bottom: 40px;
-            touch-action: pan-y;
+            padding: 0 0 60px 0;
         }
         
         #mobile-drawer.active {
@@ -410,6 +408,7 @@
         }
         
         .drawer-header {
+            flex-shrink: 0;
             padding: 20px;
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
             border-bottom: 1px solid rgba(255, 215, 0, 0.3);
@@ -686,6 +685,153 @@
         .toast.show {
             opacity: 1;
             transform: translateY(0);
+        }
+        
+        /* ============ FLOATING PAINT PICKER (Mobile) ============ */
+        #floating-paint-picker {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2500;
+            background: linear-gradient(135deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98));
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 280px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+        }
+        
+        #floating-paint-picker.visible {
+            display: flex;
+        }
+        
+        .floating-paint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .floating-paint-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .floating-paint-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .floating-paint-close:hover {
+            background: rgba(255, 100, 100, 0.3);
+        }
+        
+        .floating-paint-mesh {
+            color: #FFD700;
+            font-size: 13px;
+            padding: 8px 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 8px;
+        }
+        
+        .floating-paint-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .floating-color-picker {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            padding: 0;
+        }
+        
+        .floating-color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        
+        .floating-color-picker::-webkit-color-swatch {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+        }
+        
+        .floating-hex-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .floating-hex-input:focus {
+            outline: none;
+            border-color: #FFD700;
+        }
+        
+        .floating-paint-apply {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .floating-paint-apply:active {
+            transform: scale(0.98);
+        }
+        
+        .floating-paint-exit {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .floating-paint-exit:hover, .floating-paint-exit:active {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: rgba(231, 76, 60, 0.5);
         }
         
         /* ============ MOBILE RESPONSIVE STYLES ============ */
@@ -1488,6 +1634,25 @@
     <div id="info">Click on rooms to control devices</div>
     <div class="loading" id="loading">Loading 3D Model...</div>
     <div id="toast-container"></div>
+    
+    <!-- ============ FLOATING PAINT PICKER (Mobile) ============ -->
+    <div id="floating-paint-picker">
+        <div class="floating-paint-header">
+            <span class="floating-paint-title">🎨 Paint Mode</span>
+            <button class="floating-paint-close" id="floating-paint-close">×</button>
+        </div>
+        <div class="floating-paint-mesh" id="floating-mesh-name">No object selected</div>
+        <div class="floating-paint-controls">
+            <input type="color" class="floating-color-picker" id="floating-color-picker" value="#ff0000">
+            <input type="text" class="floating-hex-input" id="floating-hex-input" placeholder="#ff0000" value="#ff0000">
+        </div>
+        <button class="floating-paint-apply" id="floating-paint-apply">
+            <span>🖌️</span> Apply Color
+        </button>
+        <button class="floating-paint-exit" id="floating-paint-exit">
+            <span>🚫</span> Exit Paint Mode
+        </button>
+    </div>
 
     <!-- ============ UNIFIED TOP NAVBAR ============ -->
     <div id="main-navbar">
@@ -1591,12 +1756,16 @@
             <div class="drawer-section">
                 <div class="drawer-section-title">🎨 Paint Objects</div>
                 <div class="drawer-subsection">
-                    <div class="drawer-label" id="drawer-mesh-name">Tap an object to paint</div>
-                    <div class="drawer-color-row">
-                        <input type="color" id="drawer-color-picker" value="#ff4444" class="drawer-color-input">
-                        <input type="text" id="drawer-hex-input" placeholder="#ff4444" maxlength="7" class="drawer-hex-input">
+                    <button class="drawer-btn full-width" id="drawer-enable-paint-mode">🎨 Enable Paint Mode</button>
+                    <div class="drawer-paint-info" id="drawer-paint-info" style="display:none; margin-top: 12px;">
+                        <div class="drawer-label">Selected: <span id="drawer-mesh-name">None</span></div>
+                        <div class="drawer-color-row">
+                            <input type="color" id="drawer-color-picker" value="#ff4444" class="drawer-color-input">
+                            <input type="text" id="drawer-hex-input" placeholder="#ff4444" maxlength="7" class="drawer-hex-input">
+                            <button class="drawer-btn" id="drawer-apply-color">Apply</button>
+                        </div>
                     </div>
-                    <button class="drawer-btn full-width" id="drawer-reset-colors">↺ Reset All Colors</button>
+                    <button class="drawer-btn full-width" id="drawer-reset-colors" style="margin-top: 10px;">↺ Reset All Colors</button>
                 </div>
             </div>
             
@@ -1848,20 +2017,25 @@
             
             // Speeds
             controls.rotateSpeed = 0.5;
-            controls.zoomSpeed = 0.8;
-            controls.panSpeed = 0.5;
+            controls.zoomSpeed = 1.2;  // Faster zoom
+            controls.panSpeed = 0.8;   // Faster pan for free movement
             
-            // Zoom limits
-            controls.minDistance = 5;
-            controls.maxDistance = 100;
+            // NO zoom limits - unlimited zoom in/out
+            controls.minDistance = 0;
+            controls.maxDistance = Infinity;
             
-            // Vertical angle limits (prevent going under ground)
-            controls.minPolarAngle = 0.1;
-            controls.maxPolarAngle = Math.PI / 2 + 0.3;
+            // NO vertical angle limits - full freedom
+            controls.minPolarAngle = 0;
+            controls.maxPolarAngle = Math.PI;
             
+            // Enable free panning in screen space
             controls.screenSpacePanning = true;
             
-            console.log('🎮 Controls: rotate, zoom, pan all enabled');
+            // Allow target to move freely when panning
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            console.log('🎮 Controls: UNLIMITED zoom, rotation, pan enabled');
 
             // Lights - Much brighter for better visibility
             ambientLight = new THREE.AmbientLight(0xffffff, 1.4); // Bright preset
@@ -2585,6 +2759,7 @@
             initializeNavbar();
             initializeSelectionPanel();
             initializeMobileDrawer();
+            initFloatingPaintPicker();
             console.log('All UI initialized successfully');
         }
         
@@ -2707,14 +2882,58 @@
                 });
             }
             
-            // ====== COLOR PICKER ======
+            // ====== PAINT MODE ======
+            const enablePaintBtn = document.getElementById('drawer-enable-paint-mode');
+            const paintInfo = document.getElementById('drawer-paint-info');
             const colorPicker = document.getElementById('drawer-color-picker');
             const hexInput = document.getElementById('drawer-hex-input');
+            const applyColorBtn = document.getElementById('drawer-apply-color');
+            const floatingPicker = document.getElementById('floating-paint-picker');
+            
+            function updatePaintModeButton() {
+                if (enablePaintBtn) {
+                    if (isPaintModeActive) {
+                        enablePaintBtn.textContent = '🚫 Disable Paint Mode';
+                        enablePaintBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                    } else {
+                        enablePaintBtn.textContent = '🎨 Enable Paint Mode';
+                        enablePaintBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                    }
+                }
+            }
+            
+            if (enablePaintBtn) {
+                enablePaintBtn.addEventListener('click', () => {
+                    isPaintModeActive = !isPaintModeActive;
+                    currentTool = isPaintModeActive ? 'paint' : 'select';
+                    updatePaintModeButton();
+                    
+                    if (isPaintModeActive) {
+                        closeDrawer();
+                        showToast('🎨 Paint Mode ON: Tap any object');
+                    } else {
+                        // Hide floating picker when paint mode is disabled
+                        if (floatingPicker) floatingPicker.classList.remove('visible');
+                        showToast('✋ Paint Mode OFF');
+                    }
+                });
+            }
+            
+            if (applyColorBtn && colorPicker) {
+                applyColorBtn.addEventListener('click', () => {
+                    if (selectedMesh) {
+                        updateSelectedMeshColor(colorPicker.value);
+                        showToast('🎨 Color applied!');
+                    }
+                });
+            }
             
             if (colorPicker) {
                 colorPicker.addEventListener('input', (e) => {
                     if (hexInput) hexInput.value = e.target.value;
-                    updateSelectedMeshColor(e.target.value);
+                    if (selectedMesh) {
+                        updateSelectedMeshColor(e.target.value);
+                    }
                 });
             }
             
@@ -2724,7 +2943,9 @@
                     if (!hex.startsWith('#')) hex = '#' + hex;
                     if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
                         if (colorPicker) colorPicker.value = hex;
-                        updateSelectedMeshColor(hex);
+                        if (selectedMesh) {
+                            updateSelectedMeshColor(hex);
+                        }
                     }
                 });
             }
@@ -2803,6 +3024,22 @@
                 });
             }
             
+            // Enable drawer scrolling by handling touch events
+            const drawerContent = document.querySelector('.drawer-content');
+            if (drawerContent) {
+                drawerContent.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+                
+                drawerContent.addEventListener('touchmove', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+                
+                drawerContent.addEventListener('wheel', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+            }
+            
             console.log('Mobile drawer initialized with full controls');
         }
         
@@ -2830,6 +3067,115 @@
         let currentTool = 'paint';
         let hudTemperature = 22;
         let activeDropdown = null;
+        let isPaintModeActive = false;
+        
+        // Update drawer paint info when mesh is selected
+        function updateDrawerPaintInfo(mesh) {
+            const paintInfo = document.getElementById('drawer-paint-info');
+            const meshNameEl = document.getElementById('drawer-mesh-name');
+            const colorPicker = document.getElementById('drawer-color-picker');
+            
+            // Also update floating paint picker
+            const floatingPicker = document.getElementById('floating-paint-picker');
+            const floatingMeshName = document.getElementById('floating-mesh-name');
+            const floatingColorPicker = document.getElementById('floating-color-picker');
+            const floatingHexInput = document.getElementById('floating-hex-input');
+            
+            if (mesh && paintInfo && meshNameEl) {
+                paintInfo.style.display = 'block';
+                meshNameEl.textContent = formatMeshName(mesh.name || 'Object');
+                
+                // Get current color of mesh
+                if (mesh.material && mesh.material.color && colorPicker) {
+                    const hexColor = '#' + mesh.material.color.getHexString();
+                    colorPicker.value = hexColor;
+                    const hexInput = document.getElementById('drawer-hex-input');
+                    if (hexInput) hexInput.value = hexColor;
+                }
+            }
+            
+            // Update and show floating paint picker when paint mode is active
+            if (mesh && isPaintModeActive) {
+                const hexColor = mesh.material?.color ? '#' + mesh.material.color.getHexString() : '#ff0000';
+                
+                if (floatingMeshName) floatingMeshName.textContent = '🏠 ' + formatMeshName(mesh.name || 'Object');
+                if (floatingColorPicker) floatingColorPicker.value = hexColor;
+                if (floatingHexInput) floatingHexInput.value = hexColor;
+                if (floatingPicker) floatingPicker.classList.add('visible');
+            }
+        }
+        
+        // Initialize floating paint picker
+        function initFloatingPaintPicker() {
+            const floatingPicker = document.getElementById('floating-paint-picker');
+            const floatingClose = document.getElementById('floating-paint-close');
+            const floatingColorPicker = document.getElementById('floating-color-picker');
+            const floatingHexInput = document.getElementById('floating-hex-input');
+            const floatingApply = document.getElementById('floating-paint-apply');
+            
+            if (!floatingPicker) return;
+            
+            // Prevent touch events from closing picker
+            floatingPicker.addEventListener('touchstart', e => e.stopPropagation(), { passive: false });
+            floatingPicker.addEventListener('touchmove', e => e.stopPropagation(), { passive: false });
+            floatingPicker.addEventListener('click', e => e.stopPropagation());
+            
+            // Close button (just hides picker, keeps paint mode)
+            if (floatingClose) {
+                floatingClose.addEventListener('click', () => {
+                    floatingPicker.classList.remove('visible');
+                });
+            }
+            
+            // Exit paint mode button
+            const floatingExit = document.getElementById('floating-paint-exit');
+            if (floatingExit) {
+                floatingExit.addEventListener('click', () => {
+                    isPaintModeActive = false;
+                    currentTool = 'select';
+                    floatingPicker.classList.remove('visible');
+                    
+                    // Update drawer button if visible
+                    const enablePaintBtn = document.getElementById('drawer-enable-paint-mode');
+                    if (enablePaintBtn) {
+                        enablePaintBtn.textContent = '🎨 Enable Paint Mode';
+                        enablePaintBtn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+                    }
+                    
+                    showToast('✋ Paint Mode OFF');
+                });
+            }
+            
+            // Sync color picker with hex input
+            if (floatingColorPicker && floatingHexInput) {
+                floatingColorPicker.addEventListener('input', () => {
+                    floatingHexInput.value = floatingColorPicker.value;
+                });
+                
+                floatingHexInput.addEventListener('input', () => {
+                    const value = floatingHexInput.value;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                        floatingColorPicker.value = value;
+                    }
+                });
+            }
+            
+            // Apply button
+            if (floatingApply) {
+                floatingApply.addEventListener('click', () => {
+                    if (!selectedMesh) {
+                        showToast('⚠️ No object selected');
+                        return;
+                    }
+                    
+                    const hexColor = floatingColorPicker?.value || '#ff0000';
+                    updateSelectedMeshColor(hexColor);
+                    showToast('✅ Applied ' + hexColor + ' to ' + formatMeshName(selectedMesh.name));
+                });
+            }
+            
+            console.log('✓ Floating paint picker initialized');
+        }
         
         function initializeNavbar() {
             console.log('Initializing unified navbar...');
@@ -3174,7 +3520,7 @@
             selectedMesh = mesh;
             mesh.userData.isSelected = true;
             
-            // Update color picker panel
+            // Update desktop color picker panel
             const meshNameDisplay = document.getElementById('selected-mesh-name');
             const colorInput = document.getElementById('selected-mesh-color-input');
             const hexInput = document.getElementById('selected-mesh-hex-input');
@@ -3195,11 +3541,17 @@
                 colorPanel.classList.add('active');
             }
             
+            // Update drawer paint info (for mobile)
+            updateDrawerPaintInfo(mesh);
+            
+            // Show toast feedback in paint mode
+            if (isPaintModeActive) {
+                showToast('🎨 Selected: ' + formatMeshName(mesh.name));
+            }
+            
             console.log('═══ MESH SELECTED ═══');
             console.log('Name:', mesh.name);
             console.log('Current Color:', '#' + (mesh.material?.color?.getHexString() || 'unknown'));
-            console.log('Material ID:', mesh.material?.uuid);
-            console.log('Has own material:', mesh.material?.uuid !== undefined);
             console.log('═══════════════════');
         }
         

@@ -210,11 +210,14 @@ class _VisualizationTabState extends State<VisualizationTab> {
 
   void _showRoomControls(String objectName, String objectType) {
     // Skip showing controls for interactive elements - they have their own panel in 3D
-    if (objectType == 'door' || objectType == 'garage' || objectType == 'window') {
-      debugPrint('📍 Selected $objectType: $objectName - controls shown in 3D panel');
+    if (objectType == 'door' ||
+        objectType == 'garage' ||
+        objectType == 'window') {
+      debugPrint(
+          '📍 Selected $objectType: $objectName - controls shown in 3D panel');
       return;
     }
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
