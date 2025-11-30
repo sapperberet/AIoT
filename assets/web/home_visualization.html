@@ -16,14 +16,16 @@
         }
         #info {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 10px 20px;
+            border-radius: 20px;
             font-size: 14px;
             display: none;
+            z-index: 100;
         }
         .loading {
             position: absolute;
@@ -34,20 +36,302 @@
             font-size: 18px;
         }
         
-        /* Theme Switcher */
-        #theme-panel {
-            position: absolute;
-            top: 10px;
-            left: 120px;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 15px;
+        /* ============ UNIFIED TOP NAVBAR ============ */
+        #main-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+            border-bottom: 2px solid rgba(100, 100, 100, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            z-index: 1001;
+            box-sizing: border-box;
+        }
+        
+        .navbar-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .navbar-section.left {
+            flex: 0 0 auto;
+        }
+        
+        .navbar-section.center {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .navbar-section.right {
+            flex: 0 0 auto;
+        }
+        
+        .navbar-title {
+            color: #FFD700;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+        }
+        
+        .navbar-divider {
+            width: 1px;
+            height: 35px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 10px;
+        }
+        
+        /* Navbar Buttons */
+        .nav-btn {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(145deg, #3a3a4a, #2a2a3a);
+            border: 2px solid #555;
             border-radius: 8px;
-            font-size: 13px;
-            z-index: 1000;
-            min-width: 220px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-            border: 2px solid rgba(76, 175, 80, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 20px;
+            color: white;
+            position: relative;
+        }
+        
+        .nav-btn:hover {
+            background: linear-gradient(145deg, #4a4a5a, #3a3a4a);
+            border-color: #FFD700;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.active {
+            background: linear-gradient(145deg, #FFD700, #E6C200);
+            border-color: #FFD700;
+            color: #333;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+        
+        .nav-btn-small {
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+        }
+        
+        /* Info Display in Navbar */
+        .navbar-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 0 15px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .navbar-info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .navbar-info-item .icon {
+            font-size: 16px;
+        }
+        
+        .navbar-info-item .value {
+            font-weight: bold;
+        }
+        
+        .navbar-info-item.time .value {
+            color: #FFD700;
+        }
+        
+        .navbar-info-item.temp .value {
+            color: #FF6B6B;
+        }
+        
+        /* ============ DROPDOWN PANELS ============ */
+        .dropdown-panel {
+            position: absolute;
+            top: 65px;
+            background: rgba(30, 30, 40, 0.95);
+            border: 2px solid rgba(100, 100, 100, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+            display: none;
+            z-index: 1002;
+            min-width: 200px;
+        }
+        
+        .dropdown-panel.active {
+            display: block;
+        }
+        
+        .dropdown-panel.left {
+            left: 15px;
+        }
+        
+        .dropdown-panel.right {
+            right: 15px;
+        }
+        
+        .dropdown-panel.center {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .dropdown-title {
+            color: #FFD700;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dropdown-section {
+            margin-bottom: 12px;
+        }
+        
+        .dropdown-section label {
+            display: block;
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        
+        .dropdown-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .dropdown-btn {
+            padding: 8px 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        
+        .dropdown-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .dropdown-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+        
+        /* Color Picker Panel */
+        #color-picker-panel {
+            min-width: 180px;
+        }
+        
+        .color-picker-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .color-picker-row input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        .color-picker-row input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        /* Day/Night Slider Panel */
+        #daynight-panel {
+            min-width: 250px;
+        }
+        
+        .time-slider-container {
+            padding: 10px 0;
+        }
+        
+        .time-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #1a1a3a, #FFD700, #87CEEB, #FFD700, #1a1a3a);
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #FFD700;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .time-display {
+            text-align: center;
+            color: #FFD700;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .auto-time-toggle {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .auto-time-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .auto-time-toggle.active {
+            background: rgba(76, 175, 80, 0.4);
+            border-color: #4CAF50;
+        }
+
+        /* Hide old panels - keeping for JS compatibility */
+        #theme-panel, #navigation-controls, #selected-mesh-color-panel, .panel-mini-btn {
+            display: none !important;
+        }
             display: block !important;
             visibility: visible !important;
             max-height: 500px;
@@ -398,11 +682,12 @@
             padding: 6px;
             min-width: auto;
         }
-        /* Minecraft-style Control Panel */
+        /* Navbar-style Control Panel */
         #minecraft-hud {
             position: fixed;
-            top: 10px;
-            left: 175px;
+            top: 0;
+            left: 0;
+            right: 0;
             z-index: 1001;
             font-family: 'Arial', sans-serif;
             user-select: none;
@@ -414,22 +699,23 @@
         }
         
         #minecraft-hud.minimized .hud-panel {
-            width: 50px;
-            height: 50px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: auto;
+            height: auto;
+            padding: 8px 15px;
         }
         
         .hud-panel {
-            background: linear-gradient(145deg, rgba(80, 80, 80, 0.95), rgba(50, 50, 50, 0.95));
-            border: 3px solid rgba(100, 100, 100, 0.8);
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.9);
-            border-radius: 2px;
-            padding: 12px;
-            min-width: 180px;
+            background: linear-gradient(180deg, rgba(40, 40, 50, 0.95), rgba(25, 25, 35, 0.95));
+            border: none;
+            border-bottom: 2px solid rgba(100, 100, 100, 0.5);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border-radius: 0;
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .hud-panel-header {
@@ -438,11 +724,12 @@
             align-items: center;
             margin: 0;
             gap: 0;
+            flex-shrink: 0;
         }
         
         .hud-title {
             color: #FFD700;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
             margin: 0;
@@ -461,23 +748,30 @@
         
         .hud-panel-content {
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            justify-content: center;
         }
         
         .hud-slot-container {
             display: flex;
             flex-direction: row;
-            gap: 6px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin: 0;
             justify-content: center;
             flex-wrap: nowrap;
+            align-items: center;
         }
         
         .hud-slot {
-            width: 50px;
-            height: 50px;
+            width: 42px;
+            height: 42px;
             background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
             border: 2px solid #555;
-            border-radius: 1px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -509,6 +803,13 @@
             color: #aaa;
             white-space: nowrap;
             text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+        }
+        
+        .navbar-info {
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            font-family: 'Segoe UI', Arial, sans-serif;
         }
         
         .hud-info-bar {
@@ -722,111 +1023,109 @@
     <div id="info">Click on rooms to control devices</div>
     <div class="loading" id="loading">Loading 3D Model...</div>
 
-    <!-- Navigation Controls -->
-    <div id="navigation-controls" class="minimized">
-        <div class="nav-header" style="cursor: pointer;">
-            <div class="nav-label">🧭</div>
-        </div>
-        <div class="nav-content">
-        <div class="nav-arrows">
-            <button class="nav-btn forward" title="Move Forward">↑</button>
-            <button class="nav-btn left" title="Move Left">←</button>
-            <button class="nav-btn back" title="Move Back">↓</button>
-            <button class="nav-btn right" title="Move Right">→</button>
-        </div>
-        </div>
-    </div>
-
-    <!-- Theme Switcher Panel -->
-    <div id="theme-panel" class="minimized">
-        <div class="panel-header" style="cursor: pointer;">
-            <h3>🎨</h3>
+    <!-- ============ UNIFIED TOP NAVBAR ============ -->
+    <div id="main-navbar">
+        <!-- Left Section: Title -->
+        <div class="navbar-section left">
+            <span class="navbar-title">🏠 Smart Home</span>
         </div>
         
-        <div id="theme-panel-content">
-            <div class="theme-section">
-                <label>Color Palette:</label>
-                <div class="theme-buttons">
-                    <button class="theme-btn active" data-theme="modern">Modern Light</button>
-                    <button class="theme-btn" data-theme="classic">Classic Warm</button>
-                    <button class="theme-btn" data-theme="minimal">Minimal Cool</button>
-                    <button class="theme-btn" data-theme="vibrant">Vibrant</button>
+        <!-- Center Section: Control Buttons -->
+        <div class="navbar-section center">
+            <div class="nav-btn active" data-tool="paint" title="Paint Tool">🎨</div>
+            <div class="nav-btn" data-tool="theme" title="Theme Settings">🎭</div>
+            <div class="nav-btn" data-tool="light" title="Light Control">💡</div>
+            <div class="nav-btn" data-tool="doors" title="Toggle Door">🚪</div>
+            <div class="nav-btn" data-tool="garage" title="Toggle Garage">🚗</div>
+            <div class="nav-btn" data-tool="windows" title="Toggle Windows">🪟</div>
+            <div class="nav-btn" data-tool="daynight" title="Day/Night Cycle">🌅</div>
+            <div class="nav-btn" data-tool="reset" title="Reset Colors">↺</div>
+            
+            <div class="navbar-divider"></div>
+            
+            <!-- Info Display -->
+            <div class="navbar-info">
+                <div class="navbar-info-item time">
+                    <span class="icon">🕐</span>
+                    <span class="value" id="navbar-time">--:--</span>
+                </div>
+                <div class="navbar-info-item temp">
+                    <span class="icon">🌡️</span>
+                    <span class="value"><span id="temp-value">22</span>°C</span>
                 </div>
             </div>
-            
-            <div class="theme-section">
-                <label>Lighting:</label>
-                <div class="theme-buttons">
-                    <button class="theme-btn active" data-lighting="bright">Bright</button>
-                    <button class="theme-btn" data-lighting="normal">Normal</button>
-                    <button class="theme-btn" data-lighting="dim">Dim</button>
-                </div>
-            </div>
-            
-            <div class="theme-section">
-                <button class="toggle-btn" id="toggle-shadows">Shadows: ON</button>
-            </div>
-            
-            <div class="theme-section" style="font-size: 11px; opacity: 0.7; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px;">
-                Click on objects to customize their colors
-            </div>
+        </div>
+        
+        <!-- Right Section: Settings -->
+        <div class="navbar-section right">
+            <div class="nav-btn nav-btn-small" data-tool="settings" title="Settings">⚙️</div>
         </div>
     </div>
     
-    <!-- Minimized panel button -->
-    <button class="panel-mini-btn" id="panel-mini-btn" title="Expand Theme Panel">⚙</button>
+    <!-- ============ DROPDOWN PANELS ============ -->
     
-    <!-- Selected Mesh Color Picker -->
-    <div id="selected-mesh-color-panel">
-        <div class="mesh-name-display" id="selected-mesh-name">Select an object</div>
-        <div class="color-picker-group">
+    <!-- Theme Panel Dropdown -->
+    <div id="theme-dropdown" class="dropdown-panel left">
+        <div class="dropdown-title">🎭 Theme Settings</div>
+        <div class="dropdown-section">
+            <label>Color Palette</label>
+            <div class="dropdown-buttons">
+                <button class="dropdown-btn active" data-theme="modern">Modern</button>
+                <button class="dropdown-btn" data-theme="classic">Classic</button>
+                <button class="dropdown-btn" data-theme="minimal">Minimal</button>
+                <button class="dropdown-btn" data-theme="vibrant">Vibrant</button>
+            </div>
+        </div>
+        <div class="dropdown-section">
+            <label>Lighting</label>
+            <div class="dropdown-buttons">
+                <button class="dropdown-btn active" data-lighting="bright">Bright</button>
+                <button class="dropdown-btn" data-lighting="normal">Normal</button>
+                <button class="dropdown-btn" data-lighting="dim">Dim</button>
+            </div>
+        </div>
+        <div class="dropdown-section">
+            <button class="dropdown-btn" id="toggle-shadows" style="width: 100%;">☀️ Shadows: ON</button>
+        </div>
+    </div>
+    
+    <!-- Color Picker Dropdown -->
+    <div id="color-picker-panel" class="dropdown-panel left">
+        <div class="dropdown-title">🎨 Paint Object</div>
+        <div id="selected-mesh-name" style="color: #aaa; font-size: 12px; margin-bottom: 10px;">Click an object to paint</div>
+        <div class="color-picker-row">
             <input type="color" id="selected-mesh-color-input" value="#ff4444">
             <input type="text" id="selected-mesh-hex-input" placeholder="#ff4444" maxlength="7">
         </div>
     </div>
     
-    <!-- Minecraft-style HUD Control Panel -->
-    <div id="minecraft-hud" class="minimized">
-        <div class="hud-panel">
-            <div class="hud-panel-header" style="cursor: pointer;">
-                <div class="hud-title">🏠</div>
-            </div>
-            
-            <div class="hud-panel-content">
-            <!-- Inventory Slots (Navbar Layout) -->
-            <div class="hud-slot-container">
-                <div class="hud-slot active" data-tool="paint" title="Paint Tool">🎨</div>
-                <div class="hud-slot" data-tool="light" title="Light Control">💡</div>
-                <div class="hud-slot" data-tool="settings" title="Settings">⚙</div>
-                <div class="hud-slot" data-tool="doors" title="Toggle Door">🚪</div>
-                <div class="hud-slot" data-tool="garage" title="Toggle Garage">🚗</div>
-                <div class="hud-slot" data-tool="windows" title="Toggle Windows">🪟</div>
-                <div class="hud-slot" data-tool="daynight" title="Day/Night Cycle">🌅</div>
-                <div class="hud-slot" data-tool="reset" title="Reset Colors">↺</div>
-            </div>
-            
-            <!-- Light Level Indicator -->
-            <div class="hud-info-bar">
-                <div class="hud-info-label">Light Level</div>
-                <div class="hud-progress-bar">
-                    <div class="hud-progress-fill" id="light-level-fill" style="width: 80%;"></div>
-                </div>
-            </div>
-            
-            <!-- Temperature Meter -->
-            <div class="hud-info-bar">
-                <div class="hud-info-label">Temperature</div>
-                <div style="color: #FF6B6B; font-size: 10px;">
-                    <span id="temp-value">22°C</span>
-                </div>
-            </div>
-            
-            <!-- Action Button -->
-            <button class="hud-button" id="hud-action-btn">Use Selected Tool</button>
+    <!-- Day/Night Panel Dropdown -->
+    <div id="daynight-panel" class="dropdown-panel center">
+        <div class="dropdown-title">🌅 Day/Night Cycle</div>
+        <div class="time-slider-container">
+            <input type="range" class="time-slider" id="time-slider" min="0" max="24" step="0.5" value="12">
+        </div>
+        <div class="time-display" id="time-display">12:00</div>
+        <button class="auto-time-toggle active" id="auto-time-toggle">🕐 Auto Time: ON</button>
+    </div>
+    
+    <!-- Settings Panel Dropdown -->
+    <div id="settings-dropdown" class="dropdown-panel right">
+        <div class="dropdown-title">⚙️ Settings</div>
+        <div class="dropdown-section">
+            <label>View Controls</label>
+            <div class="dropdown-buttons" style="grid-template-columns: 1fr;">
+                <button class="dropdown-btn" id="reset-camera">🔄 Reset Camera</button>
+                <button class="dropdown-btn" id="toggle-grid">📐 Toggle Grid</button>
             </div>
         </div>
     </div>
 
+    <!-- Old panels hidden but kept for JS compatibility -->
+    <div id="navigation-controls" style="display:none;"></div>
+    <div id="theme-panel" style="display:none;"></div>
+    <div id="selected-mesh-color-panel" style="display:none;"></div>
+    <div id="minecraft-hud" style="display:none;"></div>
 
     <!-- Three.js from CDN - ES Module approach -->
     <script type="importmap">
@@ -1464,215 +1763,172 @@
 
             updateThemeButtons();
             updateLightingButtons();
-            initializeHUD();
+            initializeNavbar();
             console.log('All UI initialized successfully');
         }
         
         let selectedMesh = null;
         let currentTool = 'paint';
         let hudTemperature = 22;
-        let hudLightLevel = 0.8;
+        let activeDropdown = null;
         
-        function initializeHUD() {
-            console.log('Initializing Minecraft-style HUD...');
+        function initializeNavbar() {
+            console.log('Initializing unified navbar...');
             
-            // HUD minimize/expand by clicking emoji
-            const hud = document.getElementById('minecraft-hud');
-            const hudHeader = hud.querySelector('.hud-panel-header');
-            if (hudHeader && hud) {
-                hudHeader.addEventListener('click', () => {
-                    hud.classList.toggle('minimized');
+            // Close all dropdowns
+            function closeAllDropdowns() {
+                document.querySelectorAll('.dropdown-panel').forEach(panel => {
+                    panel.classList.remove('active');
                 });
+                activeDropdown = null;
             }
             
-            // Navigation Controls
-            const navControls = document.getElementById('navigation-controls');
-            const moveDistance = 0.5; // Very small for subtle movement near origin
-            
-            // Minimize nav controls by clicking emoji
-            const navHeader = navControls.querySelector('.nav-header');
-            if (navHeader) {
-                navHeader.addEventListener('click', () => {
-                    navControls.classList.toggle('minimized');
-                });
+            // Toggle dropdown panel
+            function toggleDropdown(panelId) {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+                
+                if (activeDropdown === panelId) {
+                    panel.classList.remove('active');
+                    activeDropdown = null;
+                } else {
+                    closeAllDropdowns();
+                    panel.classList.add('active');
+                    activeDropdown = panelId;
+                }
             }
             
-            if (navControls) {
-                navControls.querySelector('.forward').addEventListener('click', () => {
-                    // Move forward along camera direction
-                    const direction = new THREE.Vector3();
-                    camera.getWorldDirection(direction);
-                    direction.y = 0; // Keep movement horizontal
-                    direction.normalize();
-                    camera.position.add(direction.multiplyScalar(moveDistance));
-                    controls.target.add(direction.multiplyScalar(moveDistance));
-                });
-                
-                navControls.querySelector('.back').addEventListener('click', () => {
-                    // Move backward
-                    const direction = new THREE.Vector3();
-                    camera.getWorldDirection(direction);
-                    direction.y = 0;
-                    direction.normalize();
-                    camera.position.add(direction.multiplyScalar(-moveDistance));
-                    controls.target.add(direction.multiplyScalar(-moveDistance));
-                });
-                
-                navControls.querySelector('.left').addEventListener('click', () => {
-                    // Move left (perpendicular to forward direction)
-                    const forward = new THREE.Vector3();
-                    camera.getWorldDirection(forward);
-                    forward.y = 0;
-                    forward.normalize();
+            // Navbar button click handlers
+            document.querySelectorAll('#main-navbar .nav-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const tool = btn.dataset.tool;
+                    console.log('Navbar button clicked:', tool);
                     
-                    // Get right vector using proper cross product: right = forward × up
-                    const right = new THREE.Vector3();
-                    right.crossVectors(forward, camera.up).normalize();
-                    
-                    // Move left means negative right direction
-                    camera.position.add(right.multiplyScalar(-moveDistance));
-                    controls.target.add(right.multiplyScalar(-moveDistance));
-                });
-                
-                navControls.querySelector('.right').addEventListener('click', () => {
-                    // Move right
-                    const forward = new THREE.Vector3();
-                    camera.getWorldDirection(forward);
-                    forward.y = 0;
-                    forward.normalize();
-                    
-                    // Get right vector using proper cross product: right = forward × up
-                    const right = new THREE.Vector3();
-                    right.crossVectors(forward, camera.up).normalize();
-                    
-                    // Move right means positive right direction
-                    camera.position.add(right.multiplyScalar(moveDistance));
-                    controls.target.add(right.multiplyScalar(moveDistance));
-                });
-            }
-            
-            // HUD Slot Selection
-            document.querySelectorAll('.hud-slot').forEach(slot => {
-                slot.addEventListener('click', () => {
-                    // Remove active class from all slots
-                    document.querySelectorAll('.hud-slot').forEach(s => s.classList.remove('active'));
-                    // Add active class to clicked slot
-                    slot.classList.add('active');
-                    currentTool = slot.dataset.tool;
-                    console.log('Selected tool:', currentTool);
-                    updateHUDActionButton();
+                    // Handle different tools
+                    switch(tool) {
+                        case 'paint':
+                            // Remove active from others, add to this
+                            document.querySelectorAll('#main-navbar .nav-btn').forEach(b => {
+                                if (b.dataset.tool !== 'settings' && b.dataset.tool !== 'theme' && b.dataset.tool !== 'daynight') {
+                                    b.classList.remove('active');
+                                }
+                            });
+                            btn.classList.add('active');
+                            currentTool = 'paint';
+                            toggleDropdown('color-picker-panel');
+                            break;
+                            
+                        case 'theme':
+                            toggleDropdown('theme-dropdown');
+                            break;
+                            
+                        case 'daynight':
+                            toggleDropdown('daynight-panel');
+                            break;
+                            
+                        case 'settings':
+                            toggleDropdown('settings-dropdown');
+                            break;
+                            
+                        case 'light':
+                            shadowsEnabled = !shadowsEnabled;
+                            renderer.shadowMap.enabled = shadowsEnabled;
+                            btn.classList.toggle('active', shadowsEnabled);
+                            console.log('Shadows:', shadowsEnabled ? 'ON' : 'OFF');
+                            break;
+                            
+                        case 'doors':
+                            toggleDoor();
+                            break;
+                            
+                        case 'garage':
+                            toggleGarage();
+                            break;
+                            
+                        case 'windows':
+                            toggleAllWindows();
+                            break;
+                            
+                        case 'reset':
+                            resetAllColors();
+                            break;
+                    }
                 });
             });
             
-            // HUD Action Button
-            const actionBtn = document.getElementById('hud-action-btn');
-            if (actionBtn) {
-                actionBtn.addEventListener('click', () => {
-                    executeHUDTool(currentTool);
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown-panel') && !e.target.closest('.nav-btn')) {
+                    closeAllDropdowns();
+                }
+            });
+            
+            // Theme buttons in dropdown
+            document.querySelectorAll('#theme-dropdown .dropdown-btn[data-theme]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#theme-dropdown .dropdown-btn[data-theme]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    setTheme(btn.dataset.theme);
+                });
+            });
+            
+            // Lighting buttons in dropdown
+            document.querySelectorAll('#theme-dropdown .dropdown-btn[data-lighting]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#theme-dropdown .dropdown-btn[data-lighting]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    setLighting(btn.dataset.lighting);
+                });
+            });
+            
+            // Time slider
+            const timeSlider = document.getElementById('time-slider');
+            const timeDisplay = document.getElementById('time-display');
+            const autoTimeBtn = document.getElementById('auto-time-toggle');
+            
+            if (timeSlider) {
+                timeSlider.addEventListener('input', () => {
+                    const hour = parseFloat(timeSlider.value);
+                    const displayHour = Math.floor(hour);
+                    const displayMin = Math.floor((hour % 1) * 60);
+                    timeDisplay.textContent = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+                    setTimeOfDay(hour);
+                    if (autoTimeBtn) {
+                        autoTimeBtn.classList.remove('active');
+                        autoTimeBtn.textContent = '🕐 Auto Time: OFF';
+                    }
+                });
+            }
+            
+            if (autoTimeBtn) {
+                autoTimeBtn.addEventListener('click', () => {
+                    isAutoTimeEnabled = !isAutoTimeEnabled;
+                    autoTimeBtn.classList.toggle('active', isAutoTimeEnabled);
+                    autoTimeBtn.textContent = isAutoTimeEnabled ? '🕐 Auto Time: ON' : '🕐 Auto Time: OFF';
+                    if (isAutoTimeEnabled) {
+                        updateDayNightCycle();
+                    }
+                });
+            }
+            
+            // Settings dropdown buttons
+            const resetCameraBtn = document.getElementById('reset-camera');
+            if (resetCameraBtn) {
+                resetCameraBtn.addEventListener('click', () => {
+                    camera.position.set(15, 12, 15);
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+                    console.log('Camera reset');
                 });
             }
             
             // Simulate temperature change
             setInterval(() => {
                 hudTemperature = 20 + Math.random() * 6;
-                document.getElementById('temp-value').textContent = hudTemperature.toFixed(1) + '°C';
-            }, 3000);
-            
-            // Simulate light level changes
-            setInterval(() => {
-                hudLightLevel = 0.5 + Math.random() * 0.5;
-                const fill = document.getElementById('light-level-fill');
-                if (fill) {
-                    fill.style.width = (hudLightLevel * 100) + '%';
-                }
-            }, 4000);
-            
-            updateHUDActionButton();
-        }
-        
-        function updateHUDActionButton() {
-            const btn = document.getElementById('hud-action-btn');
-            const toolNames = {
-                'paint': 'Paint Mode',
-                'light': 'Toggle Lights',
-                'settings': 'Show Settings',
-                'doors': 'Toggle Door',
-                'garage': 'Toggle Garage',
-                'windows': 'Toggle Windows',
-                'daynight': 'Toggle Day/Night',
-                'rotate': 'Auto Rotate',
-                'reset': 'Reset Colors'
-            };
-            if (btn) {
-                btn.textContent = toolNames[currentTool] || 'Use Tool';
-            }
-        }
-        
-        function executeHUDTool(tool) {
-            console.log('Executing tool:', tool);
-            
-            switch(tool) {
-                case 'paint':
-                    if (selectedMesh) {
-                        console.log('Paint mode active on:', selectedMesh.name);
-                        const colorPanel = document.getElementById('selected-mesh-color-panel');
-                        if (colorPanel) colorPanel.classList.add('active');
-                    } else {
-                        console.log('No object selected. Click on an object first.');
-                    }
-                    break;
-                    
-                case 'light':
-                    shadowsEnabled = !shadowsEnabled;
-                    renderer.shadowMap.enabled = shadowsEnabled;
-                    const btn = document.getElementById('hud-action-btn');
-                    console.log('Shadows toggled:', shadowsEnabled ? 'ON' : 'OFF');
-                    break;
-                    
-                case 'doors':
-                    console.log('Door control activated');
-                    toggleDoor();
-                    break;
-                    
-                case 'garage':
-                    console.log('Garage control activated');
-                    toggleGarage();
-                    break;
-                    
-                case 'windows':
-                    console.log('Window control activated');
-                    toggleAllWindows();
-                    break;
-                    
-                case 'daynight':
-                    // Cycle through time periods: morning, noon, evening, night
-                    const currentTime = getCurrentTimeOfDay();
-                    let newTime;
-                    if (currentTime < 8) newTime = 12;
-                    else if (currentTime < 14) newTime = 18;
-                    else if (currentTime < 20) newTime = 22;
-                    else newTime = 6;
-                    setTimeOfDay(newTime);
-                    console.log('Day/Night cycle changed to', newTime + ':00');
-                    break;
-                    
-                case 'reset':
-                    resetAllColors();
-                    break;
-                    
-                case 'rotate':
-                    console.log('Auto-rotate view');
-                    break;
-                    
-                case 'settings':
-                    const panel = document.getElementById('theme-panel');
-                    if (panel) {
-                        panel.classList.toggle('minimized');
-                        document.getElementById('minimize-panel-btn').textContent = 
-                            panel.classList.contains('minimized') ? '+' : '−';
-                    }
-                    break;
-            }
+                const tempEl = document.getElementById('temp-value');
+                if (tempEl) tempEl.textContent = hudTemperature.toFixed(1);
+            }, 5000);
         }
         
         function resetAllColors() {
@@ -2350,9 +2606,21 @@
             sunLight.intensity = dayIntensity * 1.5;
             moonLight.intensity = nightIntensity * 0.4;
             
-            // Update sun/moon visibility
-            sunMesh.visible = sunY > -10;
-            moonMesh.visible = sunY < 10;
+            // Update sun/moon visibility based on actual time
+            // Sun visible from 6am to 6pm (hours 6-18)
+            // Moon visible from 6pm to 6am (hours 18-6)
+            const isSunTime = hour >= 6 && hour < 18;
+            const isMoonTime = hour >= 18 || hour < 6;
+            sunMesh.visible = isSunTime;
+            moonMesh.visible = isMoonTime;
+            
+            // Update navbar time display
+            const navbarTime = document.getElementById('navbar-time');
+            if (navbarTime) {
+                const displayHour = Math.floor(hour);
+                const displayMin = Math.floor((hour % 1) * 60);
+                navbarTime.textContent = `${displayHour.toString().padStart(2, '0')}:${displayMin.toString().padStart(2, '0')}`;
+            }
             
             // Update ambient light based on time
             if (ambientLight) {
@@ -2370,43 +2638,44 @@
         function updateSkyColor(hour, dayIntensity) {
             if (!scene) return;
             
-            // Define sky colors for different times
+            // Define sky colors for different times (evening colors are less dramatic)
             const nightColor = new THREE.Color(0x0a0a1a);     // Dark blue/black
-            const dawnColor = new THREE.Color(0xFF7F50);      // Coral/orange
+            const dawnColor = new THREE.Color(0xE8A070);      // Soft peach
             const morningColor = new THREE.Color(0x87CEEB);   // Light blue
             const noonColor = new THREE.Color(0x6BB3F8);      // Clear blue
-            const eveningColor = new THREE.Color(0xFF6347);   // Tomato red
-            const duskColor = new THREE.Color(0x4B0082);      // Indigo
+            const afternoonColor = new THREE.Color(0x7CB8E8); // Slightly warmer blue
+            const sunsetColor = new THREE.Color(0xC87850);    // Soft sunset orange
+            const duskColor = new THREE.Color(0x2A2050);      // Dark purple
             
             let skyColor = new THREE.Color();
             
-            if (hour < 5 || hour > 21) {
-                // Night
-                skyColor = nightColor;
+            if (hour < 5 || hour >= 21) {
+                // Night (9pm - 5am)
+                skyColor.copy(nightColor);
             } else if (hour < 7) {
-                // Dawn (5-7)
+                // Dawn (5-7am)
                 const t = (hour - 5) / 2;
                 skyColor.lerpColors(nightColor, dawnColor, t);
-            } else if (hour < 10) {
-                // Morning (7-10)
-                const t = (hour - 7) / 3;
+            } else if (hour < 9) {
+                // Early morning (7-9am)
+                const t = (hour - 7) / 2;
                 skyColor.lerpColors(dawnColor, morningColor, t);
-            } else if (hour < 16) {
-                // Day (10-16)
-                const t = (hour - 10) / 6;
+            } else if (hour < 15) {
+                // Day (9am-3pm)
+                const t = (hour - 9) / 6;
                 skyColor.lerpColors(morningColor, noonColor, t);
-            } else if (hour < 18) {
-                // Afternoon (16-18)
-                const t = (hour - 16) / 2;
-                skyColor.lerpColors(noonColor, eveningColor, t);
-            } else if (hour < 20) {
-                // Evening (18-20)
-                const t = (hour - 18) / 2;
-                skyColor.lerpColors(eveningColor, duskColor, t);
+            } else if (hour < 17) {
+                // Afternoon (3-5pm)
+                const t = (hour - 15) / 2;
+                skyColor.lerpColors(noonColor, afternoonColor, t);
+            } else if (hour < 19) {
+                // Sunset (5-7pm)
+                const t = (hour - 17) / 2;
+                skyColor.lerpColors(afternoonColor, sunsetColor, t);
             } else {
-                // Dusk to night (20-21)
-                const t = (hour - 20);
-                skyColor.lerpColors(duskColor, nightColor, t);
+                // Dusk to night (7-9pm)
+                const t = (hour - 19) / 2;
+                skyColor.lerpColors(sunsetColor, duskColor, t);
             }
             
             scene.background = skyColor;
