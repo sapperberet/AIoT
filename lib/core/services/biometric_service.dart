@@ -3,8 +3,9 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BiometricService {
-  static const String _biometricEnabledKey = 'biometric_enabled';
-  static const String _hasCompletedInitialAuthKey = 'has_completed_initial_auth';
+  static const String _biometricEnabledKeyPrefix = 'biometric_enabled_';
+  static const String _hasCompletedInitialAuthKeyPrefix = 'has_completed_initial_auth_';
+  static const String _currentUserIdKey = 'current_biometric_user_id';
   
   final LocalAuthentication _localAuth = LocalAuthentication();
 
@@ -56,56 +57,99 @@ class BiometricService {
     }
   }
 
-  /// Check if user has enabled biometric login
+  /// Set current user ID for user-specific biometric settings
+  Future<void> setCurrentUserId(String? userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (userId != null) {
+        await prefs.setString(_currentUserIdKey, userId);
+      } else {
+        await prefs.remove(_currentUserIdKey);
+      }
+    } catch (e) {
+      debugPrint('❌ Error setting current user ID: $e');
+    }
+  }
+
+  /// Get current user ID
+  Future<String?> _getCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_currentUserIdKey);
+    } catch (e) {
+      debugPrint('❌ Error getting current user ID: $e');
+      return null;
+    }
+  }
+
+  /// Check if user has enabled biometric login (user-specific)
   Future<bool> isBiometricEnabled() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_biometricEnabledKey) ?? false;
+      final userId = await _getCurrentUserId();
+      if (userId == null) return false;
+      return prefs.getBool('$_biometricEnabledKeyPrefix$userId') ?? false;
     } catch (e) {
       debugPrint('❌ Error checking biometric enabled status: $e');
       return false;
     }
   }
 
-  /// Enable or disable biometric login
+  /// Enable or disable biometric login (user-specific)
   Future<void> setBiometricEnabled(bool enabled) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_biometricEnabledKey, enabled);
-      debugPrint('✅ Biometric login ${enabled ? 'enabled' : 'disabled'}');
+      final userId = await _getCurrentUserId();
+      if (userId == null) {
+        debugPrint('⚠️ No user ID set, cannot save biometric setting');
+        return;
+      }
+      await prefs.setBool('$_biometricEnabledKeyPrefix$userId', enabled);
+      debugPrint('✅ Biometric login ${enabled ? 'enabled' : 'disabled'} for user $userId');
     } catch (e) {
       debugPrint('❌ Error setting biometric enabled status: $e');
     }
   }
 
-  /// Check if user has completed initial authentication (required before enabling biometric)
+  /// Check if user has completed initial authentication (user-specific)
   Future<bool> hasCompletedInitialAuth() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_hasCompletedInitialAuthKey) ?? false;
+      final userId = await _getCurrentUserId();
+      if (userId == null) return false;
+      return prefs.getBool('$_hasCompletedInitialAuthKeyPrefix$userId') ?? false;
     } catch (e) {
       debugPrint('❌ Error checking initial auth status: $e');
       return false;
     }
   }
 
-  /// Mark initial authentication as completed
+  /// Mark initial authentication as completed (user-specific)
   Future<void> setInitialAuthCompleted(bool completed) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_hasCompletedInitialAuthKey, completed);
-      debugPrint('✅ Initial auth completion status set to: $completed');
+      final userId = await _getCurrentUserId();
+      if (userId == null) {
+        debugPrint('⚠️ No user ID set, cannot save initial auth status');
+        return;
+      }
+      await prefs.setBool('$_hasCompletedInitialAuthKeyPrefix$userId', completed);
+      debugPrint('✅ Initial auth completion status set to: $completed for user $userId');
     } catch (e) {
       debugPrint('❌ Error setting initial auth status: $e');
     }
   }
 
-  /// Clear biometric settings (on logout)
+  /// Clear biometric settings for current user (on logout)
   Future<void> clearBiometricSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_biometricEnabledKey);
-      // Note: We don't clear _hasCompletedInitialAuthKey as that persists per-user
+      final userId = await _getCurrentUserId();
+      if (userId != null) {
+        await prefs.remove('$_biometricEnabledKeyPrefix$userId');
+        // Keep initial auth status for this user (they can re-enable biometric on next login)
+      }
+      await prefs.remove(_currentUserIdKey);
       debugPrint('✅ Biometric settings cleared');
     } catch (e) {
       debugPrint('❌ Error clearing biometric settings: $e');

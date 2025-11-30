@@ -208,6 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAuthenticationSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
     final _emailController =
         TextEditingController(text: settingsProvider.userEmail);
@@ -310,13 +311,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Biometric Authentication Toggle
           if (_isBiometricAvailable) ...[
             _buildSwitchTile(
-              'Biometric Login',
+              loc.t('biometric_login'),
               settingsProvider.enableBiometricAuth,
               (value) async {
                 if (value) {
                   // Verify biometric before enabling
                   final authenticated = await _biometricService.authenticate(
-                    localizedReason: 'Authenticate to enable biometric login',
+                    localizedReason: loc.t('authenticate_to_enable'),
                   );
                   if (authenticated) {
                     settingsProvider.toggleBiometricAuth(true);
@@ -324,7 +325,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Biometric login enabled'),
+                          content: Text(loc.t('biometric_enabled')),
                           backgroundColor: AppTheme.successColor,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -363,7 +364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Use $_biometricTypeDescription to quickly bypass face recognition on this device.',
+                          '${loc.t('biometric_info')} ($_biometricTypeDescription)',
                           style: TextStyle(
                             fontSize: 12,
                             color: textColor.withOpacity(0.7),
@@ -371,7 +372,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Only available after initial authentication.',
+                          loc.t('biometric_initial_auth_required'),
                           style: TextStyle(
                             fontSize: 11,
                             color: textColor.withOpacity(0.5),
@@ -406,7 +407,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Biometric login is not available on this device.',
+                      loc.t('biometric_not_available'),
                       style: TextStyle(
                         fontSize: 12,
                         color: textColor.withOpacity(0.5),

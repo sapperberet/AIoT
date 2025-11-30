@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
@@ -55,9 +56,11 @@ class _SplashScreenState extends State<SplashScreen> {
     final hasCompletedInitialAuth = await _biometricService.hasCompletedInitialAuth();
     final biometricAvailable = await _biometricService.isBiometricAvailable();
     
-    debugPrint('🔐 Biometric enabled: $biometricEnabled');
-    debugPrint('🔐 Has completed initial auth: $hasCompletedInitialAuth');
-    debugPrint('🔐 Biometric available: $biometricAvailable');
+    if (kDebugMode) {
+      debugPrint('🔐 Biometric enabled: $biometricEnabled');
+      debugPrint('🔐 Has completed initial auth: $hasCompletedInitialAuth');
+      debugPrint('🔐 Biometric available: $biometricAvailable');
+    }
 
     if (biometricEnabled && hasCompletedInitialAuth && biometricAvailable) {
       // Try biometric authentication to bypass face recognition
@@ -66,11 +69,15 @@ class _SplashScreenState extends State<SplashScreen> {
       );
       
       if (authenticated && mounted) {
-        debugPrint('✅ Biometric authentication successful - bypassing face auth');
+        if (kDebugMode) {
+          debugPrint('✅ Biometric authentication successful - bypassing face auth');
+        }
         Navigator.of(context).pushReplacementNamed('/home');
         return;
       } else {
-        debugPrint('⚠️ Biometric authentication failed - falling back to normal auth');
+        if (kDebugMode) {
+          debugPrint('⚠️ Biometric authentication failed - falling back to normal auth');
+        }
       }
     }
 
