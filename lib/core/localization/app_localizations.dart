@@ -218,6 +218,16 @@ class AppLocalizations {
       'voice_message': 'Voice message',
       'recording': 'Recording...',
       'send_voice': 'Send voice message',
+
+      // Biometric Authentication
+      'biometric_login': 'Biometric Login',
+      'biometric_enabled': 'Biometric login enabled',
+      'biometric_disabled': 'Biometric login disabled',
+      'biometric_not_available': 'Biometric login is not available on this device.',
+      'biometric_info': 'Use biometrics to quickly bypass face recognition on this device.',
+      'biometric_initial_auth_required': 'Only available after initial authentication.',
+      'authenticate_to_enable': 'Authenticate to enable biometric login',
+      'authenticate_to_access': 'Authenticate to access Smart Home',
     },
     'de': {
       'app_title': 'Smart Home',
@@ -427,6 +437,16 @@ class AppLocalizations {
       'voice_message': 'Sprachnachricht',
       'recording': 'Aufnahme läuft...',
       'send_voice': 'Sprachnachricht senden',
+
+      // Biometric Authentication
+      'biometric_login': 'Biometrische Anmeldung',
+      'biometric_enabled': 'Biometrische Anmeldung aktiviert',
+      'biometric_disabled': 'Biometrische Anmeldung deaktiviert',
+      'biometric_not_available': 'Biometrische Anmeldung ist auf diesem Gerät nicht verfügbar.',
+      'biometric_info': 'Verwenden Sie Biometrie, um die Gesichtserkennung auf diesem Gerät schnell zu umgehen.',
+      'biometric_initial_auth_required': 'Nur nach der ersten Authentifizierung verfügbar.',
+      'authenticate_to_enable': 'Authentifizieren Sie sich, um die biometrische Anmeldung zu aktivieren',
+      'authenticate_to_access': 'Authentifizieren Sie sich, um auf Smart Home zuzugreifen',
     },
     'ar': {
       'app_title': 'المنزل الذكي',
@@ -632,6 +652,16 @@ class AppLocalizations {
       'voice_message': 'رسالة صوتية',
       'recording': 'جارٍ التسجيل...',
       'send_voice': 'إرسال رسالة صوتية',
+
+      // Biometric Authentication
+      'biometric_login': 'تسجيل الدخول البيومتري',
+      'biometric_enabled': 'تم تمكين تسجيل الدخول البيومتري',
+      'biometric_disabled': 'تم تعطيل تسجيل الدخول البيومتري',
+      'biometric_not_available': 'تسجيل الدخول البيومتري غير متوفر على هذا الجهاز.',
+      'biometric_info': 'استخدم القياسات الحيوية لتجاوز التعرف على الوجه بسرعة على هذا الجهاز.',
+      'biometric_initial_auth_required': 'متاح فقط بعد المصادقة الأولية.',
+      'authenticate_to_enable': 'المصادقة لتمكين تسجيل الدخول البيومتري',
+      'authenticate_to_access': 'المصادقة للوصول إلى المنزل الذكي',
     },
   };
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/face_auth_service.dart';
 import '../services/face_auth_http_service.dart';
+import '../services/biometric_service.dart';
 import '../models/user_model.dart';
 import '../models/face_auth_model.dart';
 
@@ -10,6 +11,7 @@ class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   final FaceAuthService? _faceAuthService;
   final FaceAuthHttpService? _faceAuthHttpService;
+  final BiometricService _biometricService = BiometricService();
 
   User? _currentUser;
   UserModel? _userModel;
@@ -127,6 +129,8 @@ class AuthProvider with ChangeNotifier {
       // Load user data from Firestore
       if (_currentUser != null) {
         await _loadUserData();
+        // Mark initial authentication as completed for biometric feature
+        await _biometricService.setInitialAuthCompleted(true);
       }
 
       _isLoading = false;
@@ -144,6 +148,8 @@ class AuthProvider with ChangeNotifier {
           // Login actually succeeded despite the error
           debugPrint('Login succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
+          // Mark initial authentication as completed for biometric feature
+          await _biometricService.setInitialAuthCompleted(true);
           _isLoading = false;
           notifyListeners();
           return true;
@@ -179,6 +185,8 @@ class AuthProvider with ChangeNotifier {
       // Load user data from Firestore
       if (_currentUser != null) {
         await _loadUserData();
+        // Mark initial authentication as completed for biometric feature
+        await _biometricService.setInitialAuthCompleted(true);
       }
 
       _isLoading = false;
@@ -196,6 +204,8 @@ class AuthProvider with ChangeNotifier {
           // Registration actually succeeded despite the error
           debugPrint('Registration succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
+          // Mark initial authentication as completed for biometric feature
+          await _biometricService.setInitialAuthCompleted(true);
           _isLoading = false;
           notifyListeners();
           return true;
@@ -213,6 +223,8 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> signOut() async {
     await _authService.signOut();
+    // Clear biometric settings on sign out
+    await _biometricService.clearBiometricSettings();
     _currentUser = null;
     _userModel = null;
     notifyListeners();
@@ -481,6 +493,9 @@ class AuthProvider with ChangeNotifier {
 
             // Update last used timestamp for this face mapping
             await _authService.updateFaceMappingLastUsed(recognizedName);
+
+            // Mark initial authentication as completed for biometric feature
+            await _biometricService.setInitialAuthCompleted(true);
 
             _faceAuthMessage =
                 'Welcome, ${_currentUser!.displayName ?? recognizedName}!';
