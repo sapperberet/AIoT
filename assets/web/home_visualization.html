@@ -1051,7 +1051,7 @@
                 </div>
                 <div class="navbar-info-item temp">
                     <span class="icon">🌡️</span>
-                    <span class="value"><span id="temp-value">22</span>°C</span>
+                    <span class="value" id="temp-display"><span id="temp-value">22</span><span id="temp-unit">°C</span></span>
                 </div>
             </div>
         </div>
@@ -1351,13 +1351,52 @@
                     homeModel.position.sub(center.multiplyScalar(scale));
                     homeModel.position.y = 0;
                     
-                    // Enable shadows
+                    // Track yard level for ground plane
+                    let yardLevel = 0;
+                    
+                    // Extract room meshes for interaction (same as loadModelFromBase64)
                     homeModel.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
+                            
+                            if (child.name) {
+                                console.log('Found mesh:', child.name);
+                                
+                                // Clone material for independent control
+                                if (child.material) {
+                                    child.material = child.material.clone();
+                                }
+                                
+                                // Store mesh for interaction
+                                roomMeshes[child.name] = child;
+                                
+                                // Store original position and rotation for animations
+                                child.userData.originalPosition = child.position.clone();
+                                child.userData.originalRotation = child.rotation.clone();
+                                
+                                // Track yard level
+                                if (child.name.toLowerCase().includes('yard')) {
+                                    const childBox = new THREE.Box3().setFromObject(child);
+                                    yardLevel = childBox.min.y;
+                                    console.log('📍 Yard level detected at:', yardLevel);
+                                }
+                                
+                                // Store original color
+                                if (child.material && child.material.color) {
+                                    child.userData.originalColor = child.material.color.clone();
+                                }
+                            }
                         }
                     });
+                    
+                    console.log('📦 Extracted meshes:', Object.keys(roomMeshes));
+                    
+                    // Update ground plane to yard level
+                    if (groundPlane) {
+                        groundPlane.position.y = yardLevel - 0.01;
+                        console.log('📍 Ground plane set to yard level:', yardLevel);
+                    }
                     
                     scene.add(homeModel);
                     document.getElementById('loading').style.display = 'none';
@@ -1922,17 +1961,55 @@
                 });
             }
             
-            // Simulate gradual temperature change (realistic small variations around base)
-            const baseTemperature = 22;
-            setInterval(() => {
-                // Small random variation from base (+/- 1.5 degrees max)
-                const variation = (Math.random() - 0.5) * 3;
-                hudTemperature = baseTemperature + variation;
-                hudTemperature = Math.round(hudTemperature * 10) / 10; // Round to 1 decimal
-                updateTemperatureDisplay(hudTemperature);
-            }, 10000);
+            // Fetch real temperature from weather API (Alexandria, Egypt)
+            fetchWeatherTemperature();
+            // Refresh every 10 minutes
+            setInterval(fetchWeatherTemperature, 600000);
             
             // Initial temperature display
+            updateTemperatureDisplay(hudTemperature);
+        }
+        
+        // Fetch weather from Open-Meteo API (free, no API key needed)
+        async function fetchWeatherTemperature() {
+            try {
+                // Alexandria, Egypt coordinates: 31.2001, 29.9187
+                const response = await fetch(
+                    'https://api.open-meteo.com/v1/forecast?latitude=31.2001&longitude=29.9187&current_weather=true'
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.current_weather && data.current_weather.temperature !== undefined) {
+                        hudTemperature = data.current_weather.temperature;
+                        updateTemperatureDisplay(hudTemperature);
+                        console.log('🌡️ Weather updated:', hudTemperature + '°C from Alexandria, Egypt');
+                    }
+                } else {
+                    console.log('⚠️ Weather API not available, using fallback');
+                    useFallbackTemperature();
+                }
+            } catch (error) {
+                console.log('⚠️ Could not fetch weather (offline?), using fallback:', error.message);
+                useFallbackTemperature();
+            }
+        }
+        
+        // Fallback temperature when API unavailable
+        function useFallbackTemperature() {
+            // Estimate temperature based on time of day (typical for Alexandria)
+            const now = new Date();
+            const hour = now.getHours();
+            // Alexandria typical temps: night 18-22°C, day 25-32°C
+            if (hour >= 6 && hour < 12) {
+                hudTemperature = 22 + Math.random() * 4; // Morning: 22-26
+            } else if (hour >= 12 && hour < 18) {
+                hudTemperature = 26 + Math.random() * 6; // Afternoon: 26-32
+            } else if (hour >= 18 && hour < 22) {
+                hudTemperature = 22 + Math.random() * 4; // Evening: 22-26
+            } else {
+                hudTemperature = 18 + Math.random() * 4; // Night: 18-22
+            }
+            hudTemperature = Math.round(hudTemperature * 10) / 10;
             updateTemperatureDisplay(hudTemperature);
         }
         
@@ -1951,12 +2028,18 @@
             return '#FF0000';                       // Red (dangerous)
         }
         
-        // Update temperature display with color
+        // Update temperature display with color (value + unit)
         function updateTemperatureDisplay(temp) {
             const tempEl = document.getElementById('temp-value');
+            const unitEl = document.getElementById('temp-unit');
+            const color = getTemperatureColor(temp);
+            
             if (tempEl) {
                 tempEl.textContent = temp.toFixed(1);
-                tempEl.style.color = getTemperatureColor(temp);
+                tempEl.style.color = color;
+            }
+            if (unitEl) {
+                unitEl.style.color = color;
             }
         }
         
@@ -2005,17 +2088,21 @@
             }
             
             scene.add(starsGroup);
-            starsGroup.visible = false;
-            console.log('⭐ Stars created');
+            // Initially visible based on current time
+            const now = new Date();
+            const currentHour = now.getHours();
+            starsGroup.visible = (currentHour >= 21 || currentHour < 5);
+            console.log('⭐ Stars created, visible:', starsGroup.visible, 'hour:', currentHour);
             return starsGroup;
         }
         
         function updateStarsVisibility(hour) {
             if (!starsGroup) createStars();
             
-            // Stars visible between 21:00 and 5:00
-            const isNightTime = hour >= 21 || hour < 5;
+            // Stars visible between 18:00 and 6:00 (dusk to dawn)
+            const isNightTime = hour >= 18 || hour < 6;
             starsGroup.visible = isNightTime;
+            console.log('⭐ Stars visibility:', isNightTime, 'at hour:', hour);
             
             // Twinkle effect
             if (isNightTime) {
@@ -2446,18 +2533,23 @@
             console.log('🪟 Opening window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            // Windows rotate open 90 degrees on Y axis (like hinged windows)
-            const targetRotation = (windowMesh.userData.originalRotation?.y || 0) + Math.PI / 2;
-            const startRotation = windowMesh.rotation.y;
-            const duration = 600;
+            // Simple 90 degree Y rotation from original position
+            const originalY = windowMesh.userData.originalRotation?.y || 0;
+            const targetRotation = originalY + Math.PI / 2;  // Just add 90 degrees
+            const startRotation = originalY;  // Always start from original
+            const duration = 500;
             const startTime = Date.now();
+
+            // Reset to original first to ensure clean animation
+            windowMesh.rotation.y = originalY;
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                windowMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+                // Simple interpolation from original to target
+                windowMesh.rotation.y = originalY + (Math.PI / 2) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
@@ -2472,14 +2564,16 @@
         }
 
         function closeWindowMesh(windowMesh) {
-            if (!windowMesh || windowMesh.userData.isAnimating || !windowMesh.userData.isOpen) return;
+            if (!windowMesh || windowMesh.userData.isAnimating) return;
+            if (!windowMesh.userData.isOpen) return;
 
             console.log('🪟 Closing window:', windowMesh.name);
             windowMesh.userData.isAnimating = true;
 
-            const targetRotation = windowMesh.userData.originalRotation?.y || 0;
+            // Simple rotation back to original
+            const originalY = windowMesh.userData.originalRotation?.y || 0;
             const startRotation = windowMesh.rotation.y;
-            const duration = 800;
+            const duration = 500;
             const startTime = Date.now();
 
             function animateClose() {
@@ -2487,11 +2581,12 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 
-                windowMesh.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
+                windowMesh.rotation.y = startRotation + (originalY - startRotation) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
+                    windowMesh.rotation.y = originalY;  // Ensure exact original position
                     windowMesh.userData.isAnimating = false;
                     windowMesh.userData.isOpen = false;
                     console.log('✅ Window closed:', windowMesh.name);
@@ -2760,16 +2855,16 @@
             moonLight.position.copy(moonMesh.position);
             scene.add(moonLight);
             
-            // Create ground plane that receives light and shadows
+            // Create ground plane at yard level (will be adjusted when model loads)
             const groundGeometry = new THREE.PlaneGeometry(500, 500);
             const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x4a7a4a,  // Lighter green grass color
-                roughness: 0.8,
+                color: 0x3a6a3a,  // Grass green color
+                roughness: 0.9,
                 metalness: 0.0
             });
             groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
             groundPlane.rotation.x = -Math.PI / 2;
-            groundPlane.position.y = -0.5;
+            groundPlane.position.y = 0;  // At ground level, adjusted when model loads
             groundPlane.receiveShadow = true;
             scene.add(groundPlane);
             
