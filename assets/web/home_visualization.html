@@ -1984,23 +1984,32 @@
                 60, // Good FOV for 3D view
                 window.innerWidth / window.innerHeight,
                 0.1,
-                2000
+                50000  // Very far clipping plane for unlimited zoom out
             );
             // Position camera to see house nicely
             const isMobile = window.innerWidth <= 768;
-            // Mobile: closer view, Desktop: slightly further
-            camera.position.set(18, 12, 22);
+            if (isMobile) {
+                // Mobile: Further back and higher for wider view
+                camera.position.set(35, 25, 40);
+            } else {
+                // Desktop: Standard view
+                camera.position.set(18, 12, 22);
+            }
             camera.lookAt(0, 2, 0);
 
-            // Renderer - Optimized for mobile
+            // Renderer - Optimized for mobile with shadows
             renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
+                antialias: !isMobile,  // Disable antialiasing on mobile for performance
                 alpha: true,
                 powerPreference: "high-performance"
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Smooth but performant
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2)); // Lower on mobile
             renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFShadowMap;  // PCF works well on most mobile devices
+            renderer.shadowMap.autoUpdate = true;
+            
+            console.log('📱 Mobile mode:', isMobile, '- Shadows enabled:', renderer.shadowMap.enabled);
             
             const canvas = renderer.domElement;
             canvas.style.touchAction = 'none'; // Prevent default touch behaviors
@@ -2042,9 +2051,24 @@
             scene.add(ambientLight);
 
             directionalLight = new THREE.DirectionalLight(0xffffff, 1.7); // Bright preset
-            directionalLight.position.set(15, 25, 15);
+            directionalLight.position.set(30, 50, 30);  // Position for good shadow angle
             directionalLight.castShadow = true;
+            
+            // Shadow camera configuration - simplified for mobile compatibility
+            const shadowSize = isMobile ? 512 : 2048;  // Smaller on mobile for performance
+            directionalLight.shadow.mapSize.width = shadowSize;
+            directionalLight.shadow.mapSize.height = shadowSize;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 200;
+            directionalLight.shadow.camera.left = -50;
+            directionalLight.shadow.camera.right = 50;
+            directionalLight.shadow.camera.top = 50;
+            directionalLight.shadow.camera.bottom = -50;
+            directionalLight.shadow.bias = -0.002;  // Stronger bias for mobile
+            directionalLight.shadow.radius = isMobile ? 1 : 2;  // Soften shadows slightly
             scene.add(directionalLight);
+            
+            console.log('💡 DirectionalLight shadows - mapSize:', shadowSize, 'mobile:', isMobile);
             
             // Additional point lights for better illumination
             pointLight1 = new THREE.PointLight(0xffffff, 1.0, 100); // Bright preset
@@ -2063,6 +2087,20 @@
             gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x888888);
             gridHelper.visible = false;
             scene.add(gridHelper);
+            
+            // Create shadow-receiving ground plane immediately
+            const earlyGroundGeometry = new THREE.PlaneGeometry(200, 200);
+            const earlyGroundMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x7CCD7C,
+                shininess: 0
+            });
+            const earlyGround = new THREE.Mesh(earlyGroundGeometry, earlyGroundMaterial);
+            earlyGround.rotation.x = -Math.PI / 2;
+            earlyGround.position.y = -0.05;
+            earlyGround.receiveShadow = true;
+            earlyGround.name = 'shadowGround';
+            scene.add(earlyGround);
+            console.log('🌍 Early shadow ground created');
             
             // Initialize theme UI after a brief delay to ensure DOM is ready
             setTimeout(initializeThemeUI, 100);
@@ -2973,8 +3011,11 @@
                 doorBtn.addEventListener('click', () => {
                     if (!doorMesh) findDoor();
                     if (doorMesh) {
+                        // Check state BEFORE toggle to show what will happen
+                        const wasOpen = doorOpen;
                         toggleDoor();
-                        showToast(doorOpen ? '🚪 Door opened' : '🚪 Door closed');
+                        // Show what action was taken (opposite of previous state)
+                        showToast(wasOpen ? '🚪 Closing door...' : '🚪 Opening door...');
                     } else {
                         showToast('🚪 No door in model');
                     }
@@ -2986,8 +3027,9 @@
                 garageBtn.addEventListener('click', () => {
                     if (!garageMesh) findGarage();
                     if (garageMesh) {
+                        const wasOpen = garageOpen;
                         toggleGarage();
-                        showToast(garageOpen ? '🚗 Garage opened' : '🚗 Garage closed');
+                        showToast(wasOpen ? '🚗 Closing garage...' : '🚗 Opening garage...');
                     } else {
                         showToast('🚗 No garage in model');
                     }
@@ -2999,8 +3041,9 @@
                 windowsBtn.addEventListener('click', () => {
                     if (windowMeshes.length === 0) findWindows();
                     if (windowMeshes.length > 0) {
+                        const wasOpen = windowsOpen;
                         toggleAllWindows();
-                        showToast('🪟 Windows toggled');
+                        showToast(wasOpen ? '🪟 Closing windows...' : '🪟 Opening windows...');
                     } else {
                         showToast('🪟 No windows in model');
                     }
@@ -3452,21 +3495,21 @@
             
             starsGroup = new THREE.Group();
             
-            // Simple white dot stars
-            const starGeometry = new THREE.SphereGeometry(0.8, 4, 4);
+            // Larger stars visible when zoomed out
+            const starGeometry = new THREE.SphereGeometry(40, 4, 4);
             const starMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
             
-            // Create 300 white dot stars
-            for (let i = 0; i < 300; i++) {
+            // Create 500 white dot stars at very far distance
+            for (let i = 0; i < 500; i++) {
                 const star = new THREE.Mesh(starGeometry, starMaterial.clone());
                 
-                // Random position on sky dome
-                const radius = 250 + Math.random() * 100;
+                // Random position on very distant sky dome
+                const radius = 15000 + Math.random() * 5000;
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.random() * Math.PI * 0.5;
                 
                 star.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                star.position.y = radius * Math.cos(phi) + 30;
+                star.position.y = radius * Math.cos(phi) + 1000;
                 star.position.z = radius * Math.sin(phi) * Math.sin(theta);
                 
                 // Slight random brightness
@@ -3586,6 +3629,11 @@
             if (isAutoTimeEnabled && now - lastDayNightUpdate > dayNightUpdateInterval) {
                 updateDayNightCycle();
                 lastDayNightUpdate = now;
+            }
+            
+            // Ensure shadow maps are updated
+            if (renderer.shadowMap.enabled) {
+                renderer.shadowMap.needsUpdate = true;
             }
             
             renderer.render(scene, camera);
@@ -4277,8 +4325,8 @@
         
         // Initialize day/night cycle with sun and moon
         function initializeDayNightCycle() {
-            // Create sun (larger yellow sphere with glow effect)
-            const sunGeometry = new THREE.SphereGeometry(12, 64, 64);
+            // Create sun (very large and far for visibility)
+            const sunGeometry = new THREE.SphereGeometry(500, 64, 64);
             const sunMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0xFFDD00,
                 emissive: 0xFFAA00,
@@ -4287,11 +4335,11 @@
                 metalness: 0.0
             });
             sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
-            sunMesh.position.set(150, 80, 0);
+            sunMesh.position.set(8000, 4000, 0);
             scene.add(sunMesh);
             
             // Sun glow effect (outer halo)
-            const sunGlowGeometry = new THREE.SphereGeometry(18, 32, 32);
+            const sunGlowGeometry = new THREE.SphereGeometry(700, 32, 32);
             const sunGlowMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFDD44,
                 transparent: true,
@@ -4301,16 +4349,33 @@
             const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
             sunMesh.add(sunGlow);
             
-            // Sun light (directional, warm)
-            sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.8);
-            sunLight.position.copy(sunMesh.position);
+            // Sun light (directional, warm) - positioned for shadows
+            sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.5);
+            sunLight.position.set(40, 60, 30);  // Good angle for ground shadows
+            sunLight.target.position.set(0, 0, 0);
+            scene.add(sunLight.target);
             sunLight.castShadow = true;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
+            
+            // Shadow camera - mobile optimized
+            const isMobileDevice = window.innerWidth <= 768;
+            const shadowMapSize = isMobileDevice ? 512 : 2048;  // Smaller for mobile
+            
+            sunLight.shadow.mapSize.width = shadowMapSize;
+            sunLight.shadow.mapSize.height = shadowMapSize;
+            sunLight.shadow.camera.near = 1;
+            sunLight.shadow.camera.far = 200;
+            sunLight.shadow.camera.left = -40;
+            sunLight.shadow.camera.right = 40;
+            sunLight.shadow.camera.top = 40;
+            sunLight.shadow.camera.bottom = -40;
+            sunLight.shadow.bias = -0.003;  // Larger bias for mobile
+            sunLight.shadow.radius = isMobileDevice ? 1 : 2;
+            
+            console.log('☀️ SunLight shadows - mapSize:', shadowMapSize, 'mobile:', isMobileDevice);
             scene.add(sunLight);
             
-            // Create moon (larger pale sphere with crater texture simulation)
-            const moonGeometry = new THREE.SphereGeometry(8, 64, 64);
+            // Create moon (larger and further for visibility)
+            const moonGeometry = new THREE.SphereGeometry(300, 64, 64);
             const moonMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0xDDDDEE,
                 emissive: 0x8888AA,
@@ -4319,11 +4384,11 @@
                 metalness: 0.1
             });
             moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
-            moonMesh.position.set(-150, -80, 0);
+            moonMesh.position.set(-8000, -4000, 0);  // Far away initial position
             scene.add(moonMesh);
             
             // Moon glow effect (subtle outer halo)
-            const moonGlowGeometry = new THREE.SphereGeometry(11, 32, 32);
+            const moonGlowGeometry = new THREE.SphereGeometry(400, 32, 32);
             const moonGlowMaterial = new THREE.MeshBasicMaterial({
                 color: 0xAAAACC,
                 transparent: true,
@@ -4338,18 +4403,20 @@
             moonLight.position.copy(moonMesh.position);
             scene.add(moonLight);
             
-            // Create ground plane at yard level (will be adjusted when model loads)
-            const groundGeometry = new THREE.PlaneGeometry(500, 500);
-            const groundMaterial = new THREE.MeshStandardMaterial({
+            // Create ground plane at yard level - using Phong for better mobile shadow support
+            const groundGeometry = new THREE.PlaneGeometry(5000, 5000);  // Very large ground
+            const groundMaterial = new THREE.MeshPhongMaterial({
                 color: 0x7CCD7C,  // Light grass green (matches theme)
-                roughness: 0.9,
-                metalness: 0.0
+                shininess: 5
             });
             groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
             groundPlane.rotation.x = -Math.PI / 2;
-            groundPlane.position.y = 0;  // At ground level, adjusted when model loads
+            groundPlane.position.y = -0.1;  // Slightly below model to ensure shadows land on it
             groundPlane.receiveShadow = true;
+            groundPlane.castShadow = false;  // Ground doesn't cast shadows
             scene.add(groundPlane);
+            
+            console.log('🌍 Ground plane created with receiveShadow:', groundPlane.receiveShadow);
             
             // Create stars for night sky
             createStars();
@@ -4377,18 +4444,28 @@
             // Calculate sun position (rises at 6, sets at 18)
             // Convert hour to radians (0-24 -> 0-2π)
             const sunAngle = ((hour - 6) / 12) * Math.PI;
-            const orbitRadius = 180; // Much larger orbit for better visual
+            const orbitRadius = 10000; // Very far orbit for mobile
             
             // Sun position on circular path
             const sunX = Math.cos(sunAngle) * orbitRadius;
-            const sunY = Math.sin(sunAngle) * orbitRadius * 0.6 + 30;
+            const sunY = Math.sin(sunAngle) * orbitRadius * 0.6 + 1000;
             const sunZ = Math.sin(sunAngle) * orbitRadius * 0.3;
             
-            sunMesh.position.set(sunX, Math.max(sunY, -50), sunZ);
-            sunLight.position.copy(sunMesh.position);
+            sunMesh.position.set(sunX, Math.max(sunY, -2000), sunZ);
             
-            // Moon is opposite to sun with larger separation
-            moonMesh.position.set(-sunX, -sunY + 60, -sunZ);
+            // Keep sunLight closer for proper shadows on ground
+            // Light orbits at close range while visual sun is far away
+            const shadowLightDist = 120;
+            sunLight.position.set(
+                Math.cos(sunAngle) * shadowLightDist,
+                100 + Math.sin(sunAngle) * 50,  // Height varies with time
+                Math.sin(sunAngle) * shadowLightDist * 0.3
+            );
+            sunLight.updateMatrixWorld();
+            sunLight.shadow.camera.updateProjectionMatrix();
+            
+            // Moon is opposite to sun
+            moonMesh.position.set(-sunX, -sunY + 2000, -sunZ);
             moonLight.position.copy(moonMesh.position);
             
             // Calculate day/night intensity (0 = midnight, 1 = noon)

@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -36,7 +38,16 @@ class _VisualizationTabState extends State<VisualizationTab> {
   void _initializeWebView() {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
+      ..setBackgroundColor(const Color(0x00000000));
+    
+    // Enable hardware acceleration for WebGL on Android
+    final platformController = _webViewController.platform;
+    if (platformController is AndroidWebViewController) {
+      // Enable WebGL and hardware acceleration
+      AndroidWebViewController.enableDebugging(true);
+    }
+    
+    _webViewController
       ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
         // Silently handle console messages to prevent serialization crashes
         // The WebView plugin has issues serializing complex objects in console messages
