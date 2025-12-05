@@ -747,11 +747,12 @@ class _QuickControlsSection extends StatelessWidget {
             isActive: deviceProvider.isDoorOpen,
             activeColor: Colors.orange,
             inactiveColor: Colors.green,
-            activeLabel: 'CLOSE',  // Action to perform when open
-            inactiveLabel: 'OPEN',  // Action to perform when closed
+            activeLabel: 'CLOSE', // Action to perform when open
+            inactiveLabel: 'OPEN', // Action to perform when closed
             onTap: () {
               HapticFeedback.mediumImpact();
-              _showDoorWarningDialog(context, deviceProvider, 'Main Door', deviceProvider.isDoorOpen);
+              _showDoorWarningDialog(context, deviceProvider, 'Main Door',
+                  deviceProvider.isDoorOpen);
             },
             isDark: isDark,
           ),
@@ -765,11 +766,12 @@ class _QuickControlsSection extends StatelessWidget {
             isActive: deviceProvider.isGarageOpen,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
-            activeLabel: 'CLOSE',  // Action to perform when open
-            inactiveLabel: 'OPEN',  // Action to perform when closed
+            activeLabel: 'CLOSE', // Action to perform when open
+            inactiveLabel: 'OPEN', // Action to perform when closed
             onTap: () {
               HapticFeedback.mediumImpact();
-              _showDoorWarningDialog(context, deviceProvider, 'Garage Door', deviceProvider.isGarageOpen);
+              _showDoorWarningDialog(context, deviceProvider, 'Garage Door',
+                  deviceProvider.isGarageOpen);
             },
             isDark: isDark,
           ),
@@ -1777,7 +1779,7 @@ class _QuickControlsSection extends StatelessWidget {
     bool isCurrentlyOpen,
   ) {
     final actionCapitalized = isCurrentlyOpen ? 'Close' : 'Open';
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {

@@ -5217,49 +5217,7 @@
         function updateRGBLights() {
             if (!homeModel) return;
             
-            const threeColor = new THREE.Color(rgbLightColor);
-            const intensity = rgbLightsOn ? (rgbLightBrightness / 100) : 0;
-            
-            // Apply RGB emissive glow to structural elements (walls, roof, levels)
-            homeModel.traverse((child) => {
-                if (child.isMesh && child.material) {
-                    const nameLower = (child.name || '').toLowerCase();
-                    
-                    // Target structural elements: walls, roof edges, levels, home structure
-                    const isStructural = nameLower.includes('wall') || 
-                                        nameLower.includes('roof') || 
-                                        nameLower.includes('level') ||
-                                        nameLower.includes('home_') ||
-                                        nameLower.includes('yard_wall') ||
-                                        nameLower.includes('tri_') ||
-                                        nameLower.includes('_front') ||
-                                        nameLower.includes('_back') ||
-                                        nameLower.includes('_left') ||
-                                        nameLower.includes('_right');
-                    
-                    // Skip doors, windows, garage, glass, floor, yard (ground)
-                    const isExcluded = nameLower.includes('door') || 
-                                      nameLower.includes('window') || 
-                                      nameLower.includes('garage') ||
-                                      nameLower.includes('glass') ||
-                                      nameLower.includes('floor') ||
-                                      nameLower === 'yard_mesh';
-                    
-                    if (isStructural && !isExcluded) {
-                        if (rgbLightsOn) {
-                            // Apply RGB color as emissive with intensity based on brightness
-                            child.material.emissive = threeColor;
-                            child.material.emissiveIntensity = intensity * 0.35;
-                        } else {
-                            // Reset to default
-                            child.material.emissive = new THREE.Color(0x222222);
-                            child.material.emissiveIntensity = 0.1;
-                        }
-                    }
-                }
-            });
-            
-            // Create edge outlines and corner lights
+            // Only create edge outlines and corner lights - no emissive on surfaces
             createEdgeOutlines();
             createCornerLights();
             
@@ -5270,55 +5228,53 @@
         // Create glowing edge outlines around structural elements
         function createEdgeOutlines() {
             // Remove old edge lines
-            edgeLines.forEach(line => scene.remove(line));
+            edgeLines.forEach(line => {
+                if (line.parent) line.parent.remove(line);
+                else scene.remove(line);
+            });
             edgeLines = [];
             
             if (!rgbLightsOn || !homeModel) return;
             
             const threeColor = new THREE.Color(rgbLightColor);
-            const opacity = (rgbLightBrightness / 100) * 0.9;
+            const opacity = (rgbLightBrightness / 100) * 0.95;
             
             homeModel.traverse((child) => {
                 if (child.isMesh && child.geometry) {
                     const nameLower = (child.name || '').toLowerCase();
                     
-                    // Only add edges to main structural elements
+                    // Only add edges to main structural elements and yard
                     const isMainStructure = nameLower.includes('wall') || 
                                            nameLower.includes('roof') ||
                                            nameLower.includes('level_1_') ||
                                            nameLower.includes('home_') ||
-                                           nameLower.includes('yard_wall');
+                                           nameLower.includes('yard_wall') ||
+                                           nameLower.includes('yard_mesh') ||
+                                           nameLower.includes('yard') ||
+                                           nameLower.includes('tri_');
                     
                     const isExcluded = nameLower.includes('door') || 
                                       nameLower.includes('window') || 
                                       nameLower.includes('garage') ||
                                       nameLower.includes('glass') ||
                                       nameLower.includes('floor') ||
-                                      nameLower.includes('internal') ||
-                                      nameLower === 'yard_mesh';
+                                      nameLower.includes('internal');
                     
                     if (isMainStructure && !isExcluded) {
                         // Create edge geometry for this mesh
-                        const edges = new THREE.EdgesGeometry(child.geometry, 15); // 15 degree threshold
+                        const edges = new THREE.EdgesGeometry(child.geometry, 20); // 20 degree threshold for cleaner edges
                         const lineMaterial = new THREE.LineBasicMaterial({ 
                             color: threeColor,
                             transparent: true,
                             opacity: opacity,
-                            linewidth: 2
+                            linewidth: 2,
+                            depthTest: true,
+                            depthWrite: false
                         });
                         const edgeLine = new THREE.LineSegments(edges, lineMaterial);
                         
-                        // Copy the mesh's world transform
-                        edgeLine.position.copy(child.position);
-                        edgeLine.rotation.copy(child.rotation);
-                        edgeLine.scale.copy(child.scale);
-                        
-                        // Apply parent transforms if any
-                        if (child.parent) {
-                            child.parent.localToWorld(edgeLine.position);
-                        }
-                        
-                        scene.add(edgeLine);
+                        // Add as child of the mesh so it inherits all transforms automatically
+                        child.add(edgeLine);
                         edgeLines.push(edgeLine);
                     }
                 }

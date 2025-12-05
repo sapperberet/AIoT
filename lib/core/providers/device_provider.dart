@@ -202,7 +202,8 @@ class DeviceProvider with ChangeNotifier {
       });
       // Sync windows to visualization
       if (windowsChanged) {
-        _syncToVisualization('windows', Map<String, dynamic>.from(_windowStates));
+        _syncToVisualization(
+            'windows', Map<String, dynamic>.from(_windowStates));
       }
     }
 
@@ -266,7 +267,8 @@ class DeviceProvider with ChangeNotifier {
         color = 0xFFFFFF;
       }
       if (_rgbLightColor != color) {
-        debugPrint('🌈 Firebase: RGB color changed to 0x${color.toRadixString(16)}');
+        debugPrint(
+            '🌈 Firebase: RGB color changed to 0x${color.toRadixString(16)}');
         _rgbLightColor = color;
         rgbChanged = true;
         hasChanges = true;
