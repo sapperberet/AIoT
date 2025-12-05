@@ -4602,6 +4602,197 @@
             return manualTimeOfDay;
         }
 
+        // ============================================
+        // Flutter Device Sync Functions
+        // These functions are called from Flutter to sync device states
+        // ============================================
+        
+        // Sync a single device state from Flutter
+        function syncDeviceState(command) {
+            try {
+                const data = typeof command === 'string' ? JSON.parse(command) : command;
+                const type = data.type;
+                const state = data.state;
+                
+                console.log('🔄 Sync device state:', type, state);
+                
+                switch (type) {
+                    case 'windows':
+                        // state is an object like {front_window: true, side_window: false}
+                        for (const [windowId, isOpen] of Object.entries(state)) {
+                            syncWindowById(windowId, isOpen);
+                        }
+                        break;
+                    case 'lights':
+                        // state is an object like {landscape: true, floor_1: false, ...}
+                        syncLightStates(state);
+                        break;
+                    case 'door':
+                    case 'main_door':
+                        if (state.isOpen && !doorOpen) openDoor();
+                        else if (!state.isOpen && doorOpen) closeDoor();
+                        break;
+                    case 'garage':
+                    case 'garage_door':
+                        if (state.isOpen && !garageOpen) openGarage();
+                        else if (!state.isOpen && garageOpen) closeGarage();
+                        break;
+                    case 'buzzer':
+                        setBuzzerState(state.isActive);
+                        break;
+                }
+            } catch (e) {
+                console.error('❌ Error syncing device state:', e);
+            }
+        }
+        
+        // Sync all device states at once (called on page load)
+        function syncAllDeviceStates(statesJson) {
+            try {
+                const states = typeof statesJson === 'string' ? JSON.parse(statesJson) : statesJson;
+                console.log('🔄 Syncing all device states:', states);
+                
+                // Sync main door
+                if (states.door?.isOpen && !doorOpen) {
+                    openDoor();
+                } else if (!states.door?.isOpen && doorOpen) {
+                    closeDoor();
+                }
+                
+                // Sync garage door
+                if (states.garage?.isOpen && !garageOpen) {
+                    openGarage();
+                } else if (!states.garage?.isOpen && garageOpen) {
+                    closeGarage();
+                }
+                
+                // Sync windows
+                if (states.windows) {
+                    for (const [windowId, isOpen] of Object.entries(states.windows)) {
+                        syncWindowById(windowId, isOpen);
+                    }
+                }
+                
+                // Sync lights
+                if (states.lights) {
+                    syncLightStates(states.lights);
+                }
+                
+                // Sync buzzer
+                if (states.buzzer !== undefined) {
+                    setBuzzerState(states.buzzer);
+                }
+                
+                console.log('✅ All device states synced');
+            } catch (e) {
+                console.error('❌ Error syncing all device states:', e);
+            }
+        }
+        
+        // Sync window by ID (front_window, side_window)
+        function syncWindowById(windowId, isOpen) {
+            // Map window IDs to mesh names (adjust based on your 3D model)
+            const windowMeshNames = {
+                'front_window': ['front_window', 'frontWindow', 'window_front', 'Window_Front'],
+                'side_window': ['side_window', 'sideWindow', 'window_side', 'Window_Side']
+            };
+            
+            const possibleNames = windowMeshNames[windowId] || [windowId];
+            let foundMesh = null;
+            
+            // Try to find the window mesh
+            for (const name of possibleNames) {
+                if (roomMeshes[name]) {
+                    foundMesh = roomMeshes[name];
+                    break;
+                }
+            }
+            
+            // Also try partial matching
+            if (!foundMesh) {
+                for (const [meshName, mesh] of Object.entries(roomMeshes)) {
+                    if (meshName.toLowerCase().includes(windowId.replace('_', ''))) {
+                        foundMesh = mesh;
+                        break;
+                    }
+                }
+            }
+            
+            if (foundMesh) {
+                if (isOpen) {
+                    openWindowMesh(foundMesh);
+                } else {
+                    closeWindowMesh(foundMesh);
+                }
+            } else {
+                console.log('⚠️ Window mesh not found for:', windowId);
+            }
+        }
+        
+        // Sync light states
+        function syncLightStates(lightStates) {
+            // lightStates is an object like {landscape: true, floor_1: false, floor_2: true, rgb: true}
+            // For now, aggregate all lights into a single toggle
+            const anyLightOn = Object.values(lightStates).some(v => v === true);
+            
+            // Find all light-related meshes and toggle them
+            for (const [lightId, isOn] of Object.entries(lightStates)) {
+                const lightMeshNames = {
+                    'landscape': ['landscape_light', 'landscapeLight', 'outdoor_light', 'garden_light'],
+                    'floor_1': ['floor1_light', 'floor_1_light', 'first_floor_light', 'light_floor1'],
+                    'floor_2': ['floor2_light', 'floor_2_light', 'second_floor_light', 'light_floor2'],
+                    'rgb': ['rgb_light', 'rgbLight', 'color_light', 'led_light']
+                };
+                
+                const possibleNames = lightMeshNames[lightId] || [lightId];
+                for (const name of possibleNames) {
+                    if (roomMeshes[name]) {
+                        setLightMeshState(roomMeshes[name], isOn);
+                        break;
+                    }
+                }
+            }
+            
+            // Update global lights state indicator
+            if (anyLightOn !== lightsOn) {
+                // Don't call toggleLights() as it would toggle everything
+                // Just update the visual indicator
+                lightsOn = anyLightOn;
+            }
+        }
+        
+        // Set a specific light mesh on/off
+        function setLightMeshState(mesh, isOn) {
+            if (!mesh || !mesh.material) return;
+            
+            if (isOn) {
+                mesh.material.emissive = new THREE.Color(0xffff88);
+                mesh.material.emissiveIntensity = 0.5;
+            } else {
+                mesh.material.emissive = new THREE.Color(0x000000);
+                mesh.material.emissiveIntensity = 0;
+            }
+        }
+        
+        // Set buzzer state (visual/audio indicator)
+        let buzzerActive = false;
+        function setBuzzerState(isActive) {
+            buzzerActive = isActive;
+            console.log('🔔 Buzzer state:', isActive ? 'ACTIVE' : 'OFF');
+            
+            // Find buzzer mesh and animate if active
+            const buzzerMesh = roomMeshes['buzzer'] || roomMeshes['alarm'] || roomMeshes['bell'];
+            if (buzzerMesh) {
+                if (isActive) {
+                    buzzerMesh.material.emissive = new THREE.Color(0xff0000);
+                    buzzerMesh.material.emissiveIntensity = 0.8;
+                } else {
+                    buzzerMesh.material.emissive = new THREE.Color(0x000000);
+                    buzzerMesh.material.emissiveIntensity = 0;
+                }
+            }
+        }
+
         // Expose functions to global scope for Flutter to call
         window.resetCamera = resetCamera;
         window.openDoor = openDoor;
@@ -4629,6 +4820,11 @@
         window.showSelectionPanel = showSelectionPanel;
         window.hideSelectionPanel = hideSelectionPanel;
         window.formatMeshName = formatMeshName;
+        // Flutter device sync functions
+        window.syncDeviceState = syncDeviceState;
+        window.syncAllDeviceStates = syncAllDeviceStates;
+        window.syncWindowById = syncWindowById;
+        window.setBuzzerState = setBuzzerState;
 
         // Initialize the scene
         init();

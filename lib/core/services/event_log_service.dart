@@ -339,7 +339,8 @@ class EventLogService with ChangeNotifier {
       userId: userId,
       type: isOn ? EventType.fanTurnedOn : EventType.fanTurnedOff,
       title: 'Fan ${speedLabels[speed]}',
-      description: '${location.toUpperCase()} fan set to ${speedLabels[speed].toLowerCase()}',
+      description:
+          '${location.toUpperCase()} fan set to ${speedLabels[speed].toLowerCase()}',
       severity: EventSeverity.info,
       location: location,
       deviceId: 'fan_$location',

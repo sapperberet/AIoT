@@ -61,157 +61,160 @@ class DevicesTab extends StatelessWidget {
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                      ),
-                      borderGradient: LinearGradient(
-                        colors: [
-                          AppTheme.errorColor.withOpacity(0.5),
-                          AppTheme.errorColor.withOpacity(0.2),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.errorColor,
-                                    borderRadius: AppTheme.smallRadius,
-                                  ),
-                                  child: const Icon(Iconsax.warning_2,
-                                      color: Colors.white, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  '${AppLocalizations.of(context).t('active_alarms')} (${alarms.length})',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.errorColor,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: ListView(
-                                children: alarms
-                                    .take(2)
-                                    .map((alarm) => Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 4),
-                                          child: Row(
-                                            children: [
-                                              Icon(Iconsax.danger,
-                                                  color: AppTheme.errorColor,
-                                                  size: 16),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  '${alarm.type} in ${alarm.location}',
-                                                  style: TextStyle(
-                                                      color: textColor),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => deviceProvider
-                                                    .acknowledgeAlarm(alarm.id),
-                                                child: Text(
-                                                    AppLocalizations.of(context)
-                                                        .t('clear')),
-                                              ),
-                                            ],
-                                          ),
-                                        ))
-                                    .toList(),
-                              ),
-                            ),
+                        ),
+                        borderGradient: LinearGradient(
+                          colors: [
+                            AppTheme.errorColor.withOpacity(0.5),
+                            AppTheme.errorColor.withOpacity(0.2),
                           ],
                         ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.errorColor,
+                                      borderRadius: AppTheme.smallRadius,
+                                    ),
+                                    child: const Icon(Iconsax.warning_2,
+                                        color: Colors.white, size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${AppLocalizations.of(context).t('active_alarms')} (${alarms.length})',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.errorColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: ListView(
+                                  children: alarms
+                                      .take(2)
+                                      .map((alarm) => Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 4),
+                                            child: Row(
+                                              children: [
+                                                Icon(Iconsax.danger,
+                                                    color: AppTheme.errorColor,
+                                                    size: 16),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${alarm.type} in ${alarm.location}',
+                                                    style: TextStyle(
+                                                        color: textColor),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      deviceProvider
+                                                          .acknowledgeAlarm(
+                                                              alarm.id),
+                                                  child: Text(
+                                                      AppLocalizations.of(
+                                                              context)
+                                                          .t('clear')),
+                                                ),
+                                              ],
+                                            ),
+                                          ))
+                                      .toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
+
+                // Quick Controls Section - Always visible
+                FadeInDown(
+                  delay: const Duration(milliseconds: 100),
+                  child: _QuickControlsSection(deviceProvider: deviceProvider),
                 ),
 
-              // Quick Controls Section - Always visible
-              FadeInDown(
-                delay: const Duration(milliseconds: 100),
-                child: _QuickControlsSection(deviceProvider: deviceProvider),
-              ),
-
-              // Devices List (inline, not in Expanded since we're in SingleChildScrollView)
-              if (devices.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: FadeIn(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppTheme.primaryGradient.scale(0.3),
+                // Devices List (inline, not in Expanded since we're in SingleChildScrollView)
+                if (devices.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: FadeIn(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.primaryGradient.scale(0.3),
+                            ),
+                            child: const Icon(Iconsax.devices_1,
+                                size: 50, color: AppTheme.primaryColor),
                           ),
-                          child: const Icon(Iconsax.devices_1,
-                              size: 50, color: AppTheme.primaryColor),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          AppLocalizations.of(context).t('no_devices'),
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          AppLocalizations.of(context).t('add_devices_desc'),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.mutedText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: AnimationLimiter(
-                    child: Column(
-                      children: List.generate(devices.length, (index) {
-                        final device = devices[index];
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          duration: const Duration(milliseconds: 375),
-                          child: SlideAnimation(
-                            verticalOffset: 50.0,
-                            child: FadeInAnimation(
-                              child: ModernDeviceCard(device: device),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppLocalizations.of(context).t('no_devices'),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
                             ),
                           ),
-                        );
-                      }),
+                          const SizedBox(height: 12),
+                          Text(
+                            AppLocalizations.of(context).t('add_devices_desc'),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.mutedText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: AnimationLimiter(
+                      child: Column(
+                        children: List.generate(devices.length, (index) {
+                          final device = devices[index];
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            duration: const Duration(milliseconds: 375),
+                            child: SlideAnimation(
+                              verticalOffset: 50.0,
+                              child: FadeInAnimation(
+                                child: ModernDeviceCard(device: device),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ),
-                ),
 
-              // Bottom padding for scroll comfort
-              const SizedBox(height: 100),
-            ],
+                // Bottom padding for scroll comfort
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 }
 
 extension GradientExtension on Gradient {
@@ -583,6 +586,9 @@ class ModernDeviceCard extends StatelessWidget {
       case DeviceType.buzzer:
         return LinearGradient(
             colors: [Colors.amber.shade400, Colors.amber.shade600]);
+      case DeviceType.fan:
+        return LinearGradient(
+            colors: [Colors.teal.shade400, Colors.teal.shade600]);
     }
   }
 
@@ -608,6 +614,8 @@ class ModernDeviceCard extends StatelessWidget {
         return Icons.garage;
       case DeviceType.buzzer:
         return Icons.notifications_active;
+      case DeviceType.fan:
+        return Icons.air;
     }
   }
 
@@ -772,7 +780,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.door_front_door,
             name: 'Main Door',
             deviceId: 'main_door',
-            mqttTopic: 'home/door/command',
+            mqttTopic: 'home/main_door/command',
             isActive: deviceProvider.isDoorOpen,
             activeColor: Colors.orange,
             inactiveColor: Colors.green,
@@ -789,8 +797,8 @@ class _QuickControlsSection extends StatelessWidget {
             context,
             icon: Icons.garage,
             name: 'Garage Door',
-            deviceId: 'garage',
-            mqttTopic: 'home/garage/command',
+            deviceId: 'garage_door',
+            mqttTopic: 'home/garage_door/command',
             isActive: deviceProvider.isGarageOpen,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
@@ -857,22 +865,38 @@ class _QuickControlsSection extends StatelessWidget {
           const SizedBox(height: 8),
           ...deviceProvider.lightStates.entries.map((entry) {
             final lightName = _formatName(entry.key);
+            final isRgb = entry.key == 'rgb';
+            final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _buildDeviceListItem(
+              child: _buildLightListItem(
                 context,
-                icon: Iconsax.lamp_on5,
+                icon: isRgb ? Icons.color_lens : Iconsax.lamp_on5,
                 name: '$lightName Light',
                 deviceId: 'light_${entry.key}',
+                lightId: entry.key,
                 mqttTopic: 'home/${entry.key}/light/set',
                 isActive: entry.value,
-                activeColor: Colors.amber,
+                brightness: brightness,
+                activeColor: isRgb
+                    ? Color(deviceProvider.rgbLightColor | 0xFF000000)
+                    : Colors.amber,
                 inactiveColor: Colors.grey,
                 activeLabel: 'ON',
                 inactiveLabel: 'OFF',
+                isRgb: isRgb,
                 onTap: () {
                   HapticFeedback.mediumImpact();
                   deviceProvider.toggleLightById(entry.key);
+                },
+                onLongPress: () {
+                  HapticFeedback.heavyImpact();
+                  if (isRgb) {
+                    _showRgbColorDialog(context, deviceProvider);
+                  } else {
+                    _showBrightnessDialog(
+                        context, deviceProvider, entry.key, lightName);
+                  }
                 },
                 isDark: isDark,
               ),
@@ -888,7 +912,12 @@ class _QuickControlsSection extends StatelessWidget {
             final fanName = _formatName(entry.key);
             final speed = entry.value;
             final speedLabels = ['OFF', 'LOW', 'MED', 'HIGH'];
-            final speedColors = [Colors.grey, Colors.green, Colors.blue, Colors.orange];
+            final speedColors = [
+              Colors.grey,
+              Colors.green,
+              Colors.blue,
+              Colors.orange
+            ];
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildFanListItem(
@@ -905,7 +934,8 @@ class _QuickControlsSection extends StatelessWidget {
                 },
                 onLongPress: () {
                   HapticFeedback.heavyImpact();
-                  _showFanSpeedDialog(context, deviceProvider, entry.key, fanName);
+                  _showFanSpeedDialog(
+                      context, deviceProvider, entry.key, fanName);
                 },
                 isDark: isDark,
               ),
@@ -916,7 +946,8 @@ class _QuickControlsSection extends StatelessWidget {
     );
   }
 
-  void _showFanSpeedDialog(BuildContext context, DeviceProvider provider, String fanId, String fanName) {
+  void _showFanSpeedDialog(BuildContext context, DeviceProvider provider,
+      String fanId, String fanName) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -937,10 +968,14 @@ class _QuickControlsSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildSpeedButton(context, provider, fanId, 0, 'Off', Icons.power_settings_new, Colors.grey),
-                _buildSpeedButton(context, provider, fanId, 1, 'Low', Icons.air, Colors.green),
-                _buildSpeedButton(context, provider, fanId, 2, 'Med', Icons.air, Colors.blue),
-                _buildSpeedButton(context, provider, fanId, 3, 'High', Icons.air, Colors.orange),
+                _buildSpeedButton(context, provider, fanId, 0, 'Off',
+                    Icons.power_settings_new, Colors.grey),
+                _buildSpeedButton(context, provider, fanId, 1, 'Low', Icons.air,
+                    Colors.green),
+                _buildSpeedButton(
+                    context, provider, fanId, 2, 'Med', Icons.air, Colors.blue),
+                _buildSpeedButton(context, provider, fanId, 3, 'High',
+                    Icons.air, Colors.orange),
               ],
             ),
             const SizedBox(height: 16),
@@ -950,7 +985,8 @@ class _QuickControlsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildSpeedButton(BuildContext context, DeviceProvider provider, String fanId, int speed, String label, IconData icon, Color color) {
+  Widget _buildSpeedButton(BuildContext context, DeviceProvider provider,
+      String fanId, int speed, String label, IconData icon, Color color) {
     final currentSpeed = provider.fanStates[fanId] ?? 0;
     final isSelected = currentSpeed == speed;
     return GestureDetector(
@@ -972,7 +1008,10 @@ class _QuickControlsSection extends StatelessWidget {
           children: [
             Icon(icon, color: isSelected ? color : Colors.grey, size: 28),
             const SizedBox(height: 8),
-            Text(label, style: TextStyle(color: isSelected ? color : Colors.grey, fontWeight: FontWeight.bold)),
+            Text(label,
+                style: TextStyle(
+                    color: isSelected ? color : Colors.grey,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -1124,7 +1163,409 @@ class _QuickControlsSection extends StatelessWidget {
     );
   }
 
+  Widget _buildLightListItem(
+    BuildContext context, {
+    required IconData icon,
+    required String name,
+    required String deviceId,
+    required String lightId,
+    required String mqttTopic,
+    required bool isActive,
+    required int brightness,
+    required Color activeColor,
+    required Color inactiveColor,
+    required String activeLabel,
+    required String inactiveLabel,
+    required bool isRgb,
+    required VoidCallback onTap,
+    required VoidCallback onLongPress,
+    required bool isDark,
+  }) {
+    final stateColor = isActive ? activeColor : inactiveColor;
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 80,
+        borderRadius: 12,
+        blur: 15,
+        alignment: Alignment.center,
+        border: 1.5,
+        linearGradient: LinearGradient(
+          colors: isActive
+              ? [
+                  activeColor.withOpacity(0.2),
+                  activeColor.withOpacity(0.1),
+                ]
+              : isDark
+                  ? [
+                      Colors.white.withOpacity(0.08),
+                      Colors.white.withOpacity(0.04),
+                    ]
+                  : [
+                      Colors.white.withOpacity(0.9),
+                      Colors.white.withOpacity(0.7),
+                    ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderGradient: LinearGradient(
+          colors: isActive
+              ? [
+                  activeColor.withOpacity(0.5),
+                  activeColor.withOpacity(0.2),
+                ]
+              : [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
+                ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [stateColor.shade400, stateColor.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: stateColor.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+
+              // Name and info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isRgb
+                          ? 'Hold to change color'
+                          : 'Hold to adjust brightness',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.mutedText,
+                      ),
+                    ),
+                    if (isActive && !isRgb) ...[
+                      const SizedBox(height: 4),
+                      // Mini brightness bar
+                      Container(
+                        height: 4,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: brightness / 100,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: activeColor,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // State Badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [stateColor.shade400, stateColor.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: stateColor.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isActive && !isRgb) ...[
+                      Text(
+                        '$brightness%',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      isActive ? activeLabel : inactiveLabel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBrightnessDialog(BuildContext context, DeviceProvider provider,
+      String lightId, String lightName) {
+    double currentBrightness =
+        (provider.lightBrightness[lightId] ?? 100).toDouble();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Iconsax.lamp_on5, color: Colors.amber, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$lightName Light Brightness',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.brightness_low, color: Colors.grey),
+                  Expanded(
+                    child: Slider(
+                      value: currentBrightness,
+                      min: 0,
+                      max: 100,
+                      divisions: 10,
+                      label: '${currentBrightness.round()}%',
+                      activeColor: Colors.amber,
+                      onChanged: (value) {
+                        setModalState(() {
+                          currentBrightness = value;
+                        });
+                      },
+                    ),
+                  ),
+                  Icon(Icons.brightness_high, color: Colors.amber),
+                ],
+              ),
+              Text(
+                '${currentBrightness.round()}%',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      provider.setLightBrightness(
+                          lightId, currentBrightness.round());
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.check),
+                    label: const Text('Apply'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRgbColorDialog(BuildContext context, DeviceProvider provider) {
+    int currentColor = provider.rgbLightColor;
+
+    final presetColors = [
+      0xFF0000, // Red
+      0xFF8000, // Orange
+      0xFFFF00, // Yellow
+      0x00FF00, // Green
+      0x00FFFF, // Cyan
+      0x0000FF, // Blue
+      0x8000FF, // Purple
+      0xFF00FF, // Magenta
+      0xFF80FF, // Pink
+      0xFFFFFF, // White
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Color(currentColor | 0xFF000000),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              Color(currentColor | 0xFF000000).withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'RGB Light Color',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Color grid
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: presetColors.map((color) {
+                  final isSelected = currentColor == color;
+                  return GestureDetector(
+                    onTap: () {
+                      setModalState(() {
+                        currentColor = color;
+                      });
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Color(color | 0xFF000000),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? Colors.white : Colors.grey,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: Color(color | 0xFF000000)
+                                      .withOpacity(0.6),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 24)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      provider.setRgbLightColor(currentColor);
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.check),
+                    label: const Text('Apply'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(currentColor | 0xFF000000),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _formatName(String id) {
+    // Handle special cases like 'rgb' -> 'RGB'
+    final specialCases = {'rgb': 'RGB'};
+    if (specialCases.containsKey(id.toLowerCase())) {
+      return specialCases[id.toLowerCase()]!;
+    }
     return id
         .split('_')
         .map((word) => word.isNotEmpty
@@ -1133,7 +1574,8 @@ class _QuickControlsSection extends StatelessWidget {
         .join(' ');
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, bool isDark) {
+  Widget _buildSectionHeader(
+      BuildContext context, String title, IconData icon, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, top: 8),
       child: Row(

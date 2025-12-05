@@ -10,6 +10,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/ai_chat_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../widgets/voice_recorder_widget.dart';
 import 'chat_theme_settings_dialog.dart';
 import '../../../core/providers/chat_theme_provider.dart';
@@ -25,7 +26,7 @@ class AIChatScreen extends StatefulWidget {
 }
 
 class _AIChatScreenState extends State<AIChatScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -34,10 +35,13 @@ class _AIChatScreenState extends State<AIChatScreen>
   bool _isRecordingVoice = false;
   String _liveTranscription = '';
   int _recordingDuration = 0;
+  bool _isScreenActive = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     _typingAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -50,14 +54,40 @@ class _AIChatScreenState extends State<AIChatScreen>
       setState(() {});
     });
 
-    // Load chat history
+    // Load chat history and set up notification callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = context.read<AuthProvider>();
       final chatProvider = context.read<AIChatProvider>();
       if (authProvider.currentUser != null) {
         chatProvider.loadChatHistory(authProvider.currentUser!.uid);
       }
+
+      // Set up callback for AI response notifications
+      chatProvider.onAIResponseReceived = _onAIResponseReceived;
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Track when app goes to background
+    _isScreenActive = state == AppLifecycleState.resumed;
+  }
+
+  void _onAIResponseReceived(String message) {
+    // If user is not on this screen or app is in background, show notification
+    if (!_isScreenActive || !mounted) {
+      final notificationService = context.read<NotificationService>();
+      final preview =
+          message.length > 100 ? '${message.substring(0, 97)}...' : message;
+      notificationService.addNotification(
+        title: 'AI Assistant Response',
+        message: preview,
+        type: NotificationType.info,
+        priority: NotificationPriority.medium,
+        data: {'type': 'ai_chat_response'},
+      );
+    }
   }
 
   void _onScroll() {
@@ -73,6 +103,12 @@ class _AIChatScreenState extends State<AIChatScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Cancel any ongoing response when leaving the screen
+    final chatProvider = context.read<AIChatProvider>();
+    chatProvider.cancelCurrentResponse();
+    chatProvider.onAIResponseReceived = null;
+
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -895,19 +931,25 @@ class _AIChatScreenState extends State<AIChatScreen>
                         chatProvider.voiceMode != VoiceMode.textOnly;
                     final isVoiceToVoice =
                         chatProvider.voiceMode == VoiceMode.voiceToVoice;
+                    final isLoading = chatProvider.isLoading;
                     return GestureDetector(
-                      onTap: () => _showQuickVoiceModeMenu(),
-                      onLongPress: () => _showVoiceSettingsDialog(),
+                      onTap: isLoading ? null : () => _showQuickVoiceModeMenu(),
+                      onLongPress:
+                          isLoading ? null : () => _showVoiceSettingsDialog(),
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isVoiceMode
-                              ? (isVoiceToVoice
-                                  ? Colors.green.withOpacity(0.2)
-                                  : AppTheme.primaryColor.withOpacity(0.2))
-                              : (isDark
-                                  ? Colors.grey.shade800
-                                  : Colors.grey.shade200),
+                          color: isLoading
+                              ? (isDark
+                                  ? Colors.grey.shade900
+                                  : Colors.grey.shade300)
+                              : isVoiceMode
+                                  ? (isVoiceToVoice
+                                      ? Colors.green.withOpacity(0.2)
+                                      : AppTheme.primaryColor.withOpacity(0.2))
+                                  : (isDark
+                                      ? Colors.grey.shade800
+                                      : Colors.grey.shade200),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -918,11 +960,13 @@ class _AIChatScreenState extends State<AIChatScreen>
                                   ? Iconsax.message_text
                                   : Iconsax.messages_3),
                           size: 20,
-                          color: isVoiceMode
-                              ? (isVoiceToVoice
-                                  ? Colors.green
-                                  : AppTheme.primaryColor)
-                              : textColor.withOpacity(0.6),
+                          color: isLoading
+                              ? textColor.withOpacity(0.3)
+                              : isVoiceMode
+                                  ? (isVoiceToVoice
+                                      ? Colors.green
+                                      : AppTheme.primaryColor)
+                                  : textColor.withOpacity(0.6),
                         ),
                       ),
                     );
@@ -930,66 +974,111 @@ class _AIChatScreenState extends State<AIChatScreen>
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color:
-                          isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                      borderRadius: AppTheme.mediumRadius,
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.1),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      focusNode: _focusNode,
-                      decoration: InputDecoration(
-                        hintText: loc.t('type_message'),
-                        hintStyle: TextStyle(
-                          color: textColor.withOpacity(0.5),
+                  child: Consumer<AIChatProvider>(
+                    builder: (context, chatProvider, _) {
+                      final isLoading = chatProvider.isLoading;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isLoading
+                              ? (isDark
+                                  ? Colors.grey.shade900
+                                  : Colors.grey.shade200)
+                              : (isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade100),
+                          borderRadius: AppTheme.mediumRadius,
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.1),
+                          ),
                         ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        child: TextField(
+                          controller: _messageController,
+                          focusNode: _focusNode,
+                          enabled: !isLoading,
+                          decoration: InputDecoration(
+                            hintText: isLoading
+                                ? loc.t('waiting_for_response')
+                                : loc.t('type_message'),
+                            hintStyle: TextStyle(
+                              color:
+                                  textColor.withOpacity(isLoading ? 0.3 : 0.5),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: TextStyle(color: textColor),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: isLoading ? null : (_) => _sendMessage(),
                         ),
-                      ),
-                      style: TextStyle(color: textColor),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
 
-                // Voice button (if text is empty)
-                if (_messageController.text.trim().isEmpty)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.glowShadow,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Iconsax.microphone, color: Colors.white),
-                      onPressed: _startVoiceRecording,
-                    ),
-                  )
-                else
-                  // Send button (if text is not empty)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.glowShadow,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Iconsax.send_1, color: Colors.white),
-                      onPressed: _sendMessage,
-                    ),
-                  ),
+                // Action button based on state
+                Consumer<AIChatProvider>(
+                  builder: (context, chatProvider, _) {
+                    final isLoading = chatProvider.isLoading;
+
+                    // Show stop button while loading
+                    if (isLoading) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Iconsax.stop, color: Colors.white),
+                          onPressed: () => chatProvider.cancelCurrentResponse(),
+                          tooltip: loc.t('stop_response'),
+                        ),
+                      );
+                    }
+
+                    // Voice button (if text is empty)
+                    if (_messageController.text.trim().isEmpty) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: AppTheme.glowShadow,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Iconsax.microphone,
+                              color: Colors.white),
+                          onPressed: _startVoiceRecording,
+                        ),
+                      );
+                    }
+
+                    // Send button (if text is not empty)
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        shape: BoxShape.circle,
+                        boxShadow: AppTheme.glowShadow,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Iconsax.send_1, color: Colors.white),
+                        onPressed: _sendMessage,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ],

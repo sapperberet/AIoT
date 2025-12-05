@@ -115,145 +115,193 @@ class AIChatService {
       print(
           '[AI Chat Service] Payload: {chatInput: $content, sessionId: $sessionId}');
 
-      final request = http.Request('POST', Uri.parse(_baseUrl));
-      request.headers['Content-Type'] = 'application/json';
-      // Match n8n AI Agent payload format
-      request.body = jsonEncode({
-        'message': content,
-        'sessionId': sessionId,
-      });
+      // Use regular http.post instead of streaming request
+      // because n8n returns complete responses, not chunked streams
+      // Add longer timeout since AI processing can take time
+      final response = await http
+          .post(
+            Uri.parse(_baseUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'chatInput': content, // n8n AI Agent expects 'chatInput'
+              'message': content, // Also send as 'message' for compatibility
+              'sessionId': sessionId,
+            }),
+          )
+          .timeout(const Duration(
+              seconds: 120)); // 2 minute timeout for AI processing
 
-      final response = await request.send();
       print('[AI Chat Service] Response status: ${response.statusCode}');
+      print('[AI Chat Service] Response body length: ${response.body.length}');
+      print('[AI Chat Service] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        _logger.i('Receiving streamed response from AI agent');
+        _logger.i('Received response from AI agent');
 
         bool insideThinkBlock = false;
+        bool hasYieldedAnyContent = false;
+        final responseBody = response.body;
 
-        await for (var chunk in response.stream.transform(utf8.decoder)) {
-          print('[AI Chat Service] Raw chunk received: $chunk');
+        // Process the complete response body
+        if (responseBody.isNotEmpty) {
+          print(
+              '[AI Chat Service] Processing response body (${responseBody.length} bytes)');
 
-          // Parse each line of the streamed response
-          final lines = chunk.split('\n');
-          print('[AI Chat Service] Split into ${lines.length} lines');
+          // FIRST: Try to parse the entire response as a single JSON object
+          // This is the most common case for n8n webhook responses
+          try {
+            final data = jsonDecode(responseBody);
+            print('[AI Chat Service] Parsed as single JSON object: $data');
 
-          for (var line in lines) {
-            if (line.trim().isEmpty) continue;
+            // Check for n8n streaming error format: {"type":"error","metadata":{...}}
+            if (data['type'] == 'error') {
+              final metadata = data['metadata'] as Map<String, dynamic>?;
+              final nodeName = metadata?['nodeName'] as String? ?? 'AI Agent';
+              print(
+                  '[AI Chat Service] ⚠️ n8n error event from node: $nodeName');
 
-            print(
-                '[AI Chat Service] Processing line: ${line.substring(0, line.length > 100 ? 100 : line.length)}...');
+              yield '⚠️ Error in $nodeName. The AI workflow encountered an issue.\n\n💡 Try:\n• Check n8n logs: docker logs n8n\n• Restart Ollama: docker restart ollama\n• Verify Ollama model is loaded';
+              hasYieldedAnyContent = true;
+            }
+            // Check for n8n error response format with errorMessage
+            else if (data['errorMessage'] != null) {
+              final errorMsg = data['errorMessage'] as String;
+              print('[AI Chat Service] ⚠️ n8n error response: $errorMsg');
 
-            try {
-              final data = jsonDecode(line);
-              print('[AI Chat Service] Decoded JSON: $data');
-              print('[AI Chat Service] Type: ${data['type']}');
-
-              // Handle different n8n streaming event types
-              final type = data['type'] as String?;
-
-              if (type == 'begin') {
-                print('[AI Chat Service] ✅ Stream begin event');
-                continue;
-              } else if (type == 'end') {
-                print('[AI Chat Service] ✅ Stream end event');
-                continue;
-              } else if (type == 'error') {
-                // Error from n8n workflow
-                print('[AI Chat Service] ⚠️ ERROR EVENT RECEIVED');
-                print('[AI Chat Service] Full error data: $data');
-                print('[AI Chat Service] Error field: ${data['error']}');
-                print('[AI Chat Service] Message field: ${data['message']}');
-                print('[AI Chat Service] Metadata: ${data['metadata']}');
-
-                // Try multiple ways to extract error info
-                String errorMsg = 'AI workflow error';
-
-                if (data['error'] != null) {
-                  if (data['error'] is String) {
-                    errorMsg = data['error'] as String;
-                  } else if (data['error'] is Map) {
-                    errorMsg =
-                        data['error']['message'] ?? data['error'].toString();
-                  }
-                } else if (data['message'] != null) {
-                  errorMsg = data['message'] as String;
-                } else if (data['description'] != null) {
-                  errorMsg = data['description'] as String;
+              String details = '';
+              if (data['n8nDetails'] != null) {
+                final n8nDetails = data['n8nDetails'] as Map<String, dynamic>;
+                final nodeName = n8nDetails['nodeName'] as String? ?? '';
+                if (nodeName.isNotEmpty) {
+                  details = ' (in $nodeName)';
                 }
-
-                // Provide helpful hints for common errors
-                String helpHint = '';
-                if (errorMsg.contains('empty response') ||
-                    errorMsg.contains('chat model')) {
-                  helpHint =
-                      '\n\n💡 Tip: The LLM model may not be loaded. Run:\ndocker exec ollama ollama pull qwen2.5:7b-instruct';
-                } else if (errorMsg.contains('connect') ||
-                    errorMsg.contains('ECONNREFUSED')) {
-                  helpHint =
-                      '\n\n💡 Tip: Check if Ollama container is running:\ndocker compose up -d ollama';
-                }
-
-                print('[AI Chat Service] Yielding error message: $errorMsg');
-                yield '⚠️ $errorMsg$helpHint';
-                continue;
               }
 
-              // Extract content from data/message/chunk events
-              if (type == 'item' ||
-                  type == 'message' ||
-                  type == 'chunk' ||
-                  type == 'data' ||
-                  type == 'token') {
+              String helpHint = '';
+              if (errorMsg.contains('timed out') ||
+                  errorMsg.contains('timeout')) {
+                helpHint =
+                    '\n\n💡 The AI model is taking too long. Try:\n• Restarting Ollama: docker restart ollama\n• Using a smaller model\n• Checking if Ollama has enough memory';
+              } else if (errorMsg.contains('connect') ||
+                  errorMsg.contains('ECONNREFUSED')) {
+                helpHint =
+                    '\n\n💡 Cannot connect to Ollama. Try:\n• docker compose up -d ollama\n• Check if Ollama is running';
+              } else if (errorMsg.contains('model') ||
+                  errorMsg.contains('not found')) {
+                helpHint =
+                    '\n\n💡 Model not found. Try:\n• docker exec ollama ollama pull qwen2.5:7b-instruct';
+              }
+
+              yield '⚠️ $errorMsg$details$helpHint';
+              hasYieldedAnyContent = true;
+            }
+            // Check for direct n8n output format: {"output": "response text"}
+            else if (data['output'] != null && data['output'] is String) {
+              final output = (data['output'] as String).trim();
+              print('[AI Chat Service] ✅ Found direct output field: $output');
+              if (output.isNotEmpty) {
+                yield output;
+                hasYieldedAnyContent = true;
+              }
+            }
+            // Check for other common response fields
+            else {
+              String content = data['content'] as String? ??
+                  data['text'] as String? ??
+                  data['response'] as String? ??
+                  data['answer'] as String? ??
+                  data['result'] as String? ??
+                  data['message'] as String? ??
+                  '';
+
+              if (content.isNotEmpty) {
+                print('[AI Chat Service] ✅ Found content in field: $content');
+                yield content;
+                hasYieldedAnyContent = true;
+              } else {
+                print(
+                    '[AI Chat Service] ⚠️ No recognizable content in JSON: $data');
+              }
+            }
+          } catch (jsonError) {
+            // Not a single JSON object, try line-by-line parsing (streaming format)
+            print(
+                '[AI Chat Service] Not single JSON, trying line-by-line: $jsonError');
+
+            final lines = responseBody.split('\n');
+            print('[AI Chat Service] Split into ${lines.length} lines');
+
+            for (var line in lines) {
+              if (line.trim().isEmpty) continue;
+
+              print(
+                  '[AI Chat Service] Processing line: ${line.substring(0, line.length > 100 ? 100 : line.length)}...');
+
+              try {
+                final data = jsonDecode(line);
+                print('[AI Chat Service] Decoded JSON: $data');
+
+                // Check for output field
+                if (data['output'] != null && data['output'] is String) {
+                  final output = data['output'] as String;
+                  if (output.trim().isNotEmpty) {
+                    yield output.trim();
+                    hasYieldedAnyContent = true;
+                    continue;
+                  }
+                }
+
+                // Handle streaming event types
+                final type = data['type'] as String?;
+                if (type == 'begin' || type == 'end') continue;
+
+                if (type == 'error') {
+                  String errorMsg = data['error'] as String? ??
+                      data['message'] as String? ??
+                      'AI workflow error';
+                  yield '⚠️ $errorMsg';
+                  hasYieldedAnyContent = true;
+                  continue;
+                }
+
+                // Extract content
                 String content = data['content'] as String? ??
                     data['data'] as String? ??
                     data['text'] as String? ??
-                    data['output'] as String? ??
-                    data['message'] as String? ??
                     '';
-                print('[AI Chat Service] Extracted content: $content');
 
-                // Handle <think> blocks if filtering is enabled
-                if (filterThinkBlocks) {
-                  if (content.contains('<think>')) {
-                    insideThinkBlock = true;
-                    continue;
-                  }
-                  if (content.contains('</think>')) {
-                    insideThinkBlock = false;
-                    continue;
-                  }
-
-                  // Skip content inside think blocks
-                  if (insideThinkBlock) {
-                    continue;
-                  }
-
-                  // Skip markdown code blocks
-                  if (content.trim().startsWith('```')) {
-                    continue;
-                  }
-                }
-
-                // Yield the content chunk
                 if (content.isNotEmpty) {
-                  print('[AI Chat Service] ✅ Yielding content: $content');
                   yield content;
-                } else {
-                  print('[AI Chat Service] Content is empty, not yielding');
+                  hasYieldedAnyContent = true;
                 }
-              } else {
-                print(
-                    '[AI Chat Service] ⚠️ Unknown event type: $type, full data: $data');
+              } catch (e) {
+                // Plain text line
+                if (!line.trim().startsWith('<') && line.trim().isNotEmpty) {
+                  yield line.trim();
+                  hasYieldedAnyContent = true;
+                }
               }
-            } catch (e) {
-              print('[AI Chat Service] Error parsing line: $e');
-              print('[AI Chat Service] Problematic line: $line');
-              _logger.w('Error parsing chunk: $e');
-              continue;
             }
           }
+
+          // FALLBACK: If still no content, yield raw response
+          if (!hasYieldedAnyContent) {
+            print(
+                '[AI Chat Service] ⚠️ No content extracted, yielding raw response');
+            if (!responseBody.trim().startsWith('<')) {
+              yield responseBody.trim();
+              hasYieldedAnyContent = true;
+            }
+          }
+        } else {
+          // Empty response body - n8n webhook might be misconfigured
+          print('[AI Chat Service] ⚠️ Empty response body received');
+          yield '⚠️ The AI service returned an empty response.\n\n💡 This usually means:\n• The n8n workflow "Respond to Webhook" node is not properly connected\n• The AI is still processing (timeout)\n\nPlease check the n8n workflow configuration.';
+          hasYieldedAnyContent = true;
         }
+
+        print(
+            '[AI Chat Service] Processing completed. hasYieldedAnyContent: $hasYieldedAnyContent');
       } else if (response.statusCode == 404) {
         _logger.e('Webhook not found (404) - n8n workflow may not be active');
         throw Exception(
@@ -261,8 +309,7 @@ class AIChatService {
         );
       } else {
         _logger.e('AI agent error: ${response.statusCode}');
-        final body = await response.stream.bytesToString();
-        _logger.e('Response body: $body');
+        _logger.e('Response body: ${response.body}');
         throw Exception('Failed to get response: ${response.statusCode}');
       }
     } catch (e) {
@@ -297,19 +344,37 @@ class AIChatService {
   /// Check if the AI agent server is available
   Future<bool> checkServerHealth() async {
     try {
-      // Simple check - try to connect to the endpoint
-      final response = await http
-          .post(
-            Uri.parse(_baseUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'message': 'ping',
-              'sessionId': 'health_check',
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
+      // Use n8n's built-in health endpoint instead of sending to webhook
+      // This is more reliable as it doesn't depend on workflow processing
+      final n8nBaseUrl =
+          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}';
+      final healthUrl = '$n8nBaseUrl/healthz';
 
-      return response.statusCode == 200;
+      _logger.d('Checking n8n health at: $healthUrl');
+
+      final response = await http
+          .get(Uri.parse(healthUrl))
+          .timeout(const Duration(seconds: 10));
+
+      _logger.d('n8n health response: ${response.statusCode}');
+
+      // n8n's /healthz returns 200 when server is running
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      // Fallback: try HEAD request to webhook endpoint
+      // Some n8n setups may not have /healthz enabled
+      try {
+        final webhookResponse = await http
+            .head(Uri.parse(_baseUrl))
+            .timeout(const Duration(seconds: 5));
+        // n8n returns 404 for HEAD on webhook, but that means server is up
+        // 200, 404, 405 all indicate server is running
+        return webhookResponse.statusCode < 500;
+      } catch (e) {
+        return false;
+      }
     } catch (e) {
       _logger.w('AI agent server health check failed: $e');
       return false;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'dart:async';
 import '../models/chat_message_model.dart';
 import '../models/chat_session_model.dart';
 import '../services/ai_chat_service.dart';
@@ -51,6 +52,13 @@ class AIChatProvider with ChangeNotifier {
 
   // LLM provider settings
   bool _isExternalLlmAvailable = false;
+
+  // Stream cancellation support
+  StreamSubscription<String>? _activeStreamSubscription;
+  bool _isCancelled = false;
+
+  // Callback for when AI response is received (for notifications)
+  void Function(String message)? onAIResponseReceived;
 
   AIChatProvider({required AIChatService chatService})
       : _chatService = chatService {
@@ -185,6 +193,21 @@ class AIChatProvider with ChangeNotifier {
     _checkServerHealth();
   }
 
+  /// Cancel ongoing AI response stream
+  void cancelCurrentResponse() {
+    if (_activeStreamSubscription != null) {
+      _isCancelled = true;
+      _activeStreamSubscription?.cancel();
+      _activeStreamSubscription = null;
+      _isLoading = false;
+      _logger.i('AI response stream cancelled by user');
+      notifyListeners();
+    }
+  }
+
+  /// Check if a response is currently being received
+  bool get isReceivingResponse => _activeStreamSubscription != null;
+
   /// Send a message to the AI agent with streaming support
   Future<void> sendMessage(String content, String userId,
       {MessageType type = MessageType.text,
@@ -197,7 +220,16 @@ class AIChatProvider with ChangeNotifier {
       return;
     }
 
+    // Don't allow new messages while still receiving a response
+    if (_isLoading) {
+      print('[AI Chat] Still loading previous response, ignoring');
+      return;
+    }
+
     print('[AI Chat] Creating user message...');
+
+    // Reset cancellation flag
+    _isCancelled = false;
 
     // Play send sound
     _playSendSound();
@@ -238,7 +270,6 @@ class AIChatProvider with ChangeNotifier {
       print('[AI Chat] Session ID: $sessionId');
 
       // Create AI message placeholder
-      // Create AI message placeholder
       final aiMessageId = _uuid.v4();
       final aiMessage = ChatMessage(
         id: aiMessageId,
@@ -254,40 +285,91 @@ class AIChatProvider with ChangeNotifier {
       final buffer = StringBuffer();
       print('[AI Chat] Starting to receive stream...');
 
-      await for (var chunk in _chatService.sendMessageStream(
+      // Use stream subscription for cancellation support
+      final completer = Completer<void>();
+
+      _activeStreamSubscription = _chatService
+          .sendMessageStream(
         content,
         userId,
         sessionId,
         filterThinkBlocks: !_showThinkMode, // Filter if NOT showing think mode
-      )) {
-        buffer.write(chunk);
-        print(
-            '[AI Chat] Received chunk (${chunk.length} chars): ${chunk.substring(0, chunk.length > 50 ? 50 : chunk.length)}...');
+      )
+          .listen(
+        (chunk) {
+          if (_isCancelled) return;
 
-        // Update AI message with accumulated content
-        final aiIndex = _messages.indexWhere((m) => m.id == aiMessageId);
-        if (aiIndex != -1) {
-          _messages[aiIndex] = aiMessage.copyWith(
-            content: buffer.toString(),
-            status: MessageStatus.delivered,
-          );
+          buffer.write(chunk);
+          print(
+              '[AI Chat] Received chunk (${chunk.length} chars): ${chunk.substring(0, chunk.length > 50 ? 50 : chunk.length)}...');
+
+          // Update AI message with accumulated content
+          final aiIndex = _messages.indexWhere((m) => m.id == aiMessageId);
+          if (aiIndex != -1) {
+            _messages[aiIndex] = aiMessage.copyWith(
+              content: buffer.toString(),
+              status: MessageStatus.delivered,
+            );
+            notifyListeners();
+          }
+        },
+        onDone: () {
+          _activeStreamSubscription = null;
+
+          if (!_isCancelled) {
+            // Play receive sound when complete
+            final responseText = buffer.toString().trim();
+            if (responseText.isNotEmpty) {
+              _playReceiveSound();
+              // Increment unread count when AI responds
+              _incrementUnreadCount();
+
+              // Trigger callback for notification
+              if (onAIResponseReceived != null) {
+                onAIResponseReceived!(responseText);
+              }
+            }
+          }
+
+          // Save session after message exchange
+          _saveCurrentSession();
+
+          _isLoading = false;
           notifyListeners();
-        }
-      }
 
-      // Play receive sound when complete
-      if (buffer.toString().trim().isNotEmpty) {
-        _playReceiveSound();
-        // Increment unread count when AI responds
-        _incrementUnreadCount();
-      }
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        },
+        onError: (error) {
+          _activeStreamSubscription = null;
+          _logger.e('Error in stream: $error');
+          _error = error.toString();
 
-      // Save session after message exchange
-      await _saveCurrentSession();
+          // Mark user message as error
+          if (index != -1) {
+            _messages[index] = userMessage.copyWith(
+              status: MessageStatus.error,
+              error: 'Failed to send message',
+            );
+          }
 
-      _isLoading = false;
-      notifyListeners();
+          // Still save the session to persist the user message
+          _saveCurrentSession();
+
+          _isLoading = false;
+          notifyListeners();
+
+          if (!completer.isCompleted) {
+            completer.completeError(error);
+          }
+        },
+        cancelOnError: true,
+      );
+
+      await completer.future;
     } catch (e) {
+      _activeStreamSubscription = null;
       _logger.e('Error sending message: $e');
       _error = e.toString();
 
@@ -671,6 +753,9 @@ class AIChatProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    // Cancel any active stream subscription
+    _activeStreamSubscription?.cancel();
+    _activeStreamSubscription = null;
     _audioPlayer.dispose();
     _voiceService.dispose();
     super.dispose();

@@ -43,21 +43,38 @@ class MqttConfig {
   static const String motionAlarmTopic = 'home/+/motion';
   static const String doorAlarmTopic = 'home/+/door';
 
-  // Door, Window, Garage, Buzzer Topics
-  static const String doorStatusTopic = '$topicPrefix/door/status';
-  static const String doorCommandTopic = '$topicPrefix/door/command';
+  // Door Topics (main_door, garage_door)
+  static const String mainDoorStatusTopic = '$topicPrefix/main_door/status';
+  static const String mainDoorCommandTopic = '$topicPrefix/main_door/command';
+  static const String garageDoorStatusTopic = '$topicPrefix/garage_door/status';
+  static const String garageDoorCommandTopic =
+      '$topicPrefix/garage_door/command';
+
+  // Window Topics (front_window, side_window)
   static const String windowStatusTopic = '$topicPrefix/+/window/status';
   static const String windowCommandTopic = '$topicPrefix/+/window/command';
-  static const String garageStatusTopic = '$topicPrefix/garage/status';
-  static const String garageCommandTopic = '$topicPrefix/garage/command';
+  static String windowStatus(String windowId) =>
+      '$topicPrefix/$windowId/status';
+  static String windowCommand(String windowId) =>
+      '$topicPrefix/$windowId/command';
+
+  // Buzzer Topic
   static const String buzzerStatusTopic = '$topicPrefix/buzzer/status';
   static const String buzzerCommandTopic = '$topicPrefix/buzzer/command';
+
+  // Legacy aliases for compatibility
+  static const String doorStatusTopic = mainDoorStatusTopic;
+  static const String doorCommandTopic = mainDoorCommandTopic;
+  static const String garageStatusTopic = garageDoorStatusTopic;
+  static const String garageCommandTopic = garageDoorCommandTopic;
 
   // Fan Topics (room-based with speed control: 0=off, 1=low, 2=medium, 3=high)
   static const String fanStatusTopic = '$topicPrefix/+/fan/status';
   static const String fanCommandTopic = '$topicPrefix/+/fan/command';
-  static String roomFanStatusTopic(String room) => '$topicPrefix/$room/fan/status';
-  static String roomFanCommandTopic(String room) => '$topicPrefix/$room/fan/command';
+  static String roomFanStatusTopic(String room) =>
+      '$topicPrefix/$room/fan/status';
+  static String roomFanCommandTopic(String room) =>
+      '$topicPrefix/$room/fan/command';
 
   // Light topics (room-based)
   static const String allLightsStatusTopic = '$topicPrefix/+/light/status';

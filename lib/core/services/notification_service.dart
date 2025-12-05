@@ -323,7 +323,7 @@ class NotificationService with ChangeNotifier {
   // Face detection notifications (Version 2)
   void notifyUnrecognizedPerson({String? location}) {
     addNotification(
-      title: '⚠️ Unrecognized Person Detected',
+      title: 'Unrecognized Person Detected',
       message:
           'An unrecognized person was detected at ${location ?? 'entrance'}. Tap to view camera feed.',
       type: NotificationType.security,
@@ -338,7 +338,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyPersonRecognized(String name, {String? location}) {
     addNotification(
-      title: '✅ Person Recognized',
+      title: 'Person Recognized',
       message: '$name detected at ${location ?? 'entrance'}',
       type: NotificationType.info,
       priority: NotificationPriority.low,
@@ -353,7 +353,7 @@ class NotificationService with ChangeNotifier {
   // Door notifications
   void notifyDoorOpened({String? location}) {
     addNotification(
-      title: '🚪 Door Opened',
+      title: 'Door Opened',
       message: '${location ?? 'Main'} door has been opened',
       type: NotificationType.security,
       priority: NotificationPriority.high,
@@ -366,7 +366,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyDoorClosed({String? location}) {
     addNotification(
-      title: '🚪 Door Closed',
+      title: 'Door Closed',
       message: '${location ?? 'Main'} door has been closed',
       type: NotificationType.security,
       priority: NotificationPriority.low,
@@ -380,7 +380,7 @@ class NotificationService with ChangeNotifier {
   // Garage notifications
   void notifyGarageOpened() {
     addNotification(
-      title: '🚗 Garage Door Opened',
+      title: 'Garage Door Opened',
       message:
           'Your garage door has been opened. Make sure to close it when done.',
       type: NotificationType.security,
@@ -393,7 +393,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyGarageClosed() {
     addNotification(
-      title: '🚗 Garage Door Closed',
+      title: 'Garage Door Closed',
       message: 'Your garage door has been securely closed.',
       type: NotificationType.security,
       priority: NotificationPriority.low,
@@ -405,7 +405,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyGarageLeftOpen({int minutes = 30}) {
     addNotification(
-      title: '⚠️ Garage Left Open',
+      title: 'Garage Left Open',
       message:
           'Your garage door has been open for $minutes minutes. Close it for security.',
       type: NotificationType.security,
@@ -421,7 +421,7 @@ class NotificationService with ChangeNotifier {
   // Window notifications
   void notifyWindowOpened({required String location}) {
     addNotification(
-      title: '🪟 Window Opened',
+      title: 'Window Opened',
       message: 'Window in $location has been opened',
       type: NotificationType.security,
       priority: NotificationPriority.medium,
@@ -434,7 +434,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyWindowClosed({required String location}) {
     addNotification(
-      title: '🪟 Window Closed',
+      title: 'Window Closed',
       message: 'Window in $location has been closed',
       type: NotificationType.info,
       priority: NotificationPriority.low,
@@ -447,7 +447,7 @@ class NotificationService with ChangeNotifier {
 
   void notifyWindowsLeftOpen({int count = 1}) {
     addNotification(
-      title: '⚠️ Windows Left Open',
+      title: 'Windows Left Open',
       message:
           '$count window${count > 1 ? 's' : ''} ${count > 1 ? 'are' : 'is'} still open. Consider closing for security.',
       type: NotificationType.security,
@@ -462,7 +462,7 @@ class NotificationService with ChangeNotifier {
   // Buzzer notifications
   void notifyBuzzerActivated({String? reason}) {
     addNotification(
-      title: '🔔 Buzzer Activated',
+      title: 'Buzzer Activated',
       message: reason ?? 'The buzzer has been activated',
       type: NotificationType.security,
       priority: NotificationPriority.urgent,
@@ -476,7 +476,7 @@ class NotificationService with ChangeNotifier {
   // Light notifications
   void notifyLightStateChanged({required String location, required bool isOn}) {
     addNotification(
-      title: isOn ? '💡 Light On' : '💡 Light Off',
+      title: isOn ? 'Light On' : 'Light Off',
       message: '$location light turned ${isOn ? 'on' : 'off'}',
       type: NotificationType.deviceStatus,
       priority: NotificationPriority.low,
@@ -501,7 +501,7 @@ class NotificationService with ChangeNotifier {
     if (openItems.isEmpty) return;
 
     addNotification(
-      title: '🌙 Night Security Check',
+      title: 'Night Security Check',
       message:
           'You have ${openItems.join(', ')} still open. Secure your home before sleeping.',
       type: NotificationType.security,

@@ -24,28 +24,41 @@ class DeviceProvider with ChangeNotifier {
   bool _useCloudMode = false;
   String? _userId;
 
-  // Device states for doors, windows, garage, buzzer, lights, fans
-  bool _isDoorOpen = false;
-  bool _isGarageOpen = false;
+  // Device states for doors, windows, buzzer, lights, fans
+  // Doors: main_door, garage_door
+  bool _isMainDoorOpen = false;
+  bool _isGarageDoorOpen = false;
   bool _isBuzzerActive = false;
+
+  // Windows: front_window, side_window
   Map<String, bool> _windowStates = {
-    'living_room': false,
-    'bedroom': false,
-    'kitchen': false,
-    'bathroom': false,
+    'front_window': false,
+    'side_window': false,
   };
+
+  // Lights: landscape, floor_1, floor_2, rgb (with extra properties)
   Map<String, bool> _lightStates = {
-    'living_room': false,
-    'bedroom': false,
-    'kitchen': false,
-    'bathroom': false,
-    'garage': false,
+    'landscape': false,
+    'floor_1': false,
+    'floor_2': false,
+    'rgb': false,
   };
+
+  // Light brightness (0-100)
+  Map<String, int> _lightBrightness = {
+    'landscape': 100,
+    'floor_1': 100,
+    'floor_2': 100,
+    'rgb': 100,
+  };
+
+  // RGB light color (hex)
+  int _rgbLightColor = 0xFFFFFF;
+
   // Fan states: 0=off, 1=low, 2=medium, 3=high
   Map<String, int> _fanStates = {
     'living_room': 0,
     'bedroom': 0,
-    'kitchen': 0,
   };
 
   // Callback for visualization sync
@@ -76,12 +89,18 @@ class DeviceProvider with ChangeNotifier {
   bool get useCloudMode => _useCloudMode;
 
   // New device state getters
-  bool get isDoorOpen => _isDoorOpen;
-  bool get isGarageOpen => _isGarageOpen;
+  bool get isMainDoorOpen => _isMainDoorOpen;
+  bool get isGarageDoorOpen => _isGarageDoorOpen;
   bool get isBuzzerActive => _isBuzzerActive;
   Map<String, bool> get windowStates => Map.unmodifiable(_windowStates);
   Map<String, bool> get lightStates => Map.unmodifiable(_lightStates);
+  Map<String, int> get lightBrightness => Map.unmodifiable(_lightBrightness);
+  int get rgbLightColor => _rgbLightColor;
   Map<String, int> get fanStates => Map.unmodifiable(_fanStates);
+
+  // Legacy getters for compatibility
+  bool get isDoorOpen => _isMainDoorOpen;
+  bool get isGarageOpen => _isGarageDoorOpen;
 
   // Filtered device getters
   List<Device> get doors =>
@@ -150,10 +169,10 @@ class DeviceProvider with ChangeNotifier {
     for (var device in _devices) {
       switch (device.type) {
         case DeviceType.door:
-          _isDoorOpen = device.isOpen;
+          _isMainDoorOpen = device.isOpen;
           break;
         case DeviceType.garage:
-          _isGarageOpen = device.isOpen;
+          _isGarageDoorOpen = device.isOpen;
           break;
         case DeviceType.window:
           _windowStates[device.id] = device.isOpen;
@@ -257,8 +276,8 @@ class DeviceProvider with ChangeNotifier {
   /// Handle door status from backend
   void _handleDoorStatus(Map<String, dynamic> payload) {
     final isOpen = payload['state'] == 'open';
-    final previousState = _isDoorOpen;
-    _isDoorOpen = isOpen;
+    final previousState = _isMainDoorOpen;
+    _isMainDoorOpen = isOpen;
 
     // Log event if state changed
     if (previousState != isOpen &&
@@ -322,8 +341,8 @@ class DeviceProvider with ChangeNotifier {
   /// Handle garage status from backend
   void _handleGarageStatus(Map<String, dynamic> payload) {
     final isOpen = payload['state'] == 'open';
-    final previousState = _isGarageOpen;
-    _isGarageOpen = isOpen;
+    final previousState = _isGarageDoorOpen;
+    _isGarageDoorOpen = isOpen;
 
     // Log event if state changed
     if (previousState != isOpen &&
@@ -551,7 +570,7 @@ class DeviceProvider with ChangeNotifier {
 
   /// Toggle door open/closed
   Future<void> toggleDoor() async {
-    final newState = !_isDoorOpen;
+    final newState = !_isMainDoorOpen;
     final command = {
       'action': 'toggle',
       'state': newState ? 'open' : 'closed',
@@ -564,8 +583,8 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Optimistic update
-    _isDoorOpen = newState;
-    _visualizationCallback?.call('door', {'isOpen': _isDoorOpen});
+    _isMainDoorOpen = newState;
+    _visualizationCallback?.call('door', {'isOpen': _isMainDoorOpen});
 
     // Notify user
     if (newState) {
@@ -598,14 +617,14 @@ class DeviceProvider with ChangeNotifier {
       _mqttService.publishJson(MqttConfig.doorCommandTopic, command);
     }
 
-    _isDoorOpen = isOpen;
+    _isMainDoorOpen = isOpen;
     _visualizationCallback?.call('door', {'isOpen': isOpen});
     notifyListeners();
   }
 
   /// Toggle garage open/closed
   Future<void> toggleGarage() async {
-    final newState = !_isGarageOpen;
+    final newState = !_isGarageDoorOpen;
     final command = {
       'action': 'toggle',
       'state': newState ? 'open' : 'closed',
@@ -618,8 +637,8 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Optimistic update
-    _isGarageOpen = newState;
-    _visualizationCallback?.call('garage', {'isOpen': _isGarageOpen});
+    _isGarageDoorOpen = newState;
+    _visualizationCallback?.call('garage', {'isOpen': _isGarageDoorOpen});
 
     // Notify user
     if (newState) {
@@ -650,7 +669,7 @@ class DeviceProvider with ChangeNotifier {
       _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
     }
 
-    _isGarageOpen = isOpen;
+    _isGarageDoorOpen = isOpen;
     _visualizationCallback?.call('garage', {'isOpen': isOpen});
     notifyListeners();
   }
@@ -842,15 +861,52 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set light brightness
   Future<void> setLightBrightness(String lightId, int brightness) async {
+    final clampedBrightness = brightness.clamp(0, 100);
+    _lightBrightness[lightId] = clampedBrightness;
+
     final command = {
       'action': 'setBrightness',
-      'brightness': brightness.clamp(0, 100),
+      'brightness': clampedBrightness,
+      'lightId': lightId,
     };
 
     if (_isConnectedToMqtt && !_useCloudMode) {
       final topic = MqttConfig.roomLightCommandTopic(lightId);
       _mqttService.publishJson(topic, command);
     }
+
+    notifyListeners();
+  }
+
+  /// Set RGB light color
+  Future<void> setRgbLightColor(int color) async {
+    _rgbLightColor = color & 0xFFFFFF; // Ensure it's 24-bit RGB
+
+    // Extract RGB components
+    final r = (color >> 16) & 0xFF;
+    final g = (color >> 8) & 0xFF;
+    final b = color & 0xFF;
+
+    final command = {
+      'action': 'setColor',
+      'color': _rgbLightColor,
+      'r': r,
+      'g': g,
+      'b': b,
+      'hex':
+          '#${_rgbLightColor.toRadixString(16).padLeft(6, '0').toUpperCase()}',
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.roomLightCommandTopic('rgb');
+      _mqttService.publishJson(topic, command);
+    }
+
+    _visualizationCallback?.call('light', {
+      'lightId': 'rgb',
+      'isOn': _lightStates['rgb'] ?? false,
+      'color': _rgbLightColor,
+    });
 
     notifyListeners();
   }
@@ -867,7 +923,7 @@ class DeviceProvider with ChangeNotifier {
     final clampedSpeed = speed.clamp(0, 3);
     final fanName = _formatWindowName(fanId);
     final speedLabels = ['off', 'low', 'medium', 'high'];
-    
+
     final command = {
       'action': 'setSpeed',
       'speed': clampedSpeed,
@@ -884,7 +940,8 @@ class DeviceProvider with ChangeNotifier {
 
     // Optimistic update
     _fanStates[fanId] = clampedSpeed;
-    _visualizationCallback?.call('fan', {'fanId': fanId, 'speed': clampedSpeed});
+    _visualizationCallback
+        ?.call('fan', {'fanId': fanId, 'speed': clampedSpeed});
 
     // Log event
     if (_userId != null && _eventLogService != null) {
@@ -913,7 +970,8 @@ class DeviceProvider with ChangeNotifier {
     };
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/fans/command', command);
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/fans/command', command);
     }
 
     _visualizationCallback?.call('fans', {'allSpeed': newSpeed});
@@ -923,8 +981,8 @@ class DeviceProvider with ChangeNotifier {
   /// Get current state summary for visualization sync
   Map<String, dynamic> getDeviceStatesSummary() {
     return {
-      'door': {'isOpen': _isDoorOpen},
-      'garage': {'isOpen': _isGarageOpen},
+      'door': {'isOpen': _isMainDoorOpen},
+      'garage': {'isOpen': _isGarageDoorOpen},
       'buzzer': {'isActive': _isBuzzerActive},
       'windows': _windowStates,
       'lights': _lightStates,
@@ -934,8 +992,8 @@ class DeviceProvider with ChangeNotifier {
 
   /// Force sync all states to visualization
   void syncAllToVisualization() {
-    _visualizationCallback?.call('door', {'isOpen': _isDoorOpen});
-    _visualizationCallback?.call('garage', {'isOpen': _isGarageOpen});
+    _visualizationCallback?.call('door', {'isOpen': _isMainDoorOpen});
+    _visualizationCallback?.call('garage', {'isOpen': _isGarageDoorOpen});
     _visualizationCallback?.call('buzzer', {'isActive': _isBuzzerActive});
 
     for (var entry in _windowStates.entries) {
