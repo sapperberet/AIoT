@@ -350,6 +350,172 @@ class NotificationService with ChangeNotifier {
     );
   }
 
+  // Door notifications
+  void notifyDoorOpened({String? location}) {
+    addNotification(
+      title: '🚪 Door Opened',
+      message: '${location ?? 'Main'} door has been opened',
+      type: NotificationType.security,
+      priority: NotificationPriority.high,
+      data: {
+        'type': 'door_opened',
+        'location': location ?? 'main',
+      },
+    );
+  }
+
+  void notifyDoorClosed({String? location}) {
+    addNotification(
+      title: '🚪 Door Closed',
+      message: '${location ?? 'Main'} door has been closed',
+      type: NotificationType.security,
+      priority: NotificationPriority.low,
+      data: {
+        'type': 'door_closed',
+        'location': location ?? 'main',
+      },
+    );
+  }
+
+  // Garage notifications
+  void notifyGarageOpened() {
+    addNotification(
+      title: '🚗 Garage Door Opened',
+      message:
+          'Your garage door has been opened. Make sure to close it when done.',
+      type: NotificationType.security,
+      priority: NotificationPriority.high,
+      data: {
+        'type': 'garage_opened',
+      },
+    );
+  }
+
+  void notifyGarageClosed() {
+    addNotification(
+      title: '🚗 Garage Door Closed',
+      message: 'Your garage door has been securely closed.',
+      type: NotificationType.security,
+      priority: NotificationPriority.low,
+      data: {
+        'type': 'garage_closed',
+      },
+    );
+  }
+
+  void notifyGarageLeftOpen({int minutes = 30}) {
+    addNotification(
+      title: '⚠️ Garage Left Open',
+      message:
+          'Your garage door has been open for $minutes minutes. Close it for security.',
+      type: NotificationType.security,
+      priority: NotificationPriority.urgent,
+      data: {
+        'type': 'garage_warning',
+        'minutes_open': minutes,
+        'action': 'close_garage',
+      },
+    );
+  }
+
+  // Window notifications
+  void notifyWindowOpened({required String location}) {
+    addNotification(
+      title: '🪟 Window Opened',
+      message: 'Window in $location has been opened',
+      type: NotificationType.security,
+      priority: NotificationPriority.medium,
+      data: {
+        'type': 'window_opened',
+        'location': location,
+      },
+    );
+  }
+
+  void notifyWindowClosed({required String location}) {
+    addNotification(
+      title: '🪟 Window Closed',
+      message: 'Window in $location has been closed',
+      type: NotificationType.info,
+      priority: NotificationPriority.low,
+      data: {
+        'type': 'window_closed',
+        'location': location,
+      },
+    );
+  }
+
+  void notifyWindowsLeftOpen({int count = 1}) {
+    addNotification(
+      title: '⚠️ Windows Left Open',
+      message:
+          '$count window${count > 1 ? 's' : ''} ${count > 1 ? 'are' : 'is'} still open. Consider closing for security.',
+      type: NotificationType.security,
+      priority: NotificationPriority.high,
+      data: {
+        'type': 'windows_warning',
+        'count': count,
+      },
+    );
+  }
+
+  // Buzzer notifications
+  void notifyBuzzerActivated({String? reason}) {
+    addNotification(
+      title: '🔔 Buzzer Activated',
+      message: reason ?? 'The buzzer has been activated',
+      type: NotificationType.security,
+      priority: NotificationPriority.urgent,
+      data: {
+        'type': 'buzzer_activated',
+        if (reason != null) 'reason': reason,
+      },
+    );
+  }
+
+  // Light notifications
+  void notifyLightStateChanged({required String location, required bool isOn}) {
+    addNotification(
+      title: isOn ? '💡 Light On' : '💡 Light Off',
+      message: '$location light turned ${isOn ? 'on' : 'off'}',
+      type: NotificationType.deviceStatus,
+      priority: NotificationPriority.low,
+      data: {
+        'type': 'light_state',
+        'location': location,
+        'state': isOn ? 'on' : 'off',
+      },
+    );
+  }
+
+  // Night mode warnings
+  void notifyOpenEntriesAtNight(
+      {int doorCount = 0, int windowCount = 0, bool garageOpen = false}) {
+    final List<String> openItems = [];
+    if (doorCount > 0)
+      openItems.add('$doorCount door${doorCount > 1 ? 's' : ''}');
+    if (windowCount > 0)
+      openItems.add('$windowCount window${windowCount > 1 ? 's' : ''}');
+    if (garageOpen) openItems.add('garage');
+
+    if (openItems.isEmpty) return;
+
+    addNotification(
+      title: '🌙 Night Security Check',
+      message:
+          'You have ${openItems.join(', ')} still open. Secure your home before sleeping.',
+      type: NotificationType.security,
+      priority: NotificationPriority.urgent,
+      data: {
+        'type': 'night_security',
+        'doors': doorCount,
+        'windows': windowCount,
+        'garage': garageOpen,
+        'action': 'secure_home',
+      },
+    );
+  }
+
   @override
   void dispose() {
     _notificationStreamController.close();

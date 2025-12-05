@@ -4,19 +4,46 @@ import 'dart:async';
 import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../services/event_log_service.dart';
 import '../models/device_model.dart';
 import '../config/mqtt_config.dart';
+
+/// Callback type for visualization sync
+typedef VisualizationSyncCallback = void Function(
+    String deviceType, Map<String, dynamic> state);
 
 class DeviceProvider with ChangeNotifier {
   final MqttService _mqttService;
   final FirestoreService _firestoreService;
   final NotificationService _notificationService;
+  EventLogService? _eventLogService;
 
   List<Device> _devices = [];
   List<AlarmEvent> _alarms = [];
   bool _isConnectedToMqtt = false;
   bool _useCloudMode = false;
   String? _userId;
+
+  // Device states for doors, windows, garage, buzzer, lights
+  bool _isDoorOpen = false;
+  bool _isGarageOpen = false;
+  bool _isBuzzerActive = false;
+  Map<String, bool> _windowStates = {
+    'living_room': false,
+    'bedroom': false,
+    'kitchen': false,
+    'bathroom': false,
+  };
+  Map<String, bool> _lightStates = {
+    'living_room': false,
+    'bedroom': false,
+    'kitchen': false,
+    'bathroom': false,
+    'garage': false,
+  };
+
+  // Callback for visualization sync
+  VisualizationSyncCallback? _visualizationCallback;
 
   // Performance optimization
   Timer? _updateDebounceTimer;
@@ -26,18 +53,54 @@ class DeviceProvider with ChangeNotifier {
     required MqttService mqttService,
     required FirestoreService firestoreService,
     required NotificationService notificationService,
+    EventLogService? eventLogService,
   })  : _mqttService = mqttService,
         _firestoreService = firestoreService,
-        _notificationService = notificationService {
+        _notificationService = notificationService,
+        _eventLogService = eventLogService {
     _init();
   }
 
+  // Getters
   List<Device> get devices => _devices;
   List<AlarmEvent> get alarms => _alarms;
   List<AlarmEvent> get activeAlarms =>
       _alarms.where((a) => !a.acknowledged).toList();
   bool get isConnectedToMqtt => _isConnectedToMqtt;
   bool get useCloudMode => _useCloudMode;
+
+  // New device state getters
+  bool get isDoorOpen => _isDoorOpen;
+  bool get isGarageOpen => _isGarageOpen;
+  bool get isBuzzerActive => _isBuzzerActive;
+  Map<String, bool> get windowStates => Map.unmodifiable(_windowStates);
+  Map<String, bool> get lightStates => Map.unmodifiable(_lightStates);
+
+  // Filtered device getters
+  List<Device> get doors =>
+      _devices.where((d) => d.type == DeviceType.door).toList();
+  List<Device> get windows =>
+      _devices.where((d) => d.type == DeviceType.window).toList();
+  List<Device> get lights =>
+      _devices.where((d) => d.type == DeviceType.light).toList();
+  List<Device> get garages =>
+      _devices.where((d) => d.type == DeviceType.garage).toList();
+  List<Device> get buzzers =>
+      _devices.where((d) => d.type == DeviceType.buzzer).toList();
+  List<Device> get cameras =>
+      _devices.where((d) => d.type == DeviceType.camera).toList();
+  List<Device> get sensors =>
+      _devices.where((d) => d.type == DeviceType.sensor).toList();
+
+  /// Set event log service (for dependency injection)
+  void setEventLogService(EventLogService service) {
+    _eventLogService = service;
+  }
+
+  /// Set visualization sync callback
+  void setVisualizationCallback(VisualizationSyncCallback callback) {
+    _visualizationCallback = callback;
+  }
 
   void _init() {
     // Listen to MQTT connection status
@@ -59,6 +122,7 @@ class DeviceProvider with ChangeNotifier {
     // Load devices from Firestore
     _firestoreService.getDevicesStream(userId).listen((devices) {
       _devices = devices;
+      _syncDeviceStates();
       notifyListeners();
     });
 
@@ -70,6 +134,31 @@ class DeviceProvider with ChangeNotifier {
 
     // Try to connect to local MQTT
     await connectToMqtt();
+  }
+
+  /// Sync device states from loaded devices
+  void _syncDeviceStates() {
+    for (var device in _devices) {
+      switch (device.type) {
+        case DeviceType.door:
+          _isDoorOpen = device.isOpen;
+          break;
+        case DeviceType.garage:
+          _isGarageOpen = device.isOpen;
+          break;
+        case DeviceType.window:
+          _windowStates[device.id] = device.isOpen;
+          break;
+        case DeviceType.light:
+          _lightStates[device.id] = device.isLightOn;
+          break;
+        case DeviceType.buzzer:
+          _isBuzzerActive = device.isBuzzerActive;
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   Future<void> _checkConnectivity() async {
@@ -96,6 +185,14 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.motionAlarmTopic);
     _mqttService.subscribe(MqttConfig.doorAlarmTopic);
 
+    // Subscribe to door, window, garage, buzzer topics
+    _mqttService.subscribe(MqttConfig.doorStatusTopic);
+    _mqttService.subscribe(MqttConfig.windowStatusTopic);
+    _mqttService.subscribe(MqttConfig.garageStatusTopic);
+    _mqttService.subscribe(MqttConfig.buzzerStatusTopic);
+    _mqttService.subscribe(MqttConfig.allLightsStatusTopic);
+    _mqttService.subscribe(MqttConfig.deviceSyncTopic);
+
     // Subscribe to face detection topics (Version 2)
     _mqttService.subscribe(MqttConfig.faceRecognizedTopic);
     _mqttService.subscribe(MqttConfig.faceUnrecognizedTopic);
@@ -119,12 +216,174 @@ class DeviceProvider with ChangeNotifier {
       return;
     }
 
+    // Handle door, window, garage, buzzer, light status
+    if (message.topic.contains('/door/status')) {
+      _handleDoorStatus(payload);
+      return;
+    } else if (message.topic.contains('/window/status')) {
+      _handleWindowStatus(message.topic, payload);
+      return;
+    } else if (message.topic.contains('/garage/status')) {
+      _handleGarageStatus(payload);
+      return;
+    } else if (message.topic.contains('/buzzer/status')) {
+      _handleBuzzerStatus(payload);
+      return;
+    } else if (message.topic.contains('/light/status')) {
+      _handleLightStatus(message.topic, payload);
+      return;
+    }
+
     // Check if it's an alarm
     if (message.topic.contains('alarm')) {
       _handleAlarm(message.topic, payload);
     } else {
       _handleDeviceUpdate(message.topic, payload);
     }
+  }
+
+  /// Handle door status from backend
+  void _handleDoorStatus(Map<String, dynamic> payload) {
+    final isOpen = payload['state'] == 'open';
+    final previousState = _isDoorOpen;
+    _isDoorOpen = isOpen;
+
+    // Log event if state changed
+    if (previousState != isOpen &&
+        _userId != null &&
+        _eventLogService != null) {
+      _eventLogService!.logDoorEvent(
+        userId: _userId!,
+        isOpen: isOpen,
+        location: payload['location'] as String? ?? 'main',
+        triggeredBy: payload['triggeredBy'] as String?,
+      );
+    }
+
+    // Notify for security (door opened)
+    if (isOpen && !previousState) {
+      _notificationService.notifySecurityAlert(
+        '🚪 Door opened at ${payload['location'] ?? 'main entrance'}',
+        priority: NotificationPriority.high,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback?.call('door', {'isOpen': isOpen});
+    notifyListeners();
+  }
+
+  /// Handle window status from backend
+  void _handleWindowStatus(String topic, Map<String, dynamic> payload) {
+    // Extract window ID from topic: home/{room}/window/status
+    final parts = topic.split('/');
+    final windowId = parts.length > 1 ? parts[1] : 'main';
+    final isOpen = payload['state'] == 'open';
+    final previousState = _windowStates[windowId] ?? false;
+    _windowStates[windowId] = isOpen;
+
+    // Log event if state changed
+    if (previousState != isOpen &&
+        _userId != null &&
+        _eventLogService != null) {
+      _eventLogService!.logWindowEvent(
+        userId: _userId!,
+        isOpen: isOpen,
+        location: windowId,
+      );
+    }
+
+    // Notify for security (window opened)
+    if (isOpen && !previousState) {
+      _notificationService.notifySecurityAlert(
+        '🪟 Window opened in $windowId',
+        priority: NotificationPriority.medium,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback
+        ?.call('window', {'windowId': windowId, 'isOpen': isOpen});
+    notifyListeners();
+  }
+
+  /// Handle garage status from backend
+  void _handleGarageStatus(Map<String, dynamic> payload) {
+    final isOpen = payload['state'] == 'open';
+    final previousState = _isGarageOpen;
+    _isGarageOpen = isOpen;
+
+    // Log event if state changed
+    if (previousState != isOpen &&
+        _userId != null &&
+        _eventLogService != null) {
+      _eventLogService!.logGarageEvent(
+        userId: _userId!,
+        isOpen: isOpen,
+      );
+    }
+
+    // Notify for security (garage opened/closed)
+    if (isOpen != previousState) {
+      _notificationService.notifySecurityAlert(
+        isOpen ? '🚗 Garage door opened' : '🚗 Garage door closed',
+        priority: NotificationPriority.high,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback?.call('garage', {'isOpen': isOpen});
+    notifyListeners();
+  }
+
+  /// Handle buzzer status from backend
+  void _handleBuzzerStatus(Map<String, dynamic> payload) {
+    final isActive = payload['active'] == true;
+    final previousState = _isBuzzerActive;
+    _isBuzzerActive = isActive;
+
+    // Log event if state changed
+    if (previousState != isActive &&
+        _userId != null &&
+        _eventLogService != null) {
+      _eventLogService!.logBuzzerEvent(
+        userId: _userId!,
+        isActive: isActive,
+        reason: payload['reason'] as String?,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback?.call('buzzer', {'isActive': isActive});
+    notifyListeners();
+  }
+
+  /// Handle light status from backend
+  void _handleLightStatus(String topic, Map<String, dynamic> payload) {
+    // Extract light/room ID from topic: home/{room}/light/status
+    final parts = topic.split('/');
+    final lightId = parts.length > 1 ? parts[1] : 'main';
+    final isOn = payload['state'] == 'on';
+    final previousState = _lightStates[lightId] ?? false;
+    _lightStates[lightId] = isOn;
+
+    // Log event if state changed
+    if (previousState != isOn && _userId != null && _eventLogService != null) {
+      _eventLogService!.logLightEvent(
+        userId: _userId!,
+        isOn: isOn,
+        location: lightId,
+        brightness: payload['brightness'] as int?,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback?.call('light', {
+      'lightId': lightId,
+      'isOn': isOn,
+      'brightness': payload['brightness'],
+    });
+    notifyListeners();
   }
 
   void _handleUnrecognizedFace(Map<String, dynamic> payload) {
@@ -250,6 +509,344 @@ class DeviceProvider with ChangeNotifier {
       'action': 'toggle',
       'state': currentState ? 'off' : 'on',
     });
+  }
+
+  /// Toggle door open/closed
+  Future<void> toggleDoor() async {
+    final newState = !_isDoorOpen;
+    final command = {
+      'action': 'toggle',
+      'state': newState ? 'open' : 'closed',
+      'deviceId': 'main_door',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.doorCommandTopic, command);
+    }
+
+    // Optimistic update
+    _isDoorOpen = newState;
+    _visualizationCallback?.call('door', {'isOpen': _isDoorOpen});
+
+    // Notify user
+    if (newState) {
+      _notificationService.notifyDoorOpened(location: 'Main Door');
+    } else {
+      _notificationService.notifyDoorClosed(location: 'Main Door');
+    }
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logDoorEvent(
+        userId: _userId!,
+        isOpen: newState,
+        location: 'Main Door',
+        triggeredBy: 'App User',
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Set door state explicitly
+  Future<void> setDoorState(bool isOpen) async {
+    final command = {
+      'action': 'set',
+      'state': isOpen ? 'open' : 'closed',
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.doorCommandTopic, command);
+    }
+
+    _isDoorOpen = isOpen;
+    _visualizationCallback?.call('door', {'isOpen': isOpen});
+    notifyListeners();
+  }
+
+  /// Toggle garage open/closed
+  Future<void> toggleGarage() async {
+    final newState = !_isGarageOpen;
+    final command = {
+      'action': 'toggle',
+      'state': newState ? 'open' : 'closed',
+      'deviceId': 'garage',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
+    }
+
+    // Optimistic update
+    _isGarageOpen = newState;
+    _visualizationCallback?.call('garage', {'isOpen': _isGarageOpen});
+
+    // Notify user
+    if (newState) {
+      _notificationService.notifyGarageOpened();
+    } else {
+      _notificationService.notifyGarageClosed();
+    }
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logGarageEvent(
+        userId: _userId!,
+        isOpen: newState,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Set garage state explicitly
+  Future<void> setGarageState(bool isOpen) async {
+    final command = {
+      'action': 'set',
+      'state': isOpen ? 'open' : 'closed',
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
+    }
+
+    _isGarageOpen = isOpen;
+    _visualizationCallback?.call('garage', {'isOpen': isOpen});
+    notifyListeners();
+  }
+
+  /// Toggle window open/closed
+  Future<void> toggleWindow(String windowId) async {
+    final isOpen = _windowStates[windowId] ?? false;
+    final newState = !isOpen;
+    final windowName = _formatWindowName(windowId);
+    final command = {
+      'action': 'toggle',
+      'state': newState ? 'open' : 'closed',
+      'windowId': windowId,
+      'deviceId': 'window_$windowId',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.windowCommandTopic.replaceFirst('+', windowId);
+      _mqttService.publishJson(topic, command);
+    }
+
+    // Optimistic update
+    _windowStates[windowId] = newState;
+    _visualizationCallback
+        ?.call('window', {'windowId': windowId, 'isOpen': newState});
+
+    // Notify user
+    if (newState) {
+      _notificationService.notifyWindowOpened(location: windowName);
+    } else {
+      _notificationService.notifyWindowClosed(location: windowName);
+    }
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logWindowEvent(
+        userId: _userId!,
+        isOpen: newState,
+        location: windowName,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Format window ID to display name
+  String _formatWindowName(String windowId) {
+    return windowId
+        .split('_')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
+  }
+
+  /// Toggle all windows
+  Future<void> toggleAllWindows() async {
+    final anyOpen = _windowStates.values.any((isOpen) => isOpen);
+    final newState = !anyOpen;
+
+    for (var windowId in _windowStates.keys) {
+      _windowStates[windowId] = newState;
+    }
+
+    final command = {
+      'action': 'setAll',
+      'state': newState ? 'open' : 'closed',
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/windows/command', command);
+    }
+
+    _visualizationCallback?.call('windows', {'allOpen': newState});
+    notifyListeners();
+  }
+
+  /// Toggle buzzer on/off
+  Future<void> toggleBuzzer() async {
+    final newState = !_isBuzzerActive;
+    final command = {
+      'action': 'toggle',
+      'active': newState,
+      'deviceId': 'buzzer',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.buzzerCommandTopic, command);
+    }
+
+    // Optimistic update
+    _isBuzzerActive = newState;
+    _visualizationCallback?.call('buzzer', {'isActive': _isBuzzerActive});
+
+    // Notify user if activated
+    if (newState) {
+      _notificationService.notifyBuzzerActivated(reason: 'Activated from app');
+    }
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logBuzzerEvent(
+        userId: _userId!,
+        isActive: newState,
+        reason: 'User triggered from app',
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Set buzzer state explicitly
+  Future<void> setBuzzerState(bool isActive, {String? reason}) async {
+    final command = {
+      'action': 'set',
+      'active': isActive,
+      if (reason != null) 'reason': reason,
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(MqttConfig.buzzerCommandTopic, command);
+    }
+
+    _isBuzzerActive = isActive;
+    _visualizationCallback?.call('buzzer', {'isActive': isActive});
+    notifyListeners();
+  }
+
+  /// Toggle a specific light
+  Future<void> toggleLightById(String lightId) async {
+    final isOn = _lightStates[lightId] ?? false;
+    final newState = !isOn;
+    final lightName = _formatWindowName(lightId); // Reuse name formatter
+    final command = {
+      'action': 'toggle',
+      'state': newState ? 'on' : 'off',
+      'lightId': lightId,
+      'deviceId': 'light_$lightId',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.roomLightCommandTopic(lightId);
+      _mqttService.publishJson(topic, command);
+    }
+
+    // Optimistic update
+    _lightStates[lightId] = newState;
+    _visualizationCallback
+        ?.call('light', {'lightId': lightId, 'isOn': newState});
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logLightEvent(
+        userId: _userId!,
+        isOn: newState,
+        location: lightName,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Toggle all lights
+  Future<void> toggleAllLights() async {
+    final anyOn = _lightStates.values.any((isOn) => isOn);
+    final newState = !anyOn;
+
+    for (var lightId in _lightStates.keys) {
+      _lightStates[lightId] = newState;
+    }
+
+    final command = {
+      'action': 'setAll',
+      'state': newState ? 'on' : 'off',
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/lights/command', command);
+    }
+
+    _visualizationCallback?.call('lights', {'allOn': newState});
+    notifyListeners();
+  }
+
+  /// Set light brightness
+  Future<void> setLightBrightness(String lightId, int brightness) async {
+    final command = {
+      'action': 'setBrightness',
+      'brightness': brightness.clamp(0, 100),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.roomLightCommandTopic(lightId);
+      _mqttService.publishJson(topic, command);
+    }
+
+    notifyListeners();
+  }
+
+  /// Get current state summary for visualization sync
+  Map<String, dynamic> getDeviceStatesSummary() {
+    return {
+      'door': {'isOpen': _isDoorOpen},
+      'garage': {'isOpen': _isGarageOpen},
+      'buzzer': {'isActive': _isBuzzerActive},
+      'windows': _windowStates,
+      'lights': _lightStates,
+    };
+  }
+
+  /// Force sync all states to visualization
+  void syncAllToVisualization() {
+    _visualizationCallback?.call('door', {'isOpen': _isDoorOpen});
+    _visualizationCallback?.call('garage', {'isOpen': _isGarageOpen});
+    _visualizationCallback?.call('buzzer', {'isActive': _isBuzzerActive});
+
+    for (var entry in _windowStates.entries) {
+      _visualizationCallback?.call('window', {
+        'windowId': entry.key,
+        'isOpen': entry.value,
+      });
+    }
+
+    for (var entry in _lightStates.entries) {
+      _visualizationCallback?.call('light', {
+        'lightId': entry.key,
+        'isOn': entry.value,
+      });
+    }
   }
 
   Future<void> acknowledgeAlarm(String alarmId) async {

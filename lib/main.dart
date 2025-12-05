@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,7 @@ import 'core/services/face_auth_http_service.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/ai_chat_service.dart';
+import 'core/services/event_log_service.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
@@ -38,6 +40,21 @@ const bool DEBUG_MODE = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Filter out spam debug messages from animation packages
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (message == null) return;
+    // Suppress animation spam and gralloc messages
+    final lowerMsg = message.toLowerCase();
+    if (lowerMsg.contains('animate:') ||
+        lowerMsg == 'animate' ||
+        lowerMsg == 'animate: true') return;
+    if (lowerMsg.contains('gralloc')) return;
+    if (message == 'true' || message == 'false') return;
+    // Print other messages normally using default implementation
+    // ignore: avoid_print
+    print(message);
+  };
 
   // Initialize Firebase (only if not already initialized)
   try {
@@ -86,6 +103,9 @@ class SmartHomeApp extends StatelessWidget {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
+        ChangeNotifierProvider<EventLogService>(
+          create: (_) => EventLogService(),
+        ),
         Provider<AIChatService>(
           create: (_) => AIChatService(),
         ),
@@ -106,6 +126,7 @@ class SmartHomeApp extends StatelessWidget {
             mqttService: context.read<MqttService>(),
             firestoreService: context.read<FirestoreService>(),
             notificationService: context.read<NotificationService>(),
+            eventLogService: context.read<EventLogService>(),
           ),
         ),
         ChangeNotifierProvider<HomeVisualizationProvider>(

@@ -43,6 +43,25 @@ class MqttConfig {
   static const String motionAlarmTopic = 'home/+/motion';
   static const String doorAlarmTopic = 'home/+/door';
 
+  // Door, Window, Garage, Buzzer Topics
+  static const String doorStatusTopic = '$topicPrefix/door/status';
+  static const String doorCommandTopic = '$topicPrefix/door/command';
+  static const String windowStatusTopic = '$topicPrefix/+/window/status';
+  static const String windowCommandTopic = '$topicPrefix/+/window/command';
+  static const String garageStatusTopic = '$topicPrefix/garage/status';
+  static const String garageCommandTopic = '$topicPrefix/garage/command';
+  static const String buzzerStatusTopic = '$topicPrefix/buzzer/status';
+  static const String buzzerCommandTopic = '$topicPrefix/buzzer/command';
+
+  // Light topics (room-based)
+  static const String allLightsStatusTopic = '$topicPrefix/+/light/status';
+  static const String allLightsCommandTopic = '$topicPrefix/+/light/command';
+
+  // Device sync topics (for 3D visualization sync)
+  static const String deviceSyncTopic = '$topicPrefix/sync/devices';
+  static const String visualizationSyncTopic =
+      '$topicPrefix/sync/visualization';
+
   // Face Recognition Authentication Topics
   static const String faceAuthRequestTopic = '$topicPrefix/auth/face/request';
   static const String faceAuthResponseTopic = '$topicPrefix/auth/face/response';

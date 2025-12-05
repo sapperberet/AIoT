@@ -7,12 +7,42 @@ enum DeviceType {
   camera,
   thermostat,
   lock,
+  door,
+  window,
+  garage,
+  buzzer,
 }
 
 enum DeviceStatus {
   online,
   offline,
   error,
+}
+
+/// State for doors, windows, garage
+enum OpenCloseState {
+  open,
+  closed,
+  opening,
+  closing,
+  unknown,
+}
+
+/// Converts string to OpenCloseState
+OpenCloseState parseOpenCloseState(String? state) {
+  if (state == null) return OpenCloseState.unknown;
+  switch (state.toLowerCase()) {
+    case 'open':
+      return OpenCloseState.open;
+    case 'closed':
+      return OpenCloseState.closed;
+    case 'opening':
+      return OpenCloseState.opening;
+    case 'closing':
+      return OpenCloseState.closing;
+    default:
+      return OpenCloseState.unknown;
+  }
 }
 
 class Device {
@@ -84,6 +114,40 @@ class Device {
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
   }
+
+  /// Helper getters for specific device types
+  bool get isLight => type == DeviceType.light;
+  bool get isDoor => type == DeviceType.door;
+  bool get isWindow => type == DeviceType.window;
+  bool get isGarage => type == DeviceType.garage;
+  bool get isBuzzer => type == DeviceType.buzzer;
+  bool get isLock => type == DeviceType.lock;
+
+  /// Get the open/close state for doors, windows, garage
+  OpenCloseState get openCloseState {
+    if (type != DeviceType.door &&
+        type != DeviceType.window &&
+        type != DeviceType.garage) {
+      return OpenCloseState.unknown;
+    }
+    return parseOpenCloseState(state['state'] as String?);
+  }
+
+  /// Check if door/window/garage is open
+  bool get isOpen => openCloseState == OpenCloseState.open;
+
+  /// Check if door/window/garage is closed
+  bool get isClosed => openCloseState == OpenCloseState.closed;
+
+  /// Check if light is on
+  bool get isLightOn => type == DeviceType.light && state['state'] == 'on';
+
+  /// Check if buzzer is active
+  bool get isBuzzerActive =>
+      type == DeviceType.buzzer && state['active'] == true;
+
+  /// Get light brightness (0-100)
+  int get brightness => (state['brightness'] as num?)?.toInt() ?? 100;
 }
 
 class AlarmEvent {

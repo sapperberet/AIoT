@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +24,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
   bool _isLoading = true;
   bool _isDoorOpen = false;
   bool _isDoorAnimating = false;
+  bool _isGarageOpen = false;
+  bool _isGarageAnimating = false;
 
   @override
   void initState() {
@@ -32,6 +33,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
     _initializeWebView();
     _listenToAlarms();
     _listenToDoorState();
+    _listenToGarageState();
+    _listenToDeviceSync();
     _listenToThemeChanges();
   }
 
@@ -39,26 +42,40 @@ class _VisualizationTabState extends State<VisualizationTab> {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000));
-    
+
     // Enable hardware acceleration for WebGL on Android
     final platformController = _webViewController.platform;
     if (platformController is AndroidWebViewController) {
       // Enable WebGL and hardware acceleration
       AndroidWebViewController.enableDebugging(true);
     }
-    
+
     _webViewController
       ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
-        // Silently handle console messages to prevent serialization crashes
-        // The WebView plugin has issues serializing complex objects in console messages
-        debugPrint('📍 Console [${message.level.name}]: ${message.message}');
+        // Filter out spam messages from animation loop and gralloc
+        final msg = message.message;
+        if (msg.contains('animate') ||
+            msg.contains('gralloc') ||
+            msg.contains('requestAnimationFrame') ||
+            msg.isEmpty) {
+          return; // Silently ignore spam
+        }
+        // Only print meaningful console messages
+        debugPrint('📍 Console [${message.level.name}]: $msg');
       })
       ..addJavaScriptChannel(
         'FlutterBridge',
         onMessageReceived: (JavaScriptMessage message) {
-          // Handle messages from JavaScript/three.js
-          debugPrint('Message from 3D view: ${message.message}');
-          _handleJavaScriptMessage(message.message);
+          // Filter out spam/heartbeat messages
+          final msg = message.message;
+          if (msg.contains('animate') ||
+              msg.contains('heartbeat') ||
+              msg.isEmpty) {
+            return; // Silently ignore spam
+          }
+          // Handle meaningful messages from JavaScript/three.js
+          debugPrint('Message from 3D view: $msg');
+          _handleJavaScriptMessage(msg);
         },
       )
       ..setNavigationDelegate(
@@ -71,6 +88,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
             _loadGlbModel();
             // Sync theme with visualization
             _syncThemeWithVisualization();
+            // Sync current device states
+            _syncDeviceStates();
           },
         ),
       )
@@ -136,10 +155,11 @@ class _VisualizationTabState extends State<VisualizationTab> {
       if (vizProvider.isDoorAnimating && !_isDoorAnimating) {
         // Trigger door animation in 3D
         debugPrint('🚪 Door state changed - triggering 3D animation');
-        _webViewController.runJavaScript('openDoor()');
+        _webViewController.runJavaScript(
+            vizProvider.isDoorOpen ? 'openDoor()' : 'closeDoor()');
         setState(() {
           _isDoorAnimating = true;
-          _isDoorOpen = true;
+          _isDoorOpen = vizProvider.isDoorOpen;
         });
 
         // Reset after animation
@@ -153,12 +173,106 @@ class _VisualizationTabState extends State<VisualizationTab> {
       }
 
       // Update door open state
-      if (vizProvider.isDoorOpen != _isDoorOpen) {
+      if (vizProvider.isDoorOpen != _isDoorOpen && !_isDoorAnimating) {
         setState(() {
           _isDoorOpen = vizProvider.isDoorOpen;
         });
+        _webViewController.runJavaScript(
+            vizProvider.isDoorOpen ? 'openDoor()' : 'closeDoor()');
       }
     });
+  }
+
+  void _listenToGarageState() {
+    final vizProvider = context.read<HomeVisualizationProvider>();
+
+    vizProvider.addListener(() {
+      if (vizProvider.isGarageAnimating && !_isGarageAnimating) {
+        debugPrint('🚗 Garage state changed - triggering 3D animation');
+        _webViewController.runJavaScript(
+            vizProvider.isGarageOpen ? 'openGarage()' : 'closeGarage()');
+        setState(() {
+          _isGarageAnimating = true;
+          _isGarageOpen = vizProvider.isGarageOpen;
+        });
+
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (mounted) {
+            setState(() {
+              _isGarageAnimating = false;
+            });
+          }
+        });
+      }
+
+      if (vizProvider.isGarageOpen != _isGarageOpen && !_isGarageAnimating) {
+        setState(() {
+          _isGarageOpen = vizProvider.isGarageOpen;
+        });
+        _webViewController.runJavaScript(
+            vizProvider.isGarageOpen ? 'openGarage()' : 'closeGarage()');
+      }
+    });
+  }
+
+  void _listenToDeviceSync() {
+    final deviceProvider = context.read<DeviceProvider>();
+    final vizProvider = context.read<HomeVisualizationProvider>();
+
+    // Set visualization callback on device provider
+    deviceProvider.setVisualizationCallback((deviceType, state) {
+      vizProvider.syncFromDeviceState(deviceType, state);
+      _syncDeviceToJS(deviceType, state);
+    });
+  }
+
+  /// Sync device state to JavaScript
+  void _syncDeviceToJS(String deviceType, Map<String, dynamic> state) {
+    switch (deviceType) {
+      case 'door':
+        final isOpen = state['isOpen'] ?? false;
+        _webViewController.runJavaScript(isOpen ? 'openDoor()' : 'closeDoor()');
+        break;
+      case 'garage':
+        final isOpen = state['isOpen'] ?? false;
+        _webViewController
+            .runJavaScript(isOpen ? 'openGarage()' : 'closeGarage()');
+        break;
+      case 'window':
+      case 'windows':
+        final command = jsonEncode({'type': 'windows', 'state': state});
+        _webViewController.runJavaScript('syncDeviceState($command)');
+        break;
+      case 'light':
+      case 'lights':
+        final command = jsonEncode({'type': 'lights', 'state': state});
+        _webViewController.runJavaScript('syncDeviceState($command)');
+        break;
+      case 'buzzer':
+        final isActive = state['isActive'] ?? false;
+        _webViewController.runJavaScript('setBuzzerState($isActive)');
+        break;
+    }
+  }
+
+  /// Sync all device states to visualization on load
+  void _syncDeviceStates() {
+    final deviceProvider = context.read<DeviceProvider>();
+    final states = deviceProvider.getDeviceStatesSummary();
+
+    // Sync door
+    if (states['door']?['isOpen'] == true) {
+      _webViewController.runJavaScript('openDoor()');
+    }
+
+    // Sync garage
+    if (states['garage']?['isOpen'] == true) {
+      _webViewController.runJavaScript('openGarage()');
+    }
+
+    // Sync windows and lights via full state command
+    final fullState = jsonEncode(states);
+    _webViewController.runJavaScript('syncAllDeviceStates($fullState)');
   }
 
   void _listenToThemeChanges() {
