@@ -312,6 +312,14 @@ class _VisualizationTabState extends State<VisualizationTab> {
         final isActive = state['isActive'] ?? false;
         _webViewController.runJavaScript('setBuzzerState($isActive)');
         break;
+      case 'rgb':
+        // Sync RGB color and brightness to 3D visualization
+        final color = state['color'] ?? 0xFFFFFF;
+        final brightness = state['brightness'] ?? 100;
+        final isOn = state['isOn'] ?? false;
+        _webViewController.runJavaScript('setRGBColor($color, $brightness)');
+        _webViewController.runJavaScript('toggleRGBLights($isOn)');
+        break;
     }
   }
 
@@ -346,6 +354,13 @@ class _VisualizationTabState extends State<VisualizationTab> {
     // Sync windows and lights via full state command
     final fullState = jsonEncode(states);
     _webViewController.runJavaScript('syncAllDeviceStates($fullState)');
+
+    // Sync RGB color and brightness
+    final rgbColor = deviceProvider.rgbLightColor;
+    final rgbBrightness = deviceProvider.rgbBrightness;
+    final rgbOn = deviceProvider.lightStates['rgb'] ?? false;
+    _webViewController.runJavaScript('setRGBColor($rgbColor, $rgbBrightness)');
+    _webViewController.runJavaScript('toggleRGBLights($rgbOn)');
   }
 
   void _listenToThemeChanges() {

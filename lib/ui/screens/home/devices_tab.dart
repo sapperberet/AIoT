@@ -146,45 +146,8 @@ class DevicesTab extends StatelessWidget {
                 ),
 
                 // Devices List (inline, not in Expanded since we're in SingleChildScrollView)
-                if (devices.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: FadeIn(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: AppTheme.primaryGradient.scale(0.3),
-                            ),
-                            child: const Icon(Iconsax.devices_1,
-                                size: 50, color: AppTheme.primaryColor),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            AppLocalizations.of(context).t('no_devices'),
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            AppLocalizations.of(context).t('add_devices_desc'),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.mutedText,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
+                // Note: "No devices configured" message removed - quick controls are always shown
+                if (devices.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: AnimationLimiter(
@@ -1434,128 +1397,336 @@ class _QuickControlsSection extends StatelessWidget {
 
   void _showRgbColorDialog(BuildContext context, DeviceProvider provider) {
     int currentColor = provider.rgbLightColor;
+    int currentBrightness = provider.rgbBrightness;
 
     final presetColors = [
       0xFF0000, // Red
+      0xFF4500, // Orange Red
       0xFF8000, // Orange
+      0xFFD700, // Gold
       0xFFFF00, // Yellow
+      0x7FFF00, // Chartreuse
       0x00FF00, // Green
+      0x00FF7F, // Spring Green
       0x00FFFF, // Cyan
+      0x00BFFF, // Deep Sky Blue
       0x0000FF, // Blue
+      0x4B0082, // Indigo
       0x8000FF, // Purple
+      0x9400D3, // Dark Violet
       0xFF00FF, // Magenta
-      0xFF80FF, // Pink
+      0xFF1493, // Deep Pink
+      0xFF69B4, // Hot Pink
       0xFFFFFF, // White
     ];
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Color(currentColor | 0xFF000000),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              Color(currentColor | 0xFF000000).withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'RGB Light Color',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
+        builder: (context, setModalState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [const Color(0xFF1E1E2E), const Color(0xFF15151F)]
+                    : [Colors.white, const Color(0xFFF5F5F5)],
               ),
-              const SizedBox(height: 24),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(currentColor | 0xFF000000).withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-              // Color grid
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: presetColors.map((color) {
-                  final isSelected = currentColor == color;
-                  return GestureDetector(
-                    onTap: () {
-                      setModalState(() {
-                        currentColor = color;
-                      });
-                    },
-                    child: Container(
-                      width: 50,
-                      height: 50,
+                // Header with color preview
+                Row(
+                  children: [
+                    // Animated color preview
+                    Container(
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: Color(color | 0xFF000000),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? Colors.white : Colors.grey,
-                          width: isSelected ? 3 : 1,
+                        gradient: RadialGradient(
+                          colors: [
+                            Color(currentColor | 0xFF000000),
+                            Color(currentColor | 0xFF000000).withOpacity(0.7),
+                          ],
                         ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: Color(color | 0xFF000000)
-                                      .withOpacity(0.6),
-                                  blurRadius: 12,
-                                  spreadRadius: 2,
-                                ),
-                              ]
-                            : null,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.5),
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(currentColor | 0xFF000000)
+                                .withOpacity(0.6),
+                            blurRadius: 20,
+                            spreadRadius: 4,
+                          ),
+                        ],
                       ),
-                      child: isSelected
-                          ? const Icon(Icons.check,
-                              color: Colors.white, size: 24)
-                          : null,
+                      child: Icon(
+                        Icons.lightbulb,
+                        color: Colors.white.withOpacity(0.9),
+                        size: 28,
+                      ),
                     ),
-                  );
-                }).toList(),
-              ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RGB Corner Lights',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '#${currentColor.toRadixString(16).toUpperCase().padLeft(6, '0')}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'monospace',
+                              color: Color(currentColor | 0xFF000000),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      provider.setRgbLightColor(currentColor);
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.check),
-                    label: const Text('Apply'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(currentColor | 0xFF000000),
+                // Color grid with gradient background
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: presetColors.map((color) {
+                      final isSelected = currentColor == color;
+                      return GestureDetector(
+                        onTap: () {
+                          setModalState(() {
+                            currentColor = color;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: isSelected ? 48 : 42,
+                          height: isSelected ? 48 : 42,
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              colors: [
+                                Color(color | 0xFF000000),
+                                Color(color | 0xFF000000).withOpacity(0.8),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: isSelected ? 3 : 0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(color | 0xFF000000)
+                                    .withOpacity(isSelected ? 0.8 : 0.3),
+                                blurRadius: isSelected ? 16 : 6,
+                                spreadRadius: isSelected ? 2 : 0,
+                              ),
+                            ],
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check,
+                                  color: Colors.white, size: 22)
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Brightness slider
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.brightness_6,
+                                color: Color(currentColor | 0xFF000000),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Brightness',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Color(currentColor | 0xFF000000)
+                                  .withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '$currentBrightness%',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(currentColor | 0xFF000000),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SliderTheme(
+                        data: SliderThemeData(
+                          activeTrackColor: Color(currentColor | 0xFF000000),
+                          inactiveTrackColor:
+                              Color(currentColor | 0xFF000000).withOpacity(0.2),
+                          thumbColor: Colors.white,
+                          overlayColor:
+                              Color(currentColor | 0xFF000000).withOpacity(0.2),
+                          trackHeight: 8,
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 12),
+                        ),
+                        child: Slider(
+                          value: currentBrightness.toDouble(),
+                          min: 0,
+                          max: 100,
+                          onChanged: (value) {
+                            setModalState(() {
+                              currentBrightness = value.toInt();
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade400),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          provider.setRgbLightColor(currentColor);
+                          provider.setRgbBrightness(currentBrightness);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(currentColor | 0xFF000000),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                          shadowColor:
+                              Color(currentColor | 0xFF000000).withOpacity(0.5),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Apply',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

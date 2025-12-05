@@ -56,6 +56,9 @@ class DeviceProvider with ChangeNotifier {
   // RGB light color (hex)
   int _rgbLightColor = 0xFFFFFF;
 
+  // RGB light brightness (0-100)
+  int _rgbBrightness = 100;
+
   // Fan states: 0=off, 1=low, 2=medium, 3=high
   Map<String, int> _fanStates = {
     'living_room': 0,
@@ -104,6 +107,7 @@ class DeviceProvider with ChangeNotifier {
   Map<String, bool> get lightStates => Map.unmodifiable(_lightStates);
   Map<String, int> get lightBrightness => Map.unmodifiable(_lightBrightness);
   int get rgbLightColor => _rgbLightColor;
+  int get rgbBrightness => _rgbBrightness;
   Map<String, int> get fanStates => Map.unmodifiable(_fanStates);
 
   // Legacy getters for compatibility
@@ -1123,14 +1127,44 @@ class DeviceProvider with ChangeNotifier {
       _mqttService.publishJson(topic, command);
     }
 
-    _syncToVisualization('light', {
-      'lightId': 'rgb',
-      'isOn': _lightStates['rgb'] ?? false,
+    // Sync RGB to visualization with color and brightness
+    _syncToVisualization('rgb', {
       'color': _rgbLightColor,
+      'brightness': _rgbBrightness,
+      'isOn': _lightStates['rgb'] ?? false,
     });
 
     // Save to Firebase for global sync
     _saveDeviceToFirebase('rgbColor', {'value': _rgbLightColor});
+    _saveDeviceToFirebase('rgbBrightness', {'value': _rgbBrightness});
+
+    notifyListeners();
+  }
+
+  /// Set RGB light brightness (0-100)
+  Future<void> setRgbBrightness(int brightness) async {
+    _rgbBrightness = brightness.clamp(0, 100);
+
+    final command = {
+      'action': 'setBrightness',
+      'brightness': _rgbBrightness,
+      'color': _rgbLightColor,
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.roomLightCommandTopic('rgb');
+      _mqttService.publishJson(topic, command);
+    }
+
+    // Sync RGB to visualization with brightness
+    _syncToVisualization('rgb', {
+      'color': _rgbLightColor,
+      'brightness': _rgbBrightness,
+      'isOn': _lightStates['rgb'] ?? false,
+    });
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('rgbBrightness', {'value': _rgbBrightness});
 
     notifyListeners();
   }

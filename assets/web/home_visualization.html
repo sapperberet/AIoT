@@ -3903,22 +3903,69 @@
 
         function findWindows() {
             windowMeshes = [];
+            // Specific window names from model: front_window_mesh, side_window_mesh, upper_window_mesh_1, upper_window_mesh_2
+            const specificWindowNames = [
+                'front_window_mesh', 'side_window_mesh', 
+                'upper_window_mesh_1', 'upper_window_mesh_2',
+                'front_window', 'side_window', 'upper_window_1', 'upper_window_2'
+            ];
             const windowPatterns = ['window', 'Window', 'WINDOW', 'glass', 'Glass'];
+            
+            // First check roomMeshes
             Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                const nameLower = name.toLowerCase();
+                // Check specific names first
+                if (specificWindowNames.some(sn => sn.toLowerCase() === nameLower)) {
+                    if (!mesh.userData.originalPosition) {
+                        mesh.userData.originalPosition = mesh.position.clone();
+                    }
+                    if (!mesh.userData.originalRotation) {
+                        mesh.userData.originalRotation = mesh.rotation.clone();
+                    }
+                    windowMeshes.push(mesh);
+                    console.log('🪟 Found window mesh (specific):', name);
+                    return;
+                }
+                // Then check patterns
                 for (const pattern of windowPatterns) {
-                    if (name.toLowerCase().includes(pattern.toLowerCase())) {
+                    if (nameLower.includes(pattern.toLowerCase())) {
                         if (!mesh.userData.originalPosition) {
                             mesh.userData.originalPosition = mesh.position.clone();
                         }
                         if (!mesh.userData.originalRotation) {
                             mesh.userData.originalRotation = mesh.rotation.clone();
                         }
-                        windowMeshes.push(mesh);
-                        console.log('🪟 Found window mesh:', name);
+                        if (!windowMeshes.includes(mesh)) {
+                            windowMeshes.push(mesh);
+                            console.log('🪟 Found window mesh (pattern):', name);
+                        }
                         break;
                     }
                 }
             });
+            
+            // FALLBACK: Search homeModel if no windows found
+            if (windowMeshes.length === 0 && homeModel) {
+                console.log('🔍 Searching scene for window meshes...');
+                homeModel.traverse((child) => {
+                    if (child.isMesh && child.name) {
+                        const nameLower = child.name.toLowerCase();
+                        if (nameLower.includes('window') || specificWindowNames.some(sn => sn.toLowerCase() === nameLower)) {
+                            if (!child.userData.originalPosition) {
+                                child.userData.originalPosition = child.position.clone();
+                            }
+                            if (!child.userData.originalRotation) {
+                                child.userData.originalRotation = child.rotation.clone();
+                            }
+                            windowMeshes.push(child);
+                            roomMeshes[child.name] = child; // Add to roomMeshes for future lookups
+                            console.log('🪟 Found window mesh (scene traverse):', child.name);
+                        }
+                    }
+                });
+            }
+            
+            console.log('🪟 Total windows found:', windowMeshes.length, windowMeshes.map(m => m.name));
             return windowMeshes.length > 0;
         }
 
@@ -4854,6 +4901,15 @@
                 // Sync lights
                 if (states.lights) {
                     syncLightStates(states.lights);
+                    // Check if RGB light is on
+                    if (states.lights.rgb !== undefined) {
+                        toggleRGBLights(states.lights.rgb);
+                    }
+                }
+                
+                // Sync RGB color and brightness if provided
+                if (states.rgbColor !== undefined) {
+                    setRGBColor(states.rgbColor, states.rgbBrightness || 100);
                 }
                 
                 // Sync buzzer
@@ -4867,12 +4923,14 @@
             }
         }
         
-        // Sync window by ID (front_window, side_window)
+        // Sync window by ID (front_window, side_window, upper_window_1, upper_window_2)
         function syncWindowById(windowId, isOpen) {
             // Map window IDs to mesh names (adjust based on your 3D model)
             const windowMeshNames = {
-                'front_window': ['front_window', 'frontWindow', 'window_front', 'Window_Front'],
-                'side_window': ['side_window', 'sideWindow', 'window_side', 'Window_Side']
+                'front_window': ['front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front'],
+                'side_window': ['side_window_mesh', 'side_window', 'sideWindow', 'window_side', 'Window_Side'],
+                'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1'],
+                'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2']
             };
             
             const possibleNames = windowMeshNames[windowId] || [windowId];
@@ -4952,23 +5010,184 @@
             }
         }
         
-        // Set buzzer state (visual/audio indicator)
+        // Set buzzer state (visual/audio indicator) - Creates alarm flickering effect
         let buzzerActive = false;
+        let buzzerAnimationId = null;
+        let buzzerFlickerPhase = 0;
+        
         function setBuzzerState(isActive) {
             buzzerActive = isActive;
-            console.log('🔔 Buzzer state:', isActive ? 'ACTIVE' : 'OFF');
+            console.log('🔔 Buzzer state:', isActive ? 'ACTIVE (ALARM MODE)' : 'OFF');
             
-            // Find buzzer mesh and animate if active
-            const buzzerMesh = roomMeshes['buzzer'] || roomMeshes['alarm'] || roomMeshes['bell'];
-            if (buzzerMesh) {
-                if (isActive) {
-                    buzzerMesh.material.emissive = new THREE.Color(0xff0000);
-                    buzzerMesh.material.emissiveIntensity = 0.8;
-                } else {
-                    buzzerMesh.material.emissive = new THREE.Color(0x000000);
-                    buzzerMesh.material.emissiveIntensity = 0;
-                }
+            if (isActive) {
+                // Start alarm flickering animation
+                startBuzzerAlarm();
+            } else {
+                // Stop alarm and reset colors
+                stopBuzzerAlarm();
             }
+        }
+        
+        function startBuzzerAlarm() {
+            if (buzzerAnimationId) return; // Already running
+            
+            function animateAlarm() {
+                if (!buzzerActive) {
+                    stopBuzzerAlarm();
+                    return;
+                }
+                
+                buzzerFlickerPhase += 0.15;
+                // Create pulsing red effect with some randomness for flicker
+                const flickerIntensity = (Math.sin(buzzerFlickerPhase * 3) + 1) / 2;
+                const randomFlicker = 0.7 + Math.random() * 0.3;
+                const intensity = flickerIntensity * randomFlicker;
+                
+                // Apply red warning glow to walls/structure
+                if (homeModel) {
+                    homeModel.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            const nameLower = (child.name || '').toLowerCase();
+                            // Apply to walls, roof, home structure
+                            if (nameLower.includes('wall') || nameLower.includes('home') || 
+                                nameLower.includes('level') || nameLower.includes('body') ||
+                                nameLower.includes('roof')) {
+                                child.material.emissive = new THREE.Color(0xff0000);
+                                child.material.emissiveIntensity = intensity * 0.4;
+                            }
+                        }
+                    });
+                }
+                
+                // Also apply to placeholder rooms if no model
+                Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                    if (mesh && mesh.material) {
+                        mesh.material.emissive = new THREE.Color(0xff0000);
+                        mesh.material.emissiveIntensity = intensity * 0.5;
+                    }
+                });
+                
+                buzzerAnimationId = requestAnimationFrame(animateAlarm);
+            }
+            
+            animateAlarm();
+        }
+        
+        function stopBuzzerAlarm() {
+            if (buzzerAnimationId) {
+                cancelAnimationFrame(buzzerAnimationId);
+                buzzerAnimationId = null;
+            }
+            
+            // Reset all emissive colors
+            if (homeModel) {
+                homeModel.traverse((child) => {
+                    if (child.isMesh && child.material && child.material.emissive) {
+                        // Reset to natural wood emissive
+                        child.material.emissive = new THREE.Color(0x222222);
+                        child.material.emissiveIntensity = 0.1;
+                    }
+                });
+            }
+            
+            // Reset placeholder rooms
+            Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                if (mesh && mesh.material) {
+                    mesh.material.emissive = new THREE.Color(0x000000);
+                    mesh.material.emissiveIntensity = 0;
+                }
+            });
+        }
+        
+        // RGB Corner Lights - Illuminates corners of house with RGB color
+        let rgbLightColor = 0xFFFFFF;
+        let rgbLightBrightness = 100;
+        let rgbLightsOn = false;
+        let cornerLights = [];
+        
+        function setRGBColor(color, brightness) {
+            rgbLightColor = color & 0xFFFFFF;
+            if (brightness !== undefined) {
+                rgbLightBrightness = Math.max(0, Math.min(100, brightness));
+            }
+            console.log('🌈 RGB Color set:', '#' + rgbLightColor.toString(16).padLeft(6, '0'), 'Brightness:', rgbLightBrightness + '%');
+            updateRGBLights();
+        }
+        
+        function setRGBBrightness(brightness) {
+            rgbLightBrightness = Math.max(0, Math.min(100, brightness));
+            console.log('💡 RGB Brightness set:', rgbLightBrightness + '%');
+            updateRGBLights();
+        }
+        
+        function toggleRGBLights(isOn) {
+            rgbLightsOn = isOn !== undefined ? isOn : !rgbLightsOn;
+            console.log('🌈 RGB Lights:', rgbLightsOn ? 'ON' : 'OFF');
+            updateRGBLights();
+        }
+        
+        function updateRGBLights() {
+            if (!homeModel) return;
+            
+            const threeColor = new THREE.Color(rgbLightColor);
+            const intensity = rgbLightsOn ? (rgbLightBrightness / 100) * 0.8 : 0;
+            
+            // Apply RGB glow to corners/edges of house
+            homeModel.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    const nameLower = (child.name || '').toLowerCase();
+                    // Apply to structural elements that represent corners/edges
+                    if (nameLower.includes('corner') || nameLower.includes('edge') || 
+                        nameLower.includes('pillar') || nameLower.includes('column') ||
+                        nameLower.includes('trim') || nameLower.includes('frame')) {
+                        if (rgbLightsOn) {
+                            child.material.emissive = threeColor;
+                            child.material.emissiveIntensity = intensity;
+                        } else {
+                            child.material.emissive = new THREE.Color(0x222222);
+                            child.material.emissiveIntensity = 0.1;
+                        }
+                    }
+                }
+            });
+            
+            // Create/update point lights at corners for ambient glow
+            createCornerLights();
+        }
+        
+        function createCornerLights() {
+            // Remove old corner lights
+            cornerLights.forEach(light => scene.remove(light));
+            cornerLights = [];
+            
+            if (!rgbLightsOn || !homeModel) return;
+            
+            // Get model bounds to place lights at corners
+            const box = new THREE.Box3().setFromObject(homeModel);
+            const min = box.min;
+            const max = box.max;
+            const intensity = (rgbLightBrightness / 100) * 2;
+            
+            // Corner positions (4 corners at ground level, 4 at roof level)
+            const cornerPositions = [
+                new THREE.Vector3(min.x, min.y, min.z),
+                new THREE.Vector3(max.x, min.y, min.z),
+                new THREE.Vector3(min.x, min.y, max.z),
+                new THREE.Vector3(max.x, min.y, max.z),
+                new THREE.Vector3(min.x, max.y, min.z),
+                new THREE.Vector3(max.x, max.y, min.z),
+                new THREE.Vector3(min.x, max.y, max.z),
+                new THREE.Vector3(max.x, max.y, max.z),
+            ];
+            
+            const threeColor = new THREE.Color(rgbLightColor);
+            
+            cornerPositions.forEach(pos => {
+                const light = new THREE.PointLight(threeColor, intensity, 50);
+                light.position.copy(pos);
+                scene.add(light);
+                cornerLights.push(light);
+            });
         }
 
         // Expose functions to global scope for Flutter to call
@@ -5003,6 +5222,10 @@
         window.syncAllDeviceStates = syncAllDeviceStates;
         window.syncWindowById = syncWindowById;
         window.setBuzzerState = setBuzzerState;
+        // RGB corner lights functions
+        window.setRGBColor = setRGBColor;
+        window.setRGBBrightness = setRGBBrightness;
+        window.toggleRGBLights = toggleRGBLights;
 
         // Initialize the scene
         init();
