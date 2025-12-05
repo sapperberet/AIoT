@@ -29,6 +29,11 @@ enum EventType {
   lightTurnedOff,
   lightBrightnessChanged,
 
+  // Fan events
+  fanSpeedChanged,
+  fanTurnedOn,
+  fanTurnedOff,
+
   // Access events
   personRecognized,
   personUnrecognized,
@@ -318,6 +323,29 @@ class EventLogService with ChangeNotifier {
       metadata: {
         'state': isOn ? 'on' : 'off',
         if (brightness != null) 'brightness': brightness,
+      },
+    );
+  }
+
+  /// Log fan state change
+  Future<void> logFanEvent({
+    required String userId,
+    required int speed,
+    required String location,
+  }) async {
+    final speedLabels = ['Off', 'Low', 'Medium', 'High'];
+    final isOn = speed > 0;
+    await logEvent(
+      userId: userId,
+      type: isOn ? EventType.fanTurnedOn : EventType.fanTurnedOff,
+      title: 'Fan ${speedLabels[speed]}',
+      description: '${location.toUpperCase()} fan set to ${speedLabels[speed].toLowerCase()}',
+      severity: EventSeverity.info,
+      location: location,
+      deviceId: 'fan_$location',
+      metadata: {
+        'speed': speed,
+        'speedLabel': speedLabels[speed].toLowerCase(),
       },
     );
   }

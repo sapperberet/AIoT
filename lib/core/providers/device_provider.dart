@@ -24,7 +24,7 @@ class DeviceProvider with ChangeNotifier {
   bool _useCloudMode = false;
   String? _userId;
 
-  // Device states for doors, windows, garage, buzzer, lights
+  // Device states for doors, windows, garage, buzzer, lights, fans
   bool _isDoorOpen = false;
   bool _isGarageOpen = false;
   bool _isBuzzerActive = false;
@@ -40,6 +40,12 @@ class DeviceProvider with ChangeNotifier {
     'kitchen': false,
     'bathroom': false,
     'garage': false,
+  };
+  // Fan states: 0=off, 1=low, 2=medium, 3=high
+  Map<String, int> _fanStates = {
+    'living_room': 0,
+    'bedroom': 0,
+    'kitchen': 0,
   };
 
   // Callback for visualization sync
@@ -75,6 +81,7 @@ class DeviceProvider with ChangeNotifier {
   bool get isBuzzerActive => _isBuzzerActive;
   Map<String, bool> get windowStates => Map.unmodifiable(_windowStates);
   Map<String, bool> get lightStates => Map.unmodifiable(_lightStates);
+  Map<String, int> get fanStates => Map.unmodifiable(_fanStates);
 
   // Filtered device getters
   List<Device> get doors =>
@@ -87,6 +94,8 @@ class DeviceProvider with ChangeNotifier {
       _devices.where((d) => d.type == DeviceType.garage).toList();
   List<Device> get buzzers =>
       _devices.where((d) => d.type == DeviceType.buzzer).toList();
+  List<Device> get fans =>
+      _devices.where((d) => d.type == DeviceType.fan).toList();
   List<Device> get cameras =>
       _devices.where((d) => d.type == DeviceType.camera).toList();
   List<Device> get sensors =>
@@ -216,7 +225,7 @@ class DeviceProvider with ChangeNotifier {
       return;
     }
 
-    // Handle door, window, garage, buzzer, light status
+    // Handle door, window, garage, buzzer, light, fan status
     if (message.topic.contains('/door/status')) {
       _handleDoorStatus(payload);
       return;
@@ -231,6 +240,9 @@ class DeviceProvider with ChangeNotifier {
       return;
     } else if (message.topic.contains('/light/status')) {
       _handleLightStatus(message.topic, payload);
+      return;
+    } else if (message.topic.contains('/fan/status')) {
+      _handleFanStatus(message.topic, payload);
       return;
     }
 
@@ -382,6 +394,32 @@ class DeviceProvider with ChangeNotifier {
       'lightId': lightId,
       'isOn': isOn,
       'brightness': payload['brightness'],
+    });
+    notifyListeners();
+  }
+
+  /// Handle fan status from backend
+  void _handleFanStatus(String topic, Map<String, dynamic> payload) {
+    // Extract fan/room ID from topic: home/{room}/fan/status
+    final parts = topic.split('/');
+    final fanId = parts.length > 1 ? parts[1] : 'main';
+    final speed = payload['speed'] as int? ?? 0;
+    final previousSpeed = _fanStates[fanId] ?? 0;
+    _fanStates[fanId] = speed;
+
+    // Log event if state changed
+    if (previousSpeed != speed && _userId != null && _eventLogService != null) {
+      _eventLogService!.logFanEvent(
+        userId: _userId!,
+        speed: speed,
+        location: fanId,
+      );
+    }
+
+    // Sync with visualization
+    _visualizationCallback?.call('fan', {
+      'fanId': fanId,
+      'speed': speed,
     });
     notifyListeners();
   }
@@ -817,6 +855,71 @@ class DeviceProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle a specific fan (cycles through off -> low -> medium -> high -> off)
+  Future<void> toggleFan(String fanId) async {
+    final currentSpeed = _fanStates[fanId] ?? 0;
+    final newSpeed = (currentSpeed + 1) % 4; // Cycle 0 -> 1 -> 2 -> 3 -> 0
+    await setFanSpeed(fanId, newSpeed);
+  }
+
+  /// Set fan speed (0=off, 1=low, 2=medium, 3=high)
+  Future<void> setFanSpeed(String fanId, int speed) async {
+    final clampedSpeed = speed.clamp(0, 3);
+    final fanName = _formatWindowName(fanId);
+    final speedLabels = ['off', 'low', 'medium', 'high'];
+    
+    final command = {
+      'action': 'setSpeed',
+      'speed': clampedSpeed,
+      'speedLabel': speedLabels[clampedSpeed],
+      'fanId': fanId,
+      'deviceId': 'fan_$fanId',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      final topic = MqttConfig.roomFanCommandTopic(fanId);
+      _mqttService.publishJson(topic, command);
+    }
+
+    // Optimistic update
+    _fanStates[fanId] = clampedSpeed;
+    _visualizationCallback?.call('fan', {'fanId': fanId, 'speed': clampedSpeed});
+
+    // Log event
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logFanEvent(
+        userId: _userId!,
+        speed: clampedSpeed,
+        location: fanName,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Toggle all fans (turn all off if any is on, otherwise turn all to low)
+  Future<void> toggleAllFans() async {
+    final anyOn = _fanStates.values.any((speed) => speed > 0);
+    final newSpeed = anyOn ? 0 : 1; // All off or all low
+
+    for (var fanId in _fanStates.keys) {
+      _fanStates[fanId] = newSpeed;
+    }
+
+    final command = {
+      'action': 'setAll',
+      'speed': newSpeed,
+    };
+
+    if (_isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publishJson('${MqttConfig.topicPrefix}/fans/command', command);
+    }
+
+    _visualizationCallback?.call('fans', {'allSpeed': newSpeed});
+    notifyListeners();
+  }
+
   /// Get current state summary for visualization sync
   Map<String, dynamic> getDeviceStatesSummary() {
     return {
@@ -825,6 +928,7 @@ class DeviceProvider with ChangeNotifier {
       'buzzer': {'isActive': _isBuzzerActive},
       'windows': _windowStates,
       'lights': _lightStates,
+      'fans': _fanStates,
     };
   }
 
@@ -845,6 +949,13 @@ class DeviceProvider with ChangeNotifier {
       _visualizationCallback?.call('light', {
         'lightId': entry.key,
         'isOn': entry.value,
+      });
+    }
+
+    for (var entry in _fanStates.entries) {
+      _visualizationCallback?.call('fan', {
+        'fanId': entry.key,
+        'speed': entry.value,
       });
     }
   }

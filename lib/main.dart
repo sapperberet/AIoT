@@ -41,16 +41,25 @@ const bool DEBUG_MODE = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Filter out spam debug messages from animation packages
+  // Filter out spam debug messages from animation packages and system logs
   debugPrint = (String? message, {int? wrapWidth}) {
-    if (message == null) return;
+    if (message == null || message.isEmpty) return;
     // Suppress animation spam and gralloc messages
     final lowerMsg = message.toLowerCase();
+    // Filter animation spam
     if (lowerMsg.contains('animate:') ||
+        lowerMsg.contains('animate =') ||
         lowerMsg == 'animate' ||
-        lowerMsg == 'animate: true') return;
-    if (lowerMsg.contains('gralloc')) return;
-    if (message == 'true' || message == 'false') return;
+        lowerMsg == 'animate: true' ||
+        lowerMsg == 'true' ||
+        lowerMsg == 'false') return;
+    // Filter gralloc system messages (Android GPU memory allocator)
+    if (lowerMsg.contains('gralloc') ||
+        lowerMsg.contains('i/gralloc') ||
+        lowerMsg.contains('@set_metadata') ||
+        lowerMsg.contains('dataspace')) return;
+    // Filter empty or whitespace-only messages
+    if (message.trim().isEmpty) return;
     // Print other messages normally using default implementation
     // ignore: avoid_print
     print(message);

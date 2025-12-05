@@ -37,27 +37,30 @@ class DevicesTab extends StatelessWidget {
                     end: Alignment.bottomCenter,
                   ),
           ),
-          child: Column(
-            children: [
-              // Active Alarms Section
-              if (alarms.isNotEmpty)
-                FadeInDown(
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    child: GlassmorphicContainer(
-                      width: double.infinity,
-                      height: alarms.length > 2 ? 180 : alarms.length * 70 + 50,
-                      borderRadius: 20,
-                      blur: 20,
-                      alignment: Alignment.center,
-                      border: 2,
-                      linearGradient: LinearGradient(
-                        colors: [
-                          AppTheme.errorColor.withOpacity(0.2),
-                          AppTheme.errorColor.withOpacity(0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                // Active Alarms Section
+                if (alarms.isNotEmpty)
+                  FadeInDown(
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      child: GlassmorphicContainer(
+                        width: double.infinity,
+                        height:
+                            alarms.length > 2 ? 180 : alarms.length * 70 + 50,
+                        borderRadius: 20,
+                        blur: 20,
+                        alignment: Alignment.center,
+                        border: 2,
+                        linearGradient: LinearGradient(
+                          colors: [
+                            AppTheme.errorColor.withOpacity(0.2),
+                            AppTheme.errorColor.withOpacity(0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                       ),
                       borderGradient: LinearGradient(
                         colors: [
@@ -139,72 +142,76 @@ class DevicesTab extends StatelessWidget {
                 child: _QuickControlsSection(deviceProvider: deviceProvider),
               ),
 
-              // Devices List
-              Expanded(
-                child: devices.isEmpty
-                    ? Center(
-                        child: FadeIn(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: AppTheme.primaryGradient.scale(0.3),
-                                ),
-                                child: const Icon(Iconsax.devices_1,
-                                    size: 50, color: AppTheme.primaryColor),
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                AppLocalizations.of(context).t('no_devices'),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                AppLocalizations.of(context)
-                                    .t('add_devices_desc'),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.mutedText,
-                                ),
-                              ),
-                            ],
+              // Devices List (inline, not in Expanded since we're in SingleChildScrollView)
+              if (devices.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: FadeIn(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: AppTheme.primaryGradient.scale(0.3),
+                          ),
+                          child: const Icon(Iconsax.devices_1,
+                              size: 50, color: AppTheme.primaryColor),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          AppLocalizations.of(context).t('no_devices'),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
                           ),
                         ),
-                      )
-                    : AnimationLimiter(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: devices.length,
-                          itemBuilder: (context, index) {
-                            final device = devices[index];
-                            return AnimationConfiguration.staggeredList(
-                              position: index,
-                              duration: const Duration(milliseconds: 375),
-                              child: SlideAnimation(
-                                verticalOffset: 50.0,
-                                child: FadeInAnimation(
-                                  child: ModernDeviceCard(device: device),
-                                ),
-                              ),
-                            );
-                          },
+                        const SizedBox(height: 12),
+                        Text(
+                          AppLocalizations.of(context).t('add_devices_desc'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.mutedText,
+                          ),
                         ),
-                      ),
-              ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: AnimationLimiter(
+                    child: Column(
+                      children: List.generate(devices.length, (index) {
+                        final device = devices[index];
+                        return AnimationConfiguration.staggeredList(
+                          position: index,
+                          duration: const Duration(milliseconds: 375),
+                          child: SlideAnimation(
+                            verticalOffset: 50.0,
+                            child: FadeInAnimation(
+                              child: ModernDeviceCard(device: device),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+
+              // Bottom padding for scroll comfort
+              const SizedBox(height: 100),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 }
 
 extension GradientExtension on Gradient {
@@ -758,7 +765,7 @@ class _QuickControlsSection extends StatelessWidget {
           ),
 
           // Security Controls Section
-          _buildSectionHeader(context, '🔐 Security', isDark),
+          _buildSectionHeader(context, 'Security', Iconsax.shield_tick, isDark),
           const SizedBox(height: 8),
           _buildDeviceListItem(
             context,
@@ -817,7 +824,7 @@ class _QuickControlsSection extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Windows Section
-          _buildSectionHeader(context, '🪟 Windows', isDark),
+          _buildSectionHeader(context, 'Windows', Icons.window, isDark),
           const SizedBox(height: 8),
           ...deviceProvider.windowStates.entries.map((entry) {
             final windowName = _formatName(entry.key);
@@ -846,7 +853,7 @@ class _QuickControlsSection extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Lights Section
-          _buildSectionHeader(context, '💡 Lights', isDark),
+          _buildSectionHeader(context, 'Lights', Iconsax.lamp_on5, isDark),
           const SizedBox(height: 8),
           ...deviceProvider.lightStates.entries.map((entry) {
             final lightName = _formatName(entry.key);
@@ -871,7 +878,248 @@ class _QuickControlsSection extends StatelessWidget {
               ),
             );
           }).toList(),
+
+          const SizedBox(height: 16),
+
+          // Fans Section
+          _buildSectionHeader(context, 'Fans', Icons.air, isDark),
+          const SizedBox(height: 8),
+          ...deviceProvider.fanStates.entries.map((entry) {
+            final fanName = _formatName(entry.key);
+            final speed = entry.value;
+            final speedLabels = ['OFF', 'LOW', 'MED', 'HIGH'];
+            final speedColors = [Colors.grey, Colors.green, Colors.blue, Colors.orange];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildFanListItem(
+                context,
+                name: '$fanName Fan',
+                deviceId: 'fan_${entry.key}',
+                mqttTopic: 'home/${entry.key}/fan/command',
+                speed: speed,
+                speedLabel: speedLabels[speed],
+                speedColor: speedColors[speed],
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  deviceProvider.toggleFan(entry.key);
+                },
+                onLongPress: () {
+                  HapticFeedback.heavyImpact();
+                  _showFanSpeedDialog(context, deviceProvider, entry.key, fanName);
+                },
+                isDark: isDark,
+              ),
+            );
+          }).toList(),
         ],
+      ),
+    );
+  }
+
+  void _showFanSpeedDialog(BuildContext context, DeviceProvider provider, String fanId, String fanName) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$fanName Fan Speed',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSpeedButton(context, provider, fanId, 0, 'Off', Icons.power_settings_new, Colors.grey),
+                _buildSpeedButton(context, provider, fanId, 1, 'Low', Icons.air, Colors.green),
+                _buildSpeedButton(context, provider, fanId, 2, 'Med', Icons.air, Colors.blue),
+                _buildSpeedButton(context, provider, fanId, 3, 'High', Icons.air, Colors.orange),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpeedButton(BuildContext context, DeviceProvider provider, String fanId, int speed, String label, IconData icon, Color color) {
+    final currentSpeed = provider.fanStates[fanId] ?? 0;
+    final isSelected = currentSpeed == speed;
+    return GestureDetector(
+      onTap: () {
+        provider.setFanSpeed(fanId, speed);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? color : Colors.grey, size: 28),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: isSelected ? color : Colors.grey, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFanListItem(
+    BuildContext context, {
+    required String name,
+    required String deviceId,
+    required String mqttTopic,
+    required int speed,
+    required String speedLabel,
+    required Color speedColor,
+    required VoidCallback onTap,
+    required VoidCallback onLongPress,
+    required bool isDark,
+  }) {
+    final isOn = speed > 0;
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 72,
+        borderRadius: 12,
+        blur: 15,
+        alignment: Alignment.center,
+        border: 1.5,
+        linearGradient: LinearGradient(
+          colors: isOn
+              ? [
+                  speedColor.withOpacity(0.2),
+                  speedColor.withOpacity(0.1),
+                ]
+              : isDark
+                  ? [
+                      Colors.white.withOpacity(0.08),
+                      Colors.white.withOpacity(0.04),
+                    ]
+                  : [
+                      Colors.white.withOpacity(0.9),
+                      Colors.white.withOpacity(0.7),
+                    ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderGradient: LinearGradient(
+          colors: isOn
+              ? [
+                  speedColor.withOpacity(0.5),
+                  speedColor.withOpacity(0.2),
+                ]
+              : [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
+                ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              // Animated fan icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [speedColor.shade400, speedColor.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: speedColor.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.air, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+
+              // Name and ID
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ID: $deviceId • Hold to set speed',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: AppTheme.mutedText,
+                      ),
+                    ),
+                    Text(
+                      mqttTopic,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontFamily: 'monospace',
+                        color: AppTheme.mutedText.withOpacity(0.7),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Speed Badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [speedColor.shade400, speedColor.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: speedColor.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  speedLabel,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -885,16 +1133,26 @@ class _QuickControlsSection extends StatelessWidget {
         .join(' ');
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, bool isDark) {
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, top: 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white70 : Colors.black54,
-        ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: AppTheme.primaryColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -11,6 +11,7 @@ enum DeviceType {
   window,
   garage,
   buzzer,
+  fan,
 }
 
 enum DeviceStatus {

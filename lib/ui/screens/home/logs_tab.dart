@@ -83,14 +83,15 @@ class _LogsTabState extends State<LogsTab> with SingleTickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              _buildFilterChip('All', null),
-              _buildFilterChip('🚪 Doors', 'door'),
-              _buildFilterChip('🪟 Windows', 'window'),
-              _buildFilterChip('🚗 Garage', 'garage'),
-              _buildFilterChip('💡 Lights', 'light'),
-              _buildFilterChip('🔔 Buzzer', 'buzzer'),
-              _buildFilterChip('🚨 Alarms', 'alarm'),
-              _buildFilterChip('👤 People', 'person'),
+              _buildFilterChip('All', null, icon: Iconsax.category),
+              _buildFilterChip('Doors', 'door', icon: Icons.door_front_door),
+              _buildFilterChip('Windows', 'window', icon: Icons.window),
+              _buildFilterChip('Garage', 'garage', icon: Icons.garage),
+              _buildFilterChip('Lights', 'light', icon: Iconsax.lamp_on5),
+              _buildFilterChip('Fans', 'fan', icon: Icons.air),
+              _buildFilterChip('Buzzer', 'buzzer', icon: Icons.notifications_active),
+              _buildFilterChip('Alarms', 'alarm', icon: Iconsax.warning_2),
+              _buildFilterChip('People', 'person', icon: Iconsax.user),
             ],
           ),
         ),
@@ -122,13 +123,22 @@ class _LogsTabState extends State<LogsTab> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildFilterChip(String label, String? filter) {
+  Widget _buildFilterChip(String label, String? filter, {IconData? icon}) {
     final isSelected = _selectedFilter == filter;
     final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
+        avatar: icon != null
+            ? Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withOpacity(0.6),
+              )
+            : null,
         label: Text(label),
         selected: isSelected,
         onSelected: (selected) {

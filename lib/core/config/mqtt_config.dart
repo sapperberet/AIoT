@@ -53,6 +53,12 @@ class MqttConfig {
   static const String buzzerStatusTopic = '$topicPrefix/buzzer/status';
   static const String buzzerCommandTopic = '$topicPrefix/buzzer/command';
 
+  // Fan Topics (room-based with speed control: 0=off, 1=low, 2=medium, 3=high)
+  static const String fanStatusTopic = '$topicPrefix/+/fan/status';
+  static const String fanCommandTopic = '$topicPrefix/+/fan/command';
+  static String roomFanStatusTopic(String room) => '$topicPrefix/$room/fan/status';
+  static String roomFanCommandTopic(String room) => '$topicPrefix/$room/fan/command';
+
   // Light topics (room-based)
   static const String allLightsStatusTopic = '$topicPrefix/+/light/status';
   static const String allLightsCommandTopic = '$topicPrefix/+/light/command';
