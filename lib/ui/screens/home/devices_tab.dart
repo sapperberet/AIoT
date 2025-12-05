@@ -747,11 +747,11 @@ class _QuickControlsSection extends StatelessWidget {
             isActive: deviceProvider.isDoorOpen,
             activeColor: Colors.orange,
             inactiveColor: Colors.green,
-            activeLabel: 'OPEN',
-            inactiveLabel: 'CLOSED',
+            activeLabel: 'CLOSE',  // Action to perform when open
+            inactiveLabel: 'OPEN',  // Action to perform when closed
             onTap: () {
               HapticFeedback.mediumImpact();
-              deviceProvider.toggleDoor();
+              _showDoorWarningDialog(context, deviceProvider, 'Main Door', deviceProvider.isDoorOpen);
             },
             isDark: isDark,
           ),
@@ -765,11 +765,11 @@ class _QuickControlsSection extends StatelessWidget {
             isActive: deviceProvider.isGarageOpen,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
-            activeLabel: 'OPEN',
-            inactiveLabel: 'CLOSED',
+            activeLabel: 'CLOSE',  // Action to perform when open
+            inactiveLabel: 'OPEN',  // Action to perform when closed
             onTap: () {
               HapticFeedback.mediumImpact();
-              deviceProvider.toggleGarage();
+              _showDoorWarningDialog(context, deviceProvider, 'Garage Door', deviceProvider.isGarageOpen);
             },
             isDark: isDark,
           ),
@@ -1767,6 +1767,75 @@ class _QuickControlsSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showDoorWarningDialog(
+    BuildContext context,
+    DeviceProvider provider,
+    String doorName,
+    bool isCurrentlyOpen,
+  ) {
+    final actionCapitalized = isCurrentlyOpen ? 'Close' : 'Open';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                isCurrentlyOpen ? Icons.lock_open : Icons.warning_amber_rounded,
+                color: isCurrentlyOpen ? Colors.green : Colors.orange,
+              ),
+              const SizedBox(width: 8),
+              Text('$actionCapitalized $doorName?'),
+            ],
+          ),
+          content: Text(
+            isCurrentlyOpen
+                ? 'Are you sure you want to close the $doorName?'
+                : '⚠️ Security Warning!\n\nYou are about to open the $doorName. Make sure this is intentional and safe.',
+            style: TextStyle(
+              fontSize: 15,
+              color: !isCurrentlyOpen ? Colors.orange.shade800 : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (doorName == 'Main Door') {
+                  provider.toggleDoor();
+                } else if (doorName == 'Garage Door') {
+                  provider.toggleGarage();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isCurrentlyOpen ? Colors.green : Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(actionCapitalized),
+            ),
+          ],
+        );
+      },
     );
   }
 

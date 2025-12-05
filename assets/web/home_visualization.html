@@ -4856,7 +4856,17 @@
                         else if (!state.isOpen && garageOpen) closeGarage();
                         break;
                     case 'buzzer':
-                        setBuzzerState(state.isActive);
+                        // Handle both direct boolean and object with isActive
+                        let buzzerValue;
+                        if (typeof state === 'boolean') {
+                            buzzerValue = state;
+                        } else if (state && typeof state.isActive !== 'undefined') {
+                            buzzerValue = state.isActive === true;
+                        } else {
+                            buzzerValue = false;
+                        }
+                        console.log('🔔 Single device buzzer sync - state:', state, '-> value:', buzzerValue);
+                        setBuzzerState(buzzerValue);
                         break;
                 }
             } catch (e) {
@@ -4912,9 +4922,18 @@
                     setRGBColor(states.rgbColor, states.rgbBrightness || 100);
                 }
                 
-                // Sync buzzer
+                // Sync buzzer - handle both boolean and object formats
                 if (states.buzzer !== undefined) {
-                    setBuzzerState(states.buzzer);
+                    let buzzerState;
+                    if (typeof states.buzzer === 'boolean') {
+                        buzzerState = states.buzzer;
+                    } else if (typeof states.buzzer === 'object' && states.buzzer !== null) {
+                        buzzerState = states.buzzer.isActive === true;
+                    } else {
+                        buzzerState = states.buzzer === true || states.buzzer === 'true';
+                    }
+                    console.log('🔔 Buzzer sync - raw:', states.buzzer, '-> parsed:', buzzerState);
+                    setBuzzerState(buzzerState);
                 }
                 
                 console.log('✅ All device states synced');
@@ -4925,31 +4944,69 @@
         
         // Sync window by ID (front_window, side_window, upper_window_1, upper_window_2)
         function syncWindowById(windowId, isOpen) {
+            // Ensure windows are discovered first
+            if (windowMeshes.length === 0) findWindows();
+            
             // Map window IDs to mesh names (adjust based on your 3D model)
             const windowMeshNames = {
-                'front_window': ['front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front'],
-                'side_window': ['side_window_mesh', 'side_window', 'sideWindow', 'window_side', 'Window_Side'],
-                'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1'],
-                'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2']
+                'front_window': ['front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front', 'upper_window_mesh_1', 'upper_window_1'],
+                'side_window': ['side_window_mesh', 'side_window', 'sideWindow', 'window_side', 'Window_Side', 'upper_window_mesh_2', 'upper_window_2'],
+                'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1', 'front_window_mesh', 'front_window'],
+                'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2', 'side_window_mesh', 'side_window']
             };
             
             const possibleNames = windowMeshNames[windowId] || [windowId];
             let foundMesh = null;
             
-            // Try to find the window mesh
+            // Try to find the window mesh in roomMeshes first
             for (const name of possibleNames) {
                 if (roomMeshes[name]) {
                     foundMesh = roomMeshes[name];
+                    console.log('🪟 Found window in roomMeshes:', name, 'for', windowId);
                     break;
                 }
             }
             
-            // Also try partial matching
+            // Try windowMeshes array if not found
+            if (!foundMesh && windowMeshes.length > 0) {
+                for (const name of possibleNames) {
+                    const match = windowMeshes.find(m => m.name.toLowerCase() === name.toLowerCase());
+                    if (match) {
+                        foundMesh = match;
+                        console.log('🪟 Found window in windowMeshes array:', match.name, 'for', windowId);
+                        break;
+                    }
+                }
+            }
+            
+            // Try partial matching in roomMeshes
             if (!foundMesh) {
                 for (const [meshName, mesh] of Object.entries(roomMeshes)) {
-                    if (meshName.toLowerCase().includes(windowId.replace('_', ''))) {
+                    const meshLower = meshName.toLowerCase();
+                    const idLower = windowId.replace('_', '').toLowerCase();
+                    if (meshLower.includes(idLower) || meshLower.includes('window')) {
                         foundMesh = mesh;
+                        console.log('🪟 Found window via partial match:', meshName, 'for', windowId);
                         break;
+                    }
+                }
+            }
+            
+            // Try partial matching in windowMeshes array
+            if (!foundMesh && windowMeshes.length > 0) {
+                const idLower = windowId.replace('_', '').toLowerCase();
+                // Try to find by index: front_window = index 0, side_window = index 1
+                if (windowId === 'front_window' && windowMeshes[0]) {
+                    foundMesh = windowMeshes[0];
+                    console.log('🪟 Using first window mesh for front_window:', foundMesh.name);
+                } else if (windowId === 'side_window' && windowMeshes[1]) {
+                    foundMesh = windowMeshes[1];
+                    console.log('🪟 Using second window mesh for side_window:', foundMesh.name);
+                } else {
+                    // Try partial name match
+                    foundMesh = windowMeshes.find(m => m.name.toLowerCase().includes(idLower));
+                    if (foundMesh) {
+                        console.log('🪟 Found window via name match:', foundMesh.name, 'for', windowId);
                     }
                 }
             }
@@ -4961,7 +5018,7 @@
                     closeWindowMesh(foundMesh);
                 }
             } else {
-                console.log('⚠️ Window mesh not found for:', windowId);
+                console.log('⚠️ Window mesh not found for:', windowId, '- Available windows:', windowMeshes.map(m => m.name));
             }
         }
         
@@ -5016,14 +5073,24 @@
         let buzzerFlickerPhase = 0;
         
         function setBuzzerState(isActive) {
-            buzzerActive = isActive;
+            // Force boolean conversion
+            isActive = isActive === true || isActive === 'true';
+            
             console.log('🔔 Buzzer state:', isActive ? 'ACTIVE (ALARM MODE)' : 'OFF');
+            
+            // If state hasn't changed, do nothing
+            if (buzzerActive === isActive) {
+                console.log('🔔 Buzzer state unchanged, skipping');
+                return;
+            }
+            
+            buzzerActive = isActive;
             
             if (isActive) {
                 // Start alarm flickering animation
                 startBuzzerAlarm();
             } else {
-                // Stop alarm and reset colors
+                // Stop alarm and reset colors immediately
                 stopBuzzerAlarm();
             }
         }
@@ -5031,16 +5098,20 @@
         function startBuzzerAlarm() {
             if (buzzerAnimationId) return; // Already running
             
+            buzzerFlickerPhase = 0; // Reset phase
+            
             function animateAlarm() {
                 if (!buzzerActive) {
                     stopBuzzerAlarm();
                     return;
                 }
                 
-                buzzerFlickerPhase += 0.15;
-                // Create pulsing red effect with some randomness for flicker
-                const flickerIntensity = (Math.sin(buzzerFlickerPhase * 3) + 1) / 2;
-                const randomFlicker = 0.7 + Math.random() * 0.3;
+                // Slower, smoother pulsing (reduced from 0.15 to 0.04)
+                buzzerFlickerPhase += 0.04;
+                // Slower sine wave (reduced multiplier from 3 to 1.5) for gentler pulse
+                const flickerIntensity = (Math.sin(buzzerFlickerPhase * 1.5) + 1) / 2;
+                // Less random variation for smoother effect
+                const randomFlicker = 0.85 + Math.random() * 0.15;
                 const intensity = flickerIntensity * randomFlicker;
                 
                 // Apply red warning glow to walls/structure
@@ -5074,18 +5145,26 @@
         }
         
         function stopBuzzerAlarm() {
+            // Cancel animation immediately
             if (buzzerAnimationId) {
                 cancelAnimationFrame(buzzerAnimationId);
                 buzzerAnimationId = null;
             }
             
-            // Reset all emissive colors
+            // Reset phase
+            buzzerFlickerPhase = 0;
+            
+            console.log('🔔 Stopping buzzer alarm, resetting colors...');
+            
+            // Reset all emissive colors on the model
             if (homeModel) {
                 homeModel.traverse((child) => {
-                    if (child.isMesh && child.material && child.material.emissive) {
-                        // Reset to natural wood emissive
-                        child.material.emissive = new THREE.Color(0x222222);
-                        child.material.emissiveIntensity = 0.1;
+                    if (child.isMesh && child.material) {
+                        if (child.material.emissive) {
+                            // Reset to natural wood emissive or none
+                            child.material.emissive = new THREE.Color(0x222222);
+                            child.material.emissiveIntensity = 0.1;
+                        }
                     }
                 });
             }
@@ -5097,20 +5176,29 @@
                     mesh.material.emissiveIntensity = 0;
                 }
             });
+            
+            console.log('🔔 Buzzer alarm stopped and colors reset');
+            
+            // Restore RGB lights if they were on
+            if (rgbLightsOn) {
+                console.log('🌈 Restoring RGB lights after buzzer stopped');
+                updateRGBLights();
+            }
         }
         
-        // RGB Corner Lights - Illuminates corners of house with RGB color
+        // RGB Corner Lights - Illuminates edges/borders of house with RGB color
         let rgbLightColor = 0xFFFFFF;
         let rgbLightBrightness = 100;
         let rgbLightsOn = false;
         let cornerLights = [];
+        let edgeLines = []; // Store edge outline objects
         
         function setRGBColor(color, brightness) {
             rgbLightColor = color & 0xFFFFFF;
             if (brightness !== undefined) {
                 rgbLightBrightness = Math.max(0, Math.min(100, brightness));
             }
-            console.log('🌈 RGB Color set:', '#' + rgbLightColor.toString(16).padLeft(6, '0'), 'Brightness:', rgbLightBrightness + '%');
+            console.log('🌈 RGB Color set:', '#' + rgbLightColor.toString(16).padStart(6, '0'), 'Brightness:', rgbLightBrightness + '%');
             updateRGBLights();
         }
         
@@ -5130,20 +5218,40 @@
             if (!homeModel) return;
             
             const threeColor = new THREE.Color(rgbLightColor);
-            const intensity = rgbLightsOn ? (rgbLightBrightness / 100) * 0.8 : 0;
+            const intensity = rgbLightsOn ? (rgbLightBrightness / 100) : 0;
             
-            // Apply RGB glow to corners/edges of house
+            // Apply RGB emissive glow to structural elements (walls, roof, levels)
             homeModel.traverse((child) => {
                 if (child.isMesh && child.material) {
                     const nameLower = (child.name || '').toLowerCase();
-                    // Apply to structural elements that represent corners/edges
-                    if (nameLower.includes('corner') || nameLower.includes('edge') || 
-                        nameLower.includes('pillar') || nameLower.includes('column') ||
-                        nameLower.includes('trim') || nameLower.includes('frame')) {
+                    
+                    // Target structural elements: walls, roof edges, levels, home structure
+                    const isStructural = nameLower.includes('wall') || 
+                                        nameLower.includes('roof') || 
+                                        nameLower.includes('level') ||
+                                        nameLower.includes('home_') ||
+                                        nameLower.includes('yard_wall') ||
+                                        nameLower.includes('tri_') ||
+                                        nameLower.includes('_front') ||
+                                        nameLower.includes('_back') ||
+                                        nameLower.includes('_left') ||
+                                        nameLower.includes('_right');
+                    
+                    // Skip doors, windows, garage, glass, floor, yard (ground)
+                    const isExcluded = nameLower.includes('door') || 
+                                      nameLower.includes('window') || 
+                                      nameLower.includes('garage') ||
+                                      nameLower.includes('glass') ||
+                                      nameLower.includes('floor') ||
+                                      nameLower === 'yard_mesh';
+                    
+                    if (isStructural && !isExcluded) {
                         if (rgbLightsOn) {
+                            // Apply RGB color as emissive with intensity based on brightness
                             child.material.emissive = threeColor;
-                            child.material.emissiveIntensity = intensity;
+                            child.material.emissiveIntensity = intensity * 0.35;
                         } else {
+                            // Reset to default
                             child.material.emissive = new THREE.Color(0x222222);
                             child.material.emissiveIntensity = 0.1;
                         }
@@ -5151,8 +5259,72 @@
                 }
             });
             
-            // Create/update point lights at corners for ambient glow
+            // Create edge outlines and corner lights
+            createEdgeOutlines();
             createCornerLights();
+            
+            console.log('🌈 RGB lights updated - Color:', '#' + rgbLightColor.toString(16).padStart(6, '0'), 
+                        'Brightness:', rgbLightBrightness + '%', 'On:', rgbLightsOn);
+        }
+        
+        // Create glowing edge outlines around structural elements
+        function createEdgeOutlines() {
+            // Remove old edge lines
+            edgeLines.forEach(line => scene.remove(line));
+            edgeLines = [];
+            
+            if (!rgbLightsOn || !homeModel) return;
+            
+            const threeColor = new THREE.Color(rgbLightColor);
+            const opacity = (rgbLightBrightness / 100) * 0.9;
+            
+            homeModel.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    const nameLower = (child.name || '').toLowerCase();
+                    
+                    // Only add edges to main structural elements
+                    const isMainStructure = nameLower.includes('wall') || 
+                                           nameLower.includes('roof') ||
+                                           nameLower.includes('level_1_') ||
+                                           nameLower.includes('home_') ||
+                                           nameLower.includes('yard_wall');
+                    
+                    const isExcluded = nameLower.includes('door') || 
+                                      nameLower.includes('window') || 
+                                      nameLower.includes('garage') ||
+                                      nameLower.includes('glass') ||
+                                      nameLower.includes('floor') ||
+                                      nameLower.includes('internal') ||
+                                      nameLower === 'yard_mesh';
+                    
+                    if (isMainStructure && !isExcluded) {
+                        // Create edge geometry for this mesh
+                        const edges = new THREE.EdgesGeometry(child.geometry, 15); // 15 degree threshold
+                        const lineMaterial = new THREE.LineBasicMaterial({ 
+                            color: threeColor,
+                            transparent: true,
+                            opacity: opacity,
+                            linewidth: 2
+                        });
+                        const edgeLine = new THREE.LineSegments(edges, lineMaterial);
+                        
+                        // Copy the mesh's world transform
+                        edgeLine.position.copy(child.position);
+                        edgeLine.rotation.copy(child.rotation);
+                        edgeLine.scale.copy(child.scale);
+                        
+                        // Apply parent transforms if any
+                        if (child.parent) {
+                            child.parent.localToWorld(edgeLine.position);
+                        }
+                        
+                        scene.add(edgeLine);
+                        edgeLines.push(edgeLine);
+                    }
+                }
+            });
+            
+            console.log('🌈 Created', edgeLines.length, 'edge outlines');
         }
         
         function createCornerLights() {
@@ -5166,28 +5338,41 @@
             const box = new THREE.Box3().setFromObject(homeModel);
             const min = box.min;
             const max = box.max;
-            const intensity = (rgbLightBrightness / 100) * 2;
+            const center = new THREE.Vector3();
+            box.getCenter(center);
             
-            // Corner positions (4 corners at ground level, 4 at roof level)
-            const cornerPositions = [
-                new THREE.Vector3(min.x, min.y, min.z),
-                new THREE.Vector3(max.x, min.y, min.z),
-                new THREE.Vector3(min.x, min.y, max.z),
-                new THREE.Vector3(max.x, min.y, max.z),
-                new THREE.Vector3(min.x, max.y, min.z),
-                new THREE.Vector3(max.x, max.y, min.z),
-                new THREE.Vector3(min.x, max.y, max.z),
-                new THREE.Vector3(max.x, max.y, max.z),
-            ];
+            const intensity = (rgbLightBrightness / 100) * 1.5;
+            const distance = 80; // Light reach distance
             
             const threeColor = new THREE.Color(rgbLightColor);
             
-            cornerPositions.forEach(pos => {
-                const light = new THREE.PointLight(threeColor, intensity, 50);
+            // Corner positions - 8 corners of the bounding box
+            const cornerPositions = [
+                // Bottom corners
+                new THREE.Vector3(min.x, min.y + 5, min.z),
+                new THREE.Vector3(max.x, min.y + 5, min.z),
+                new THREE.Vector3(min.x, min.y + 5, max.z),
+                new THREE.Vector3(max.x, min.y + 5, max.z),
+                // Top corners  
+                new THREE.Vector3(min.x, max.y - 5, min.z),
+                new THREE.Vector3(max.x, max.y - 5, min.z),
+                new THREE.Vector3(min.x, max.y - 5, max.z),
+                new THREE.Vector3(max.x, max.y - 5, max.z),
+                // Mid-level edge lights
+                new THREE.Vector3(min.x, center.y, center.z),
+                new THREE.Vector3(max.x, center.y, center.z),
+                new THREE.Vector3(center.x, center.y, min.z),
+                new THREE.Vector3(center.x, center.y, max.z),
+            ];
+            
+            cornerPositions.forEach((pos, i) => {
+                const light = new THREE.PointLight(threeColor, intensity, distance);
                 light.position.copy(pos);
                 scene.add(light);
                 cornerLights.push(light);
             });
+            
+            console.log('🌈 Created', cornerLights.length, 'corner/edge lights');
         }
 
         // Expose functions to global scope for Flutter to call

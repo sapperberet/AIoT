@@ -189,15 +189,21 @@ class DeviceProvider with ChangeNotifier {
     // Sync window states
     if (states['windows'] != null) {
       final windowStates = states['windows'] as Map<String, dynamic>;
+      bool windowsChanged = false;
       windowStates.forEach((windowId, value) {
         final isOpen = value as bool? ?? false;
         if (_windowStates[windowId] != isOpen) {
           debugPrint(
               '🪟 Firebase: Window $windowId changed to ${isOpen ? "OPEN" : "CLOSED"}');
           _windowStates[windowId] = isOpen;
+          windowsChanged = true;
           hasChanges = true;
         }
       });
+      // Sync windows to visualization
+      if (windowsChanged) {
+        _syncToVisualization('windows', Map<String, dynamic>.from(_windowStates));
+      }
     }
 
     // Sync light states
@@ -242,17 +248,57 @@ class DeviceProvider with ChangeNotifier {
         debugPrint(
             '🔔 Firebase: Buzzer changed to ${isActive ? "ACTIVE" : "INACTIVE"}');
         _isBuzzerActive = isActive;
+        _syncToVisualization('buzzer', {'isActive': isActive});
         hasChanges = true;
       }
     }
 
-    // Sync RGB color
+    // Sync RGB color (handle both Map and int formats)
+    bool rgbChanged = false;
     if (states['rgbColor'] != null) {
-      final color = states['rgbColor'] as int? ?? 0xFFFFFF;
+      int color;
+      final rgbData = states['rgbColor'];
+      if (rgbData is int) {
+        color = rgbData;
+      } else if (rgbData is Map) {
+        color = (rgbData['value'] as int?) ?? 0xFFFFFF;
+      } else {
+        color = 0xFFFFFF;
+      }
       if (_rgbLightColor != color) {
+        debugPrint('🌈 Firebase: RGB color changed to 0x${color.toRadixString(16)}');
         _rgbLightColor = color;
+        rgbChanged = true;
         hasChanges = true;
       }
+    }
+
+    // Sync RGB brightness
+    if (states['rgbBrightness'] != null) {
+      int brightness;
+      final brightnessData = states['rgbBrightness'];
+      if (brightnessData is int) {
+        brightness = brightnessData;
+      } else if (brightnessData is Map) {
+        brightness = (brightnessData['value'] as int?) ?? 100;
+      } else {
+        brightness = 100;
+      }
+      if (_rgbBrightness != brightness) {
+        debugPrint('🌈 Firebase: RGB brightness changed to $brightness%');
+        _rgbBrightness = brightness;
+        rgbChanged = true;
+        hasChanges = true;
+      }
+    }
+
+    // Sync RGB to visualization if color or brightness changed
+    if (rgbChanged) {
+      _syncToVisualization('rgb', {
+        'color': _rgbLightColor,
+        'brightness': _rgbBrightness,
+        'isOn': _lightStates['rgb'] ?? false,
+      });
     }
 
     if (hasChanges) {
