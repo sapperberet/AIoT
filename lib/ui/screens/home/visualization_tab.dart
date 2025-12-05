@@ -23,19 +23,69 @@ class _VisualizationTabState extends State<VisualizationTab> {
   late WebViewController _webViewController;
   bool _isLoading = true;
   bool _isDoorOpen = false;
-  bool _isDoorAnimating = false;
   bool _isGarageOpen = false;
-  bool _isGarageAnimating = false;
+
+  // Listener references for cleanup
+  VoidCallback? _alarmListener;
+  VoidCallback? _doorListener;
+  VoidCallback? _garageListener;
+  VoidCallback? _deviceSyncListener;
+  VoidCallback? _themeListener;
+
+  // Provider references
+  DeviceProvider? _deviceProvider;
+  HomeVisualizationProvider? _vizProvider;
+  SettingsProvider? _settingsProvider;
 
   @override
   void initState() {
     super.initState();
     _initializeWebView();
+    // Initialize local state from providers BEFORE setting up listeners
+    _initializeLocalState();
     _listenToAlarms();
     _listenToDoorState();
     _listenToGarageState();
     _listenToDeviceSync();
     _listenToThemeChanges();
+  }
+
+  /// Initialize local state variables from providers to ensure sync
+  void _initializeLocalState() {
+    _vizProvider = context.read<HomeVisualizationProvider>();
+    _deviceProvider = context.read<DeviceProvider>();
+
+    // Sync local state from the visualization provider
+    _isDoorOpen = _vizProvider!.isDoorOpen;
+    _isGarageOpen = _vizProvider!.isGarageOpen;
+
+    debugPrint(
+        '🏠 Initialized local state - Door: $_isDoorOpen, Garage: $_isGarageOpen');
+  }
+
+  @override
+  void dispose() {
+    // Remove all listeners to prevent setState after dispose
+    if (_alarmListener != null && _deviceProvider != null) {
+      _deviceProvider!.removeListener(_alarmListener!);
+    }
+    if (_doorListener != null && _vizProvider != null) {
+      _vizProvider!.removeListener(_doorListener!);
+    }
+    if (_garageListener != null && _vizProvider != null) {
+      _vizProvider!.removeListener(_garageListener!);
+    }
+    if (_deviceSyncListener != null && _vizProvider != null) {
+      _vizProvider!.removeListener(_deviceSyncListener!);
+    }
+    if (_themeListener != null && _settingsProvider != null) {
+      _settingsProvider!.removeListener(_themeListener!);
+    }
+
+    // Clear visualization callback
+    _deviceProvider?.setVisualizationCallback(null);
+
+    super.dispose();
   }
 
   void _initializeWebView() {
@@ -123,19 +173,20 @@ class _VisualizationTabState extends State<VisualizationTab> {
   }
 
   void _listenToAlarms() {
-    final deviceProvider = context.read<DeviceProvider>();
-    final vizProvider = context.read<HomeVisualizationProvider>();
+    _deviceProvider = context.read<DeviceProvider>();
+    _vizProvider = context.read<HomeVisualizationProvider>();
 
     // Listen to alarm changes and update visualization
-    deviceProvider.addListener(() {
-      final alarms = deviceProvider.activeAlarms;
+    _alarmListener = () {
+      if (!mounted) return;
+      final alarms = _deviceProvider!.activeAlarms;
 
       // Clear all previous visual alarms
-      vizProvider.clearAllVisualAlarms();
+      _vizProvider!.clearAllVisualAlarms();
 
       // Add new visual alarms
       for (var alarm in alarms) {
-        vizProvider.triggerVisualAlarm(
+        _vizProvider!.triggerVisualAlarm(
           alarm.location,
           alarm.type,
           alarm.severity,
@@ -143,87 +194,96 @@ class _VisualizationTabState extends State<VisualizationTab> {
       }
 
       // Send update to JavaScript
-      _updateVisualization(vizProvider.getVisualizationCommand());
-    });
+      _updateVisualization(_vizProvider!.getVisualizationCommand());
+    };
+    _deviceProvider!.addListener(_alarmListener!);
   }
 
   void _listenToDoorState() {
-    final vizProvider = context.read<HomeVisualizationProvider>();
+    _vizProvider ??= context.read<HomeVisualizationProvider>();
 
-    // Listen to door state changes from camera feed or other sources
-    vizProvider.addListener(() {
-      if (vizProvider.isDoorAnimating && !_isDoorAnimating) {
-        // Trigger door animation in 3D
-        debugPrint('🚪 Door state changed - triggering 3D animation');
-        _webViewController.runJavaScript(
-            vizProvider.isDoorOpen ? 'openDoor()' : 'closeDoor()');
-        setState(() {
-          _isDoorAnimating = true;
-          _isDoorOpen = vizProvider.isDoorOpen;
-        });
+    // Listen to door state changes from visualization provider
+    _doorListener = () {
+      if (!mounted) return;
+      final shouldBeOpen = _vizProvider!.isDoorOpen;
+      final currentLocalState = _isDoorOpen;
 
-        // Reset after animation
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted) {
-            setState(() {
-              _isDoorAnimating = false;
-            });
-          }
-        });
+      // Only sync if state actually changed
+      if (shouldBeOpen != currentLocalState) {
+        debugPrint(
+            '🚪 Door state changed: local=$currentLocalState -> provider=$shouldBeOpen - syncing to 3D');
+        _isDoorOpen = shouldBeOpen;
+        if (mounted) {
+          setState(() {});
+        }
+        _webViewController
+            .runJavaScript(shouldBeOpen ? 'openDoor()' : 'closeDoor()');
       }
-
-      // Update door open state
-      if (vizProvider.isDoorOpen != _isDoorOpen && !_isDoorAnimating) {
-        setState(() {
-          _isDoorOpen = vizProvider.isDoorOpen;
-        });
-        _webViewController.runJavaScript(
-            vizProvider.isDoorOpen ? 'openDoor()' : 'closeDoor()');
-      }
-    });
+    };
+    _vizProvider!.addListener(_doorListener!);
   }
 
   void _listenToGarageState() {
-    final vizProvider = context.read<HomeVisualizationProvider>();
+    _vizProvider ??= context.read<HomeVisualizationProvider>();
 
-    vizProvider.addListener(() {
-      if (vizProvider.isGarageAnimating && !_isGarageAnimating) {
-        debugPrint('🚗 Garage state changed - triggering 3D animation');
-        _webViewController.runJavaScript(
-            vizProvider.isGarageOpen ? 'openGarage()' : 'closeGarage()');
-        setState(() {
-          _isGarageAnimating = true;
-          _isGarageOpen = vizProvider.isGarageOpen;
-        });
+    // Listen to garage state changes from visualization provider
+    _garageListener = () {
+      if (!mounted) return;
+      final shouldBeOpen = _vizProvider!.isGarageOpen;
+      final currentLocalState = _isGarageOpen;
 
-        Future.delayed(const Duration(milliseconds: 2000), () {
-          if (mounted) {
-            setState(() {
-              _isGarageAnimating = false;
-            });
-          }
-        });
+      // Only sync if state actually changed
+      if (shouldBeOpen != currentLocalState) {
+        debugPrint(
+            '🚗 Garage state changed: local=$currentLocalState -> provider=$shouldBeOpen - syncing to 3D');
+        _isGarageOpen = shouldBeOpen;
+        if (mounted) {
+          setState(() {});
+        }
+        _webViewController
+            .runJavaScript(shouldBeOpen ? 'openGarage()' : 'closeGarage()');
       }
-
-      if (vizProvider.isGarageOpen != _isGarageOpen && !_isGarageAnimating) {
-        setState(() {
-          _isGarageOpen = vizProvider.isGarageOpen;
-        });
-        _webViewController.runJavaScript(
-            vizProvider.isGarageOpen ? 'openGarage()' : 'closeGarage()');
-      }
-    });
+    };
+    _vizProvider!.addListener(_garageListener!);
   }
 
   void _listenToDeviceSync() {
-    final deviceProvider = context.read<DeviceProvider>();
-    final vizProvider = context.read<HomeVisualizationProvider>();
+    _deviceProvider ??= context.read<DeviceProvider>();
+    _vizProvider ??= context.read<HomeVisualizationProvider>();
 
-    // Set visualization callback on device provider
-    deviceProvider.setVisualizationCallback((deviceType, state) {
-      vizProvider.syncFromDeviceState(deviceType, state);
+    // Set visualization callback on device provider (for direct sync to JS)
+    // This handles the JS sync when DeviceProvider calls _syncToVisualization
+    _deviceProvider!.setVisualizationCallback((deviceType, state) {
+      if (!mounted) return;
       _syncDeviceToJS(deviceType, state);
     });
+
+    // Also listen to vizProvider for any state changes (handles all sources)
+    _deviceSyncListener = () {
+      if (!mounted) return;
+      // The door and garage listeners handle those separately
+      // Here we handle windows, lights, buzzer
+      final windowStates = _vizProvider!.windowStates;
+      final lightStates = _vizProvider!.lightStates;
+      final buzzerActive = _vizProvider!.isBuzzerActive;
+
+      // Sync windows to JS
+      if (windowStates.isNotEmpty) {
+        final windowCmd =
+            jsonEncode({'type': 'windows', 'state': windowStates});
+        _webViewController.runJavaScript('syncDeviceState($windowCmd)');
+      }
+
+      // Sync lights to JS
+      if (lightStates.isNotEmpty) {
+        final lightCmd = jsonEncode({'type': 'lights', 'state': lightStates});
+        _webViewController.runJavaScript('syncDeviceState($lightCmd)');
+      }
+
+      // Sync buzzer to JS
+      _webViewController.runJavaScript('setBuzzerState($buzzerActive)');
+    };
+    _vizProvider!.addListener(_deviceSyncListener!);
   }
 
   /// Sync device state to JavaScript
@@ -260,15 +320,28 @@ class _VisualizationTabState extends State<VisualizationTab> {
     final deviceProvider = context.read<DeviceProvider>();
     final states = deviceProvider.getDeviceStatesSummary();
 
-    // Sync door
-    if (states['door']?['isOpen'] == true) {
-      _webViewController.runJavaScript('openDoor()');
-    }
+    // Update local state tracking variables
+    final doorOpen = states['door']?['isOpen'] == true;
+    final garageOpen = states['garage']?['isOpen'] == true;
 
-    // Sync garage
-    if (states['garage']?['isOpen'] == true) {
-      _webViewController.runJavaScript('openGarage()');
+    debugPrint(
+        '🔄 Syncing device states to WebView - Door: $doorOpen, Garage: $garageOpen');
+
+    // Sync door and update local state
+    if (doorOpen) {
+      _webViewController.runJavaScript('openDoor()');
+    } else {
+      _webViewController.runJavaScript('closeDoor()');
     }
+    _isDoorOpen = doorOpen;
+
+    // Sync garage and update local state
+    if (garageOpen) {
+      _webViewController.runJavaScript('openGarage()');
+    } else {
+      _webViewController.runJavaScript('closeGarage()');
+    }
+    _isGarageOpen = garageOpen;
 
     // Sync windows and lights via full state command
     final fullState = jsonEncode(states);
@@ -276,10 +349,12 @@ class _VisualizationTabState extends State<VisualizationTab> {
   }
 
   void _listenToThemeChanges() {
-    final settingsProvider = context.read<SettingsProvider>();
-    settingsProvider.addListener(() {
+    _settingsProvider = context.read<SettingsProvider>();
+    _themeListener = () {
+      if (!mounted) return;
       _syncThemeWithVisualization();
-    });
+    };
+    _settingsProvider!.addListener(_themeListener!);
   }
 
   void _syncThemeWithVisualization() {
@@ -330,7 +405,86 @@ class _VisualizationTabState extends State<VisualizationTab> {
       final objectName = parts.isNotEmpty ? parts[0] : 'Unknown';
       final objectType = parts.length > 1 ? parts[1] : 'room';
       _showRoomControls(objectName, objectType);
+      return;
     }
+
+    // Handle device state changes from 3D visualization (bidirectional sync)
+    // Format: deviceStateChanged:deviceType:state (e.g., "deviceStateChanged:door:open")
+    if (message.startsWith('deviceStateChanged:')) {
+      final parts = message.substring('deviceStateChanged:'.length).split(':');
+      if (parts.length >= 2) {
+        final deviceType = parts[0];
+        final state = parts[1];
+        _handleDeviceStateFromVisualization(deviceType, state);
+      }
+      return;
+    }
+  }
+
+  /// Handle device state changes from 3D visualization and sync to backend
+  void _handleDeviceStateFromVisualization(String deviceType, String state) {
+    final deviceProvider = context.read<DeviceProvider>();
+
+    debugPrint('🔄 3D Visualization -> Backend: $deviceType = $state');
+
+    switch (deviceType) {
+      case 'door':
+        final isOpen = state == 'open';
+        deviceProvider.setDoorState(isOpen);
+        break;
+      case 'garage':
+        final isOpen = state == 'open';
+        deviceProvider.setGarageState(isOpen);
+        break;
+      case 'window':
+        // Window state changes from 3D - format: window:windowName:state
+        // Parse the state which may contain window name
+        final parts = state.split(':');
+        if (parts.length >= 2) {
+          final windowName = parts[0];
+          final windowState = parts[1];
+          final isOpen = windowState == 'open';
+          // Map 3D window name to device provider window ID
+          final windowId = _mapWindowNameToId(windowName);
+          if (windowId != null) {
+            // Use toggleWindow if state differs, or set directly if method exists
+            final currentState = deviceProvider.windowStates[windowId] ?? false;
+            if (currentState != isOpen) {
+              deviceProvider.toggleWindow(windowId);
+            }
+          }
+        }
+        break;
+      case 'light':
+      case 'lights':
+        // Light state changes from 3D
+        final isOn = state == 'on';
+        // Toggle all lights in the device provider
+        final currentlyAnyOn =
+            deviceProvider.lightStates.values.any((on) => on);
+        if (currentlyAnyOn != isOn) {
+          deviceProvider.toggleAllLights();
+        }
+        break;
+      case 'buzzer':
+        final isActive = state == 'active';
+        deviceProvider.setBuzzerState(isActive);
+        break;
+    }
+  }
+
+  /// Map 3D mesh window names to device provider window IDs
+  String? _mapWindowNameToId(String meshName) {
+    final nameLower = meshName.toLowerCase();
+    if (nameLower.contains('front')) {
+      return 'front_window';
+    } else if (nameLower.contains('side')) {
+      return 'side_window';
+    } else if (nameLower.contains('back')) {
+      return 'back_window';
+    }
+    // Try to use the mesh name as-is if no specific mapping
+    return nameLower.replaceAll(' ', '_');
   }
 
   void _showRoomControls(String objectName, String objectType) {

@@ -10,6 +10,71 @@ class FirestoreService {
   String get devicesCollection => 'devices';
   String get alarmsCollection => 'alarms';
   String get logsCollection => 'logs';
+  String get globalStateCollection => 'global_device_states';
+
+  // ==========================================
+  // GLOBAL DEVICE STATES (Shared across all devices/users)
+  // ==========================================
+
+  /// Get the global device states document reference
+  DocumentReference get _globalStatesDoc =>
+      _firestore.collection(globalStateCollection).doc('current_states');
+
+  /// Save all device states to Firebase (global sync)
+  Future<void> saveGlobalDeviceStates(Map<String, dynamic> states) async {
+    try {
+      await _globalStatesDoc.set({
+        ...states,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      _logger.i('✅ Global device states saved to Firebase');
+    } catch (e) {
+      _logger.e('❌ Error saving global device states: $e');
+    }
+  }
+
+  /// Update a single device state in Firebase (global sync)
+  Future<void> updateGlobalDeviceState(
+      String deviceType, Map<String, dynamic> state) async {
+    try {
+      await _globalStatesDoc.set({
+        deviceType: state,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      _logger.i('✅ Global $deviceType state updated in Firebase');
+    } catch (e) {
+      _logger.e('❌ Error updating global $deviceType state: $e');
+    }
+  }
+
+  /// Get current global device states (one-time fetch)
+  Future<Map<String, dynamic>?> getGlobalDeviceStates() async {
+    try {
+      final doc = await _globalStatesDoc.get();
+      if (doc.exists) {
+        _logger.i('✅ Fetched global device states from Firebase');
+        return doc.data() as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      _logger.e('❌ Error fetching global device states: $e');
+      return null;
+    }
+  }
+
+  /// Stream of global device states (real-time sync)
+  Stream<Map<String, dynamic>?> getGlobalDeviceStatesStream() {
+    return _globalStatesDoc.snapshots().map((snapshot) {
+      if (snapshot.exists) {
+        return snapshot.data() as Map<String, dynamic>?;
+      }
+      return null;
+    });
+  }
+
+  // ==========================================
+  // USER-SPECIFIC DEVICE MANAGEMENT
+  // ==========================================
 
   // Get all devices for a user
   Stream<List<Device>> getDevicesStream(String userId) {

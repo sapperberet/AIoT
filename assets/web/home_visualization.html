@@ -2364,6 +2364,40 @@
                         
                         console.log('📦 Extracted meshes:', Object.keys(roomMeshes));
                         
+                        // Notify that model is ready FIRST
+                        window.modelLoaded = true;
+                        console.log('✅ Model loaded flag set to true');
+                        
+                        // After model loads, apply any pending device states
+                        // The meshes should now be available (door_mesh, garage_mesh, etc.)
+                        if (window.pendingDeviceStates) {
+                            console.log('🔄 Applying pending device states after model load');
+                            syncAllDeviceStates(window.pendingDeviceStates);
+                            window.pendingDeviceStates = null;
+                        }
+                        
+                        // Apply any pending door state (from individual open/close calls)
+                        if (window.pendingDoorState !== undefined) {
+                            console.log('🔄 Applying pending door state:', window.pendingDoorState ? 'OPEN' : 'CLOSED');
+                            if (window.pendingDoorState) {
+                                openDoor();
+                            } else {
+                                closeDoor();
+                            }
+                            window.pendingDoorState = undefined;
+                        }
+                        
+                        // Apply any pending garage state
+                        if (window.pendingGarageState !== undefined) {
+                            console.log('🔄 Applying pending garage state:', window.pendingGarageState ? 'OPEN' : 'CLOSED');
+                            if (window.pendingGarageState) {
+                                openGarage();
+                            } else {
+                                closeGarage();
+                            }
+                            window.pendingGarageState = undefined;
+                        }
+                        
                         // Clean up blob URL
                         URL.revokeObjectURL(url);
                     },
@@ -3728,20 +3762,20 @@
         };
 
         function findDoor() {
-            // First try exact names
-            const doorNames = ['door', 'Door', 'DOOR', 'entrance_door', 'front_door', 'main_door', 'porte', 'Porte'];
+            // First try exact names in roomMeshes (including _mesh suffix variants)
+            const doorNames = ['door', 'Door', 'DOOR', 'door_mesh', 'Door_mesh', 'entrance_door', 'front_door', 'main_door', 'porte', 'Porte'];
             for (const name of doorNames) {
                 if (roomMeshes[name]) {
                     doorMesh = roomMeshes[name];
                     if (!doorMesh.userData.originalRotation) {
                         doorMesh.userData.originalRotation = doorMesh.rotation.clone();
                     }
-                    console.log('🚪 Found door mesh (exact):', name);
+                    console.log('🚪 Found door mesh (exact in roomMeshes):', name);
                     return true;
                 }
             }
             
-            // Then try partial matches (but exclude garage doors)
+            // Then try partial matches in roomMeshes (but exclude garage doors)
             for (const [name, mesh] of Object.entries(roomMeshes)) {
                 const nameLower = name.toLowerCase();
                 if (nameLower.includes('door') && !nameLower.includes('garage')) {
@@ -3749,40 +3783,119 @@
                     if (!doorMesh.userData.originalRotation) {
                         doorMesh.userData.originalRotation = doorMesh.rotation.clone();
                     }
-                    console.log('🚪 Found door mesh (partial):', name);
+                    console.log('🚪 Found door mesh (partial in roomMeshes):', name);
                     return true;
                 }
             }
+            
+            // FALLBACK: Search the entire scene for door mesh (in case model loaded but roomMeshes not updated)
+            console.log('🔍 Searching scene for door mesh...');
+            if (homeModel) {
+                let foundDoor = null;
+                homeModel.traverse((child) => {
+                    if (child.isMesh && child.name) {
+                        const nameLower = child.name.toLowerCase();
+                        // Look for door but not garage
+                        if ((nameLower.includes('door') || nameLower === 'door_mesh') && !nameLower.includes('garage')) {
+                            foundDoor = child;
+                            console.log('🚪 Found door in scene traverse:', child.name);
+                        }
+                    }
+                });
+                if (foundDoor) {
+                    doorMesh = foundDoor;
+                    roomMeshes[foundDoor.name] = foundDoor; // Add to roomMeshes for future lookups
+                    if (!doorMesh.userData.originalRotation) {
+                        doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                    }
+                    console.log('🚪 Found door mesh (scene traverse):', foundDoor.name);
+                    return true;
+                }
+            }
+            
+            // Also search the entire scene (meshes might be reparented to pivot groups)
+            scene.traverse((child) => {
+                if (child.isMesh && child.name) {
+                    const nameLower = child.name.toLowerCase();
+                    if ((nameLower.includes('door') || nameLower === 'door_mesh') && !nameLower.includes('garage')) {
+                        doorMesh = child;
+                        if (!doorMesh.userData.originalRotation) {
+                            doorMesh.userData.originalRotation = doorMesh.rotation.clone();
+                        }
+                        console.log('🚪 Found door mesh (full scene traverse):', child.name);
+                    }
+                }
+            });
+            if (doorMesh) return true;
             
             console.log('⚠️ Door mesh not found. Available meshes:', Object.keys(roomMeshes));
             return false;
         }
 
         function findGarage() {
-            // First try exact names
-            const garageNames = ['garage', 'Garage', 'GARAGE', 'garage_door', 'garagedoor'];
+            // First try exact names in roomMeshes (including _mesh suffix variants)
+            const garageNames = ['garage', 'Garage', 'GARAGE', 'garage_mesh', 'Garage_mesh', 'garage_door', 'garagedoor'];
             for (const name of garageNames) {
                 if (roomMeshes[name]) {
                     garageMesh = roomMeshes[name];
                     if (!garageMesh.userData.originalPosition) {
                         garageMesh.userData.originalPosition = garageMesh.position.clone();
                     }
-                    console.log('🚗 Found garage mesh (exact):', name);
+                    console.log('🚗 Found garage mesh (exact in roomMeshes):', name);
                     return true;
                 }
             }
             
-            // Then try partial matches
+            // Then try partial matches in roomMeshes
             for (const [name, mesh] of Object.entries(roomMeshes)) {
                 if (name.toLowerCase().includes('garage')) {
                     garageMesh = mesh;
                     if (!garageMesh.userData.originalPosition) {
                         garageMesh.userData.originalPosition = garageMesh.position.clone();
                     }
-                    console.log('🚗 Found garage mesh (partial):', name);
+                    console.log('🚗 Found garage mesh (partial in roomMeshes):', name);
                     return true;
                 }
             }
+            
+            // FALLBACK: Search the entire scene for garage mesh (in case model loaded but roomMeshes not updated)
+            console.log('🔍 Searching scene for garage mesh...');
+            if (homeModel) {
+                let foundGarage = null;
+                homeModel.traverse((child) => {
+                    if (child.isMesh && child.name) {
+                        const nameLower = child.name.toLowerCase();
+                        if (nameLower.includes('garage') || nameLower === 'garage_mesh') {
+                            foundGarage = child;
+                            console.log('🚗 Found garage in scene traverse:', child.name);
+                        }
+                    }
+                });
+                if (foundGarage) {
+                    garageMesh = foundGarage;
+                    roomMeshes[foundGarage.name] = foundGarage; // Add to roomMeshes for future lookups
+                    if (!garageMesh.userData.originalPosition) {
+                        garageMesh.userData.originalPosition = garageMesh.position.clone();
+                    }
+                    console.log('🚗 Found garage mesh (scene traverse):', foundGarage.name);
+                    return true;
+                }
+            }
+            
+            // Also search the entire scene (meshes might be reparented to pivot groups)
+            scene.traverse((child) => {
+                if (child.isMesh && child.name) {
+                    const nameLower = child.name.toLowerCase();
+                    if (nameLower.includes('garage') || nameLower === 'garage_mesh') {
+                        garageMesh = child;
+                        if (!garageMesh.userData.originalPosition) {
+                            garageMesh.userData.originalPosition = garageMesh.position.clone();
+                        }
+                        console.log('🚗 Found garage mesh (full scene traverse):', child.name);
+                    }
+                }
+            });
+            if (garageMesh) return true;
             
             console.log('⚠️ Garage mesh not found');
             return false;
@@ -3854,8 +3967,16 @@
             }
             if (doorOpen) {
                 closeDoor();
+                // Notify Flutter of door state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:door:closed');
+                }
             } else {
                 openDoor();
+                // Notify Flutter of door state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:door:open');
+                }
             }
         }
 
@@ -3880,8 +4001,16 @@
             }
             if (garageOpen) {
                 closeGarage();
+                // Notify Flutter of garage state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:garage:closed');
+                }
             } else {
                 openGarage();
+                // Notify Flutter of garage state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:garage:open');
+                }
             }
         }
 
@@ -3889,14 +4018,30 @@
         function toggleWindow(windowMesh) {
             if (!windowMesh) return;
             const isOpen = windowMesh.userData.isOpen || false;
+            const windowName = windowMesh.name || 'unknown';
             if (isOpen) {
                 closeWindowMesh(windowMesh);
+                // Notify Flutter of window state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:window:' + windowName + ':closed');
+                }
             } else {
                 openWindowMesh(windowMesh);
+                // Notify Flutter of window state change (bidirectional sync)
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:window:' + windowName + ':open');
+                }
             }
         }
 
         function openGarage() {
+            // Check if model is loaded first
+            if (!window.modelLoaded) {
+                console.log('⏳ Model not loaded, queuing garage open command');
+                window.pendingGarageState = true;
+                return;
+            }
+            
             if (!garageMesh) {
                 if (!findGarage()) {
                     console.log('❌ Cannot animate garage - mesh not found');
@@ -3948,6 +4093,13 @@
         }
 
         function closeGarage() {
+            // Check if model is loaded first
+            if (!window.modelLoaded) {
+                console.log('⏳ Model not loaded, queuing garage close command');
+                window.pendingGarageState = false;
+                return;
+            }
+            
             if (!garageMesh || garageAnimating || !garageOpen) return;
 
             console.log('🚗 Closing garage (tilting down)...');
@@ -4143,9 +4295,21 @@
             }
             
             console.log('💡 Lights:', lightsOn ? 'ON' : 'OFF');
+            
+            // Notify Flutter of light state change (bidirectional sync)
+            if (window.FlutterBridge) {
+                window.FlutterBridge.postMessage('deviceStateChanged:lights:' + (lightsOn ? 'on' : 'off'));
+            }
         }
 
         function openDoor() {
+            // If model not loaded, queue the command
+            if (!window.modelLoaded) {
+                console.log('⏳ Model not loaded, queuing door open command');
+                window.pendingDoorState = true;
+                return;
+            }
+            
             if (!doorMesh) {
                 if (!findDoor()) {
                     console.log('❌ Cannot animate door - mesh not found. Searching all meshes...');
@@ -4238,6 +4402,13 @@
         }
 
         function closeDoor() {
+            // If model not loaded, queue the command
+            if (!window.modelLoaded) {
+                console.log('⏳ Model not loaded, queuing door close command');
+                window.pendingDoorState = false;
+                return;
+            }
+            
             if (!doorMesh || doorAnimating || !doorOpen) {
                 return;
             }
@@ -4651,6 +4822,13 @@
             try {
                 const states = typeof statesJson === 'string' ? JSON.parse(statesJson) : statesJson;
                 console.log('🔄 Syncing all device states:', states);
+                
+                // If model isn't loaded yet, store for later
+                if (!window.modelLoaded) {
+                    console.log('⏳ Model not loaded yet, storing states for later sync');
+                    window.pendingDeviceStates = states;
+                    return;
+                }
                 
                 // Sync main door
                 if (states.door?.isOpen && !doorOpen) {

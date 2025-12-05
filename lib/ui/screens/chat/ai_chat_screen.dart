@@ -153,8 +153,8 @@ class _AIChatScreenState extends State<AIChatScreen>
     chatProvider.sendMessage(message, userId);
     _messageController.clear();
 
-    // Scroll to bottom after sending
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    // Scroll to bottom disabled per user request
+    // Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   Future<void> _startVoiceRecording() async {
@@ -247,8 +247,8 @@ class _AIChatScreenState extends State<AIChatScreen>
         );
       }
 
-      // Scroll to bottom
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      // Scroll to bottom disabled per user request
+      // Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     }
   }
 
@@ -498,18 +498,40 @@ class _AIChatScreenState extends State<AIChatScreen>
 
           // Input area
           _buildInputArea(isDark, textColor, loc),
+
+          // Scroll to bottom button - positioned above input area
+          if (_showScrollToBottom)
+            Positioned(
+              bottom: 90, // Above the input area
+              right: 16,
+              child: FadeInUp(
+                child: GestureDetector(
+                  onTap: _scrollToBottom,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Iconsax.arrow_down_1,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
-      floatingActionButton: _showScrollToBottom
-          ? FadeInUp(
-              child: FloatingActionButton(
-                mini: true,
-                onPressed: _scrollToBottom,
-                backgroundColor: AppTheme.primaryColor,
-                child: const Icon(Iconsax.arrow_down, color: Colors.white),
-              ),
-            )
-          : null,
     );
   }
 

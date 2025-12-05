@@ -130,16 +130,20 @@ class SmartHomeApp extends StatelessWidget {
             faceAuthHttpService: context.read<FaceAuthHttpService>(),
           ),
         ),
-        ChangeNotifierProvider<DeviceProvider>(
+        ChangeNotifierProvider<HomeVisualizationProvider>(
+          create: (_) => HomeVisualizationProvider(),
+        ),
+        ChangeNotifierProxyProvider<HomeVisualizationProvider, DeviceProvider>(
           create: (context) => DeviceProvider(
             mqttService: context.read<MqttService>(),
             firestoreService: context.read<FirestoreService>(),
             notificationService: context.read<NotificationService>(),
             eventLogService: context.read<EventLogService>(),
           ),
-        ),
-        ChangeNotifierProvider<HomeVisualizationProvider>(
-          create: (_) => HomeVisualizationProvider(),
+          update: (context, vizProvider, deviceProvider) {
+            deviceProvider?.setHomeVisualizationProvider(vizProvider);
+            return deviceProvider!;
+          },
         ),
         ChangeNotifierProvider<SettingsProvider>(
           create: (context) => SettingsProvider(

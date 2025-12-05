@@ -7,6 +7,7 @@ import '../services/notification_service.dart';
 import '../services/event_log_service.dart';
 import '../models/device_model.dart';
 import '../config/mqtt_config.dart';
+import 'home_visualization_provider.dart';
 
 /// Callback type for visualization sync
 typedef VisualizationSyncCallback = void Function(
@@ -61,12 +62,19 @@ class DeviceProvider with ChangeNotifier {
     'bedroom': 0,
   };
 
-  // Callback for visualization sync
+  // Callback for visualization sync (legacy, kept for compatibility)
   VisualizationSyncCallback? _visualizationCallback;
+
+  // Direct reference to visualization provider for guaranteed sync
+  HomeVisualizationProvider? _homeVisualizationProvider;
 
   // Performance optimization
   Timer? _updateDebounceTimer;
   final Map<String, dynamic> _pendingUpdates = {};
+
+  // Firebase global state sync
+  StreamSubscription<Map<String, dynamic>?>? _globalStateSubscription;
+  bool _isProcessingRemoteUpdate = false; // Prevent sync loops
 
   DeviceProvider({
     required MqttService mqttService,
@@ -125,9 +133,155 @@ class DeviceProvider with ChangeNotifier {
     _eventLogService = service;
   }
 
-  /// Set visualization sync callback
-  void setVisualizationCallback(VisualizationSyncCallback callback) {
+  /// Set visualization sync callback (legacy)
+  void setVisualizationCallback(VisualizationSyncCallback? callback) {
     _visualizationCallback = callback;
+  }
+
+  /// Set the HomeVisualizationProvider for direct sync
+  void setHomeVisualizationProvider(HomeVisualizationProvider provider) {
+    _homeVisualizationProvider = provider;
+  }
+
+  /// Sync a device state to visualization provider
+  void _syncToVisualization(String deviceType, Map<String, dynamic> state) {
+    // Always update HomeVisualizationProvider directly if available
+    _homeVisualizationProvider?.syncFromDeviceState(deviceType, state);
+    // Also call the legacy callback if set
+    _visualizationCallback?.call(deviceType, state);
+  }
+
+  /// Handle global state updates from Firebase (synced from other devices)
+  void _handleGlobalStateUpdate(Map<String, dynamic> states) {
+    debugPrint('🔄 Received global state update from Firebase');
+    bool hasChanges = false;
+
+    // Sync door state
+    if (states['door'] != null) {
+      final doorState = states['door'] as Map<String, dynamic>;
+      final isOpen = doorState['isOpen'] as bool? ?? false;
+      if (_isMainDoorOpen != isOpen) {
+        debugPrint(
+            '🚪 Firebase: Door state changed to ${isOpen ? "OPEN" : "CLOSED"}');
+        _isMainDoorOpen = isOpen;
+        _syncToVisualization('door', {'isOpen': isOpen});
+        hasChanges = true;
+      }
+    }
+
+    // Sync garage state
+    if (states['garage'] != null) {
+      final garageState = states['garage'] as Map<String, dynamic>;
+      final isOpen = garageState['isOpen'] as bool? ?? false;
+      if (_isGarageDoorOpen != isOpen) {
+        debugPrint(
+            '🚗 Firebase: Garage state changed to ${isOpen ? "OPEN" : "CLOSED"}');
+        _isGarageDoorOpen = isOpen;
+        _syncToVisualization('garage', {'isOpen': isOpen});
+        hasChanges = true;
+      }
+    }
+
+    // Sync window states
+    if (states['windows'] != null) {
+      final windowStates = states['windows'] as Map<String, dynamic>;
+      windowStates.forEach((windowId, value) {
+        final isOpen = value as bool? ?? false;
+        if (_windowStates[windowId] != isOpen) {
+          debugPrint(
+              '🪟 Firebase: Window $windowId changed to ${isOpen ? "OPEN" : "CLOSED"}');
+          _windowStates[windowId] = isOpen;
+          hasChanges = true;
+        }
+      });
+    }
+
+    // Sync light states
+    if (states['lights'] != null) {
+      final lightStates = states['lights'] as Map<String, dynamic>;
+      lightStates.forEach((lightId, value) {
+        if (value is Map<String, dynamic>) {
+          final isOn = value['isOn'] as bool? ?? false;
+          final brightness = value['brightness'] as int? ?? 100;
+          if (_lightStates[lightId] != isOn) {
+            debugPrint(
+                '💡 Firebase: Light $lightId changed to ${isOn ? "ON" : "OFF"}');
+            _lightStates[lightId] = isOn;
+            hasChanges = true;
+          }
+          if (_lightBrightness[lightId] != brightness) {
+            _lightBrightness[lightId] = brightness;
+            hasChanges = true;
+          }
+        }
+      });
+    }
+
+    // Sync fan states
+    if (states['fans'] != null) {
+      final fanStates = states['fans'] as Map<String, dynamic>;
+      fanStates.forEach((fanId, value) {
+        final speed = value as int? ?? 0;
+        if (_fanStates[fanId] != speed) {
+          debugPrint('🌀 Firebase: Fan $fanId changed to speed $speed');
+          _fanStates[fanId] = speed;
+          hasChanges = true;
+        }
+      });
+    }
+
+    // Sync buzzer state
+    if (states['buzzer'] != null) {
+      final buzzerState = states['buzzer'] as Map<String, dynamic>;
+      final isActive = buzzerState['isActive'] as bool? ?? false;
+      if (_isBuzzerActive != isActive) {
+        debugPrint(
+            '🔔 Firebase: Buzzer changed to ${isActive ? "ACTIVE" : "INACTIVE"}');
+        _isBuzzerActive = isActive;
+        hasChanges = true;
+      }
+    }
+
+    // Sync RGB color
+    if (states['rgbColor'] != null) {
+      final color = states['rgbColor'] as int? ?? 0xFFFFFF;
+      if (_rgbLightColor != color) {
+        _rgbLightColor = color;
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      notifyListeners();
+    }
+  }
+
+  /// Save current device states to Firebase for global sync
+  Future<void> _saveToFirebase() async {
+    final states = {
+      'door': {'isOpen': _isMainDoorOpen},
+      'garage': {'isOpen': _isGarageDoorOpen},
+      'windows': Map<String, dynamic>.from(_windowStates),
+      'lights': _lightStates.map((key, value) => MapEntry(key, {
+            'isOn': value,
+            'brightness': _lightBrightness[key] ?? 100,
+          })),
+      'fans': Map<String, dynamic>.from(_fanStates),
+      'buzzer': {'isActive': _isBuzzerActive},
+      'rgbColor': _rgbLightColor,
+    };
+
+    _isProcessingRemoteUpdate = true;
+    await _firestoreService.saveGlobalDeviceStates(states);
+    _isProcessingRemoteUpdate = false;
+  }
+
+  /// Save a single device state to Firebase
+  Future<void> _saveDeviceToFirebase(
+      String deviceType, Map<String, dynamic> state) async {
+    _isProcessingRemoteUpdate = true;
+    await _firestoreService.updateGlobalDeviceState(deviceType, state);
+    _isProcessingRemoteUpdate = false;
   }
 
   void _init() {
@@ -159,6 +313,20 @@ class DeviceProvider with ChangeNotifier {
       _alarms = alarms;
       notifyListeners();
     });
+
+    // Listen for global device state changes (real-time sync across all devices)
+    _globalStateSubscription?.cancel();
+    _globalStateSubscription =
+        _firestoreService.getGlobalDeviceStatesStream().listen(
+      (states) {
+        if (states != null && !_isProcessingRemoteUpdate) {
+          _handleGlobalStateUpdate(states);
+        }
+      },
+      onError: (e) {
+        debugPrint('❌ Error listening to global states: $e');
+      },
+    );
 
     // Try to connect to local MQTT
     await connectToMqtt();
@@ -300,7 +468,7 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Sync with visualization
-    _visualizationCallback?.call('door', {'isOpen': isOpen});
+    _syncToVisualization('door', {'isOpen': isOpen});
     notifyListeners();
   }
 
@@ -363,7 +531,7 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Sync with visualization
-    _visualizationCallback?.call('garage', {'isOpen': isOpen});
+    _syncToVisualization('garage', {'isOpen': isOpen});
     notifyListeners();
   }
 
@@ -385,7 +553,7 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Sync with visualization
-    _visualizationCallback?.call('buzzer', {'isActive': isActive});
+    _syncToVisualization('buzzer', {'isActive': isActive});
     notifyListeners();
   }
 
@@ -409,7 +577,7 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Sync with visualization
-    _visualizationCallback?.call('light', {
+    _syncToVisualization('light', {
       'lightId': lightId,
       'isOn': isOn,
       'brightness': payload['brightness'],
@@ -436,7 +604,7 @@ class DeviceProvider with ChangeNotifier {
     }
 
     // Sync with visualization
-    _visualizationCallback?.call('fan', {
+    _syncToVisualization('fan', {
       'fanId': fanId,
       'speed': speed,
     });
@@ -584,7 +752,10 @@ class DeviceProvider with ChangeNotifier {
 
     // Optimistic update
     _isMainDoorOpen = newState;
-    _visualizationCallback?.call('door', {'isOpen': _isMainDoorOpen});
+    _syncToVisualization('door', {'isOpen': _isMainDoorOpen});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('door', {'isOpen': _isMainDoorOpen});
 
     // Notify user
     if (newState) {
@@ -618,7 +789,11 @@ class DeviceProvider with ChangeNotifier {
     }
 
     _isMainDoorOpen = isOpen;
-    _visualizationCallback?.call('door', {'isOpen': isOpen});
+    _syncToVisualization('door', {'isOpen': isOpen});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('door', {'isOpen': isOpen});
+
     notifyListeners();
   }
 
@@ -638,7 +813,10 @@ class DeviceProvider with ChangeNotifier {
 
     // Optimistic update
     _isGarageDoorOpen = newState;
-    _visualizationCallback?.call('garage', {'isOpen': _isGarageDoorOpen});
+    _syncToVisualization('garage', {'isOpen': _isGarageDoorOpen});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('garage', {'isOpen': _isGarageDoorOpen});
 
     // Notify user
     if (newState) {
@@ -670,7 +848,11 @@ class DeviceProvider with ChangeNotifier {
     }
 
     _isGarageDoorOpen = isOpen;
-    _visualizationCallback?.call('garage', {'isOpen': isOpen});
+    _syncToVisualization('garage', {'isOpen': isOpen});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('garage', {'isOpen': isOpen});
+
     notifyListeners();
   }
 
@@ -696,6 +878,9 @@ class DeviceProvider with ChangeNotifier {
     _windowStates[windowId] = newState;
     _visualizationCallback
         ?.call('window', {'windowId': windowId, 'isOpen': newState});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('windows', Map<String, dynamic>.from(_windowStates));
 
     // Notify user
     if (newState) {
@@ -745,7 +930,11 @@ class DeviceProvider with ChangeNotifier {
           '${MqttConfig.topicPrefix}/windows/command', command);
     }
 
-    _visualizationCallback?.call('windows', {'allOpen': newState});
+    _syncToVisualization('windows', {'allOpen': newState});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('windows', Map<String, dynamic>.from(_windowStates));
+
     notifyListeners();
   }
 
@@ -765,7 +954,10 @@ class DeviceProvider with ChangeNotifier {
 
     // Optimistic update
     _isBuzzerActive = newState;
-    _visualizationCallback?.call('buzzer', {'isActive': _isBuzzerActive});
+    _syncToVisualization('buzzer', {'isActive': _isBuzzerActive});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('buzzer', {'isActive': _isBuzzerActive});
 
     // Notify user if activated
     if (newState) {
@@ -797,7 +989,11 @@ class DeviceProvider with ChangeNotifier {
     }
 
     _isBuzzerActive = isActive;
-    _visualizationCallback?.call('buzzer', {'isActive': isActive});
+    _syncToVisualization('buzzer', {'isActive': isActive});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('buzzer', {'isActive': isActive});
+
     notifyListeners();
   }
 
@@ -823,6 +1019,14 @@ class DeviceProvider with ChangeNotifier {
     _lightStates[lightId] = newState;
     _visualizationCallback
         ?.call('light', {'lightId': lightId, 'isOn': newState});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase(
+        'lights',
+        _lightStates.map((key, value) => MapEntry(key, {
+              'isOn': value,
+              'brightness': _lightBrightness[key] ?? 100,
+            })));
 
     // Log event
     if (_userId != null && _eventLogService != null) {
@@ -855,7 +1059,16 @@ class DeviceProvider with ChangeNotifier {
           '${MqttConfig.topicPrefix}/lights/command', command);
     }
 
-    _visualizationCallback?.call('lights', {'allOn': newState});
+    _syncToVisualization('lights', {'allOn': newState});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase(
+        'lights',
+        _lightStates.map((key, value) => MapEntry(key, {
+              'isOn': value,
+              'brightness': _lightBrightness[key] ?? 100,
+            })));
+
     notifyListeners();
   }
 
@@ -874,6 +1087,14 @@ class DeviceProvider with ChangeNotifier {
       final topic = MqttConfig.roomLightCommandTopic(lightId);
       _mqttService.publishJson(topic, command);
     }
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase(
+        'lights',
+        _lightStates.map((key, value) => MapEntry(key, {
+              'isOn': value,
+              'brightness': _lightBrightness[key] ?? 100,
+            })));
 
     notifyListeners();
   }
@@ -902,11 +1123,14 @@ class DeviceProvider with ChangeNotifier {
       _mqttService.publishJson(topic, command);
     }
 
-    _visualizationCallback?.call('light', {
+    _syncToVisualization('light', {
       'lightId': 'rgb',
       'isOn': _lightStates['rgb'] ?? false,
       'color': _rgbLightColor,
     });
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('rgbColor', {'value': _rgbLightColor});
 
     notifyListeners();
   }
@@ -943,6 +1167,9 @@ class DeviceProvider with ChangeNotifier {
     _visualizationCallback
         ?.call('fan', {'fanId': fanId, 'speed': clampedSpeed});
 
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('fans', Map<String, dynamic>.from(_fanStates));
+
     // Log event
     if (_userId != null && _eventLogService != null) {
       _eventLogService!.logFanEvent(
@@ -974,7 +1201,11 @@ class DeviceProvider with ChangeNotifier {
           '${MqttConfig.topicPrefix}/fans/command', command);
     }
 
-    _visualizationCallback?.call('fans', {'allSpeed': newSpeed});
+    _syncToVisualization('fans', {'allSpeed': newSpeed});
+
+    // Save to Firebase for global sync
+    _saveDeviceToFirebase('fans', Map<String, dynamic>.from(_fanStates));
+
     notifyListeners();
   }
 
@@ -992,26 +1223,26 @@ class DeviceProvider with ChangeNotifier {
 
   /// Force sync all states to visualization
   void syncAllToVisualization() {
-    _visualizationCallback?.call('door', {'isOpen': _isMainDoorOpen});
-    _visualizationCallback?.call('garage', {'isOpen': _isGarageDoorOpen});
-    _visualizationCallback?.call('buzzer', {'isActive': _isBuzzerActive});
+    _syncToVisualization('door', {'isOpen': _isMainDoorOpen});
+    _syncToVisualization('garage', {'isOpen': _isGarageDoorOpen});
+    _syncToVisualization('buzzer', {'isActive': _isBuzzerActive});
 
     for (var entry in _windowStates.entries) {
-      _visualizationCallback?.call('window', {
+      _syncToVisualization('window', {
         'windowId': entry.key,
         'isOpen': entry.value,
       });
     }
 
     for (var entry in _lightStates.entries) {
-      _visualizationCallback?.call('light', {
+      _syncToVisualization('light', {
         'lightId': entry.key,
         'isOn': entry.value,
       });
     }
 
     for (var entry in _fanStates.entries) {
-      _visualizationCallback?.call('fan', {
+      _syncToVisualization('fan', {
         'fanId': entry.key,
         'speed': entry.value,
       });
@@ -1030,6 +1261,7 @@ class DeviceProvider with ChangeNotifier {
   void dispose() {
     _updateDebounceTimer?.cancel();
     _pendingUpdates.clear();
+    _globalStateSubscription?.cancel();
     _mqttService.dispose();
     super.dispose();
   }
