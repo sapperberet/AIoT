@@ -212,12 +212,59 @@ class AppLocalizations {
       'think_mode_description': 'Display internal AI thought process',
       'chat_with_me': 'Chat with me',
 
+      // Chat Sessions
+      'chat_history': 'Chat History',
+      'new_chat': 'New Chat',
+      'no_chat_history': 'No chat history',
+      'start_new_chat_hint': 'Start a new conversation with the AI assistant',
+      'delete_sessions': 'Delete Sessions',
+      'delete_sessions_confirm':
+          'Are you sure you want to delete {count} session(s)?',
+      'delete_all_sessions': 'Delete All Sessions',
+      'delete_all_sessions_confirm':
+          'Are you sure you want to delete all chat sessions? This cannot be undone.',
+      'selected': 'selected',
+      'select': 'Select',
+      'delete_all': 'Delete All',
+      'active': 'Active',
+
       // Voice Messages
       'voice_permission_denied':
           'Microphone permission denied. Please enable it in settings.',
       'voice_message': 'Voice message',
       'recording': 'Recording...',
       'send_voice': 'Send voice message',
+
+      // Voice Settings
+      'voice_settings': 'Voice Settings',
+      'voice_mode': 'Voice Mode',
+      'text_only': 'Text Only',
+      'text_only_desc': 'Standard text-based chat',
+      'voice_to_text': 'Voice to Text',
+      'voice_to_text_desc': 'Speak your message, receive text reply',
+      'voice_to_voice': 'Voice to Voice',
+      'voice_to_voice_desc': 'Full voice conversation with AI',
+      'service_status': 'Service Status',
+      'tts_service': 'Text-to-Speech (Piper)',
+      'asr_service': 'Speech Recognition (Whisper)',
+      'voice_chat_service': 'Voice Chat API',
+      'refresh': 'Refresh',
+      'done': 'Done',
+
+      // LLM Provider Settings
+      'llm_provider': 'AI Model Provider',
+      'select_provider': 'Select Provider',
+      'n8n_local': 'Local n8n Workflow',
+      'n8n_local_desc': 'Uses n8n automation server on your network',
+      'ollama_local': 'Local Ollama',
+      'ollama_local_desc': 'Direct connection to Ollama LLM server',
+      'external_llm': 'External LLM (Cloud)',
+      'external_llm_desc': 'Connect to cloud-hosted LLM via ngrok',
+      'external_config': 'External LLM Configuration',
+      'llm_url': 'LLM Server URL',
+      'api_key': 'API Key',
+      'local_server': 'Local AI Server',
+      'llm_provider_updated': 'AI provider settings updated',
 
       // Biometric Authentication
       'enable_biometric_login': 'Enable Biometric Login',
@@ -457,12 +504,62 @@ class AppLocalizations {
       'think_mode_description': 'Internen KI-Denkprozess anzeigen',
       'chat_with_me': 'Chatte mit mir',
 
+      // Chat Sessions
+      'chat_history': 'Chat-Verlauf',
+      'new_chat': 'Neuer Chat',
+      'no_chat_history': 'Kein Chat-Verlauf',
+      'start_new_chat_hint':
+          'Starten Sie eine neue Unterhaltung mit dem KI-Assistenten',
+      'delete_sessions': 'Sitzungen löschen',
+      'delete_sessions_confirm':
+          'Sind Sie sicher, dass Sie {count} Sitzung(en) löschen möchten?',
+      'delete_all_sessions': 'Alle Sitzungen löschen',
+      'delete_all_sessions_confirm':
+          'Sind Sie sicher, dass Sie alle Chat-Sitzungen löschen möchten? Dies kann nicht rückgängig gemacht werden.',
+      'selected': 'ausgewählt',
+      'select': 'Auswählen',
+      'delete_all': 'Alle löschen',
+      'active': 'Aktiv',
+
       // Voice Messages
       'voice_permission_denied':
           'Mikrofon-Berechtigung verweigert. Bitte aktivieren Sie sie in den Einstellungen.',
       'voice_message': 'Sprachnachricht',
       'recording': 'Aufnahme läuft...',
       'send_voice': 'Sprachnachricht senden',
+
+      // Voice Settings
+      'voice_settings': 'Spracheinstellungen',
+      'voice_mode': 'Sprachmodus',
+      'text_only': 'Nur Text',
+      'text_only_desc': 'Standard textbasierter Chat',
+      'voice_to_text': 'Sprache zu Text',
+      'voice_to_text_desc':
+          'Sprechen Sie Ihre Nachricht, erhalten Sie Textantwort',
+      'voice_to_voice': 'Sprache zu Sprache',
+      'voice_to_voice_desc': 'Vollständiges Sprachgespräch mit KI',
+      'service_status': 'Dienststatus',
+      'tts_service': 'Text-zu-Sprache (Piper)',
+      'asr_service': 'Spracherkennung (Whisper)',
+      'voice_chat_service': 'Sprach-Chat-API',
+      'refresh': 'Aktualisieren',
+      'done': 'Fertig',
+
+      // LLM Provider Settings
+      'llm_provider': 'KI-Modell-Anbieter',
+      'select_provider': 'Anbieter auswählen',
+      'n8n_local': 'Lokaler n8n-Workflow',
+      'n8n_local_desc':
+          'Verwendet n8n-Automatisierungsserver in Ihrem Netzwerk',
+      'ollama_local': 'Lokales Ollama',
+      'ollama_local_desc': 'Direkte Verbindung zum Ollama-LLM-Server',
+      'external_llm': 'Externes LLM (Cloud)',
+      'external_llm_desc': 'Verbindung zu Cloud-gehostetem LLM über ngrok',
+      'external_config': 'Externe LLM-Konfiguration',
+      'llm_url': 'LLM-Server-URL',
+      'api_key': 'API-Schlüssel',
+      'local_server': 'Lokaler KI-Server',
+      'llm_provider_updated': 'KI-Anbieter-Einstellungen aktualisiert',
 
       // Biometric Authentication
       'enable_biometric_login': 'Biometrische Anmeldung aktivieren',
@@ -700,12 +797,59 @@ class AppLocalizations {
       'think_mode_description': 'عرض عملية تفكير الذكاء الاصطناعي الداخلية',
       'chat_with_me': 'تحدث معي',
 
+      // Chat Sessions
+      'chat_history': 'سجل الدردشة',
+      'new_chat': 'دردشة جديدة',
+      'no_chat_history': 'لا يوجد سجل دردشة',
+      'start_new_chat_hint': 'ابدأ محادثة جديدة مع مساعد الذكاء الاصطناعي',
+      'delete_sessions': 'حذف الجلسات',
+      'delete_sessions_confirm':
+          'هل أنت متأكد من أنك تريد حذف {count} جلسة/جلسات؟',
+      'delete_all_sessions': 'حذف جميع الجلسات',
+      'delete_all_sessions_confirm':
+          'هل أنت متأكد من أنك تريد حذف جميع جلسات الدردشة؟ لا يمكن التراجع عن هذا.',
+      'selected': 'محدد',
+      'select': 'تحديد',
+      'delete_all': 'حذف الكل',
+      'active': 'نشط',
+
       // Voice Messages
       'voice_permission_denied':
           'تم رفض إذن الميكروفون. يرجى تمكينه في الإعدادات.',
       'voice_message': 'رسالة صوتية',
       'recording': 'جارٍ التسجيل...',
       'send_voice': 'إرسال رسالة صوتية',
+
+      // Voice Settings
+      'voice_settings': 'إعدادات الصوت',
+      'voice_mode': 'وضع الصوت',
+      'text_only': 'نص فقط',
+      'text_only_desc': 'دردشة نصية عادية',
+      'voice_to_text': 'صوت إلى نص',
+      'voice_to_text_desc': 'تحدث رسالتك واحصل على رد نصي',
+      'voice_to_voice': 'صوت إلى صوت',
+      'voice_to_voice_desc': 'محادثة صوتية كاملة مع الذكاء الاصطناعي',
+      'service_status': 'حالة الخدمة',
+      'tts_service': 'تحويل النص إلى كلام (Piper)',
+      'asr_service': 'التعرف على الكلام (Whisper)',
+      'voice_chat_service': 'واجهة برمجة الدردشة الصوتية',
+      'refresh': 'تحديث',
+      'done': 'تم',
+
+      // LLM Provider Settings
+      'llm_provider': 'مزود نموذج الذكاء الاصطناعي',
+      'select_provider': 'اختر المزود',
+      'n8n_local': 'سير عمل n8n المحلي',
+      'n8n_local_desc': 'يستخدم خادم أتمتة n8n في شبكتك',
+      'ollama_local': 'Ollama المحلي',
+      'ollama_local_desc': 'اتصال مباشر بخادم Ollama LLM',
+      'external_llm': 'LLM خارجي (السحابة)',
+      'external_llm_desc': 'الاتصال بـ LLM مستضاف على السحابة عبر ngrok',
+      'external_config': 'تكوين LLM الخارجي',
+      'llm_url': 'عنوان URL لخادم LLM',
+      'api_key': 'مفتاح API',
+      'local_server': 'خادم الذكاء الاصطناعي المحلي',
+      'llm_provider_updated': 'تم تحديث إعدادات مزود الذكاء الاصطناعي',
 
       // Biometric Authentication
       'enable_biometric_login': 'تفعيل تسجيل الدخول بالبصمة',

@@ -9,11 +9,13 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/ai_chat_service.dart';
 import '../../widgets/voice_recorder_widget.dart';
 import 'chat_theme_settings_dialog.dart';
 import '../../../core/providers/chat_theme_provider.dart';
 import '../../widgets/formatted_text_widget.dart';
 import '../../widgets/voice_message_bubble.dart';
+import 'chat_sessions_screen.dart';
 
 class AIChatScreen extends StatefulWidget {
   const AIChatScreen({super.key});
@@ -86,6 +88,13 @@ class _AIChatScreenState extends State<AIChatScreen>
         curve: Curves.easeOut,
       );
     }
+  }
+
+  Future<void> _createNewChat() async {
+    final authProvider = context.read<AuthProvider>();
+    final chatProvider = context.read<AIChatProvider>();
+    final userId = authProvider.currentUser?.uid ?? 'debug-user';
+    await chatProvider.createNewSession(userId);
   }
 
   void _sendMessage() {
@@ -166,21 +175,41 @@ class _AIChatScreenState extends State<AIChatScreen>
     });
 
     if (result != null) {
-      // Use transcription or a placeholder
-      final transcription = _liveTranscription.trim().isNotEmpty
-          ? _liveTranscription
-          : AppLocalizations.of(context).t('voice_message');
-
       // Get user ID
       final userId = authProvider.currentUser?.uid ?? 'debug-user';
 
-      // Send voice message
-      await chatProvider.sendVoiceMessage(
-        result.filePath,
-        result.durationMs,
-        transcription,
-        userId,
-      );
+      // Handle based on voice mode
+      if (chatProvider.voiceMode == VoiceMode.voiceToVoice &&
+          chatProvider.isVoiceChatAvailable) {
+        // Full voice-to-voice mode: send audio, receive audio
+        await chatProvider.sendVoiceChatMessage(
+          result.filePath,
+          result.durationMs,
+          userId,
+        );
+      } else {
+        // Voice-to-text mode: transcribe locally and send as text
+        String transcription = _liveTranscription.trim();
+
+        // If local transcription is empty, try backend ASR
+        if (transcription.isEmpty && chatProvider.isAsrAvailable) {
+          transcription =
+              await chatProvider.transcribeWithBackend(result.filePath) ?? '';
+        }
+
+        // Fallback placeholder
+        if (transcription.isEmpty) {
+          transcription = AppLocalizations.of(context).t('voice_message');
+        }
+
+        // Send voice message
+        await chatProvider.sendVoiceMessage(
+          result.filePath,
+          result.durationMs,
+          transcription,
+          userId,
+        );
+      }
 
       // Scroll to bottom
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
@@ -271,6 +300,27 @@ class _AIChatScreenState extends State<AIChatScreen>
           ),
         ),
         actions: [
+          // New chat button
+          FadeInRight(
+            child: IconButton(
+              icon: Icon(Iconsax.add, color: textColor),
+              tooltip: loc.t('new_chat'),
+              onPressed: () => _createNewChat(),
+            ),
+          ),
+          // Chat history button
+          FadeInRight(
+            child: IconButton(
+              icon: Icon(Iconsax.message_text, color: textColor),
+              tooltip: loc.t('chat_history'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChatSessionsScreen(),
+                ),
+              ),
+            ),
+          ),
           FadeInRight(
             child: PopupMenuButton(
               icon: Icon(Iconsax.more, color: textColor),
@@ -298,6 +348,26 @@ class _AIChatScreenState extends State<AIChatScreen>
                     ],
                   ),
                   onTap: () => _showServerConfigDialog(),
+                ),
+                PopupMenuItem(
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.microphone, size: 20),
+                      const SizedBox(width: 12),
+                      Text(loc.t('voice_settings')),
+                    ],
+                  ),
+                  onTap: () => _showVoiceSettingsDialog(),
+                ),
+                PopupMenuItem(
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.cpu, size: 20),
+                      const SizedBox(width: 12),
+                      Text(loc.t('llm_provider')),
+                    ],
+                  ),
+                  onTap: () => _showLlmProviderDialog(),
                 ),
                 PopupMenuItem(
                   enabled: false,
@@ -760,71 +830,307 @@ class _AIChatScreenState extends State<AIChatScreen>
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                  borderRadius: AppTheme.mediumRadius,
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.black.withOpacity(0.1),
-                  ),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  focusNode: _focusNode,
-                  decoration: InputDecoration(
-                    hintText: loc.t('type_message'),
-                    hintStyle: TextStyle(
-                      color: textColor.withOpacity(0.5),
+            // Voice mode indicator bar
+            Consumer<AIChatProvider>(
+              builder: (context, chatProvider, _) {
+                if (chatProvider.voiceMode != VoiceMode.textOnly) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: AppTheme.smallRadius,
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                      ),
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          chatProvider.voiceMode == VoiceMode.voiceToVoice
+                              ? Iconsax.voice_cricle
+                              : Iconsax.voice_square,
+                          size: 16,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          chatProvider.voiceMode == VoiceMode.voiceToVoice
+                              ? loc.t('voice_to_voice')
+                              : loc.t('voice_to_text'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () =>
+                              chatProvider.setVoiceMode(VoiceMode.textOnly),
+                          child: Icon(
+                            Iconsax.close_circle,
+                            size: 16,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  style: TextStyle(color: textColor),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendMessage(),
-                ),
-              ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
-            const SizedBox(width: 12),
+            Row(
+              children: [
+                // Voice mode toggle button (chat mode selector)
+                Consumer<AIChatProvider>(
+                  builder: (context, chatProvider, _) {
+                    final isVoiceMode =
+                        chatProvider.voiceMode != VoiceMode.textOnly;
+                    final isVoiceToVoice =
+                        chatProvider.voiceMode == VoiceMode.voiceToVoice;
+                    return GestureDetector(
+                      onTap: () => _showQuickVoiceModeMenu(),
+                      onLongPress: () => _showVoiceSettingsDialog(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isVoiceMode
+                              ? (isVoiceToVoice
+                                  ? Colors.green.withOpacity(0.2)
+                                  : AppTheme.primaryColor.withOpacity(0.2))
+                              : (isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          // Use different icons: message for text, voice_square for voice-to-text, volume for voice-to-voice
+                          isVoiceToVoice
+                              ? Iconsax.volume_high
+                              : (isVoiceMode
+                                  ? Iconsax.message_text
+                                  : Iconsax.messages_3),
+                          size: 20,
+                          color: isVoiceMode
+                              ? (isVoiceToVoice
+                                  ? Colors.green
+                                  : AppTheme.primaryColor)
+                              : textColor.withOpacity(0.6),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color:
+                          isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                      borderRadius: AppTheme.mediumRadius,
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.1),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _messageController,
+                      focusNode: _focusNode,
+                      decoration: InputDecoration(
+                        hintText: loc.t('type_message'),
+                        hintStyle: TextStyle(
+                          color: textColor.withOpacity(0.5),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      style: TextStyle(color: textColor),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
 
-            // Voice button (if text is empty)
-            if (_messageController.text.trim().isEmpty)
-              Container(
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: AppTheme.glowShadow,
-                ),
-                child: IconButton(
-                  icon: const Icon(Iconsax.microphone, color: Colors.white),
-                  onPressed: _startVoiceRecording,
-                ),
-              )
-            else
-              // Send button (if text is not empty)
-              Container(
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: AppTheme.glowShadow,
-                ),
-                child: IconButton(
-                  icon: const Icon(Iconsax.send_1, color: Colors.white),
-                  onPressed: _sendMessage,
-                ),
-              ),
+                // Voice button (if text is empty)
+                if (_messageController.text.trim().isEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: AppTheme.glowShadow,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Iconsax.microphone, color: Colors.white),
+                      onPressed: _startVoiceRecording,
+                    ),
+                  )
+                else
+                  // Send button (if text is not empty)
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: AppTheme.glowShadow,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Iconsax.send_1, color: Colors.white),
+                      onPressed: _sendMessage,
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showQuickVoiceModeMenu() {
+    final chatProvider = context.read<AIChatProvider>();
+    final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  loc.t('voice_mode'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildVoiceModeBottomSheetOption(
+                  context,
+                  chatProvider,
+                  VoiceMode.textOnly,
+                  loc.t('text_only'),
+                  loc.t('text_only_desc'),
+                  Iconsax.messages_3,
+                ),
+                _buildVoiceModeBottomSheetOption(
+                  context,
+                  chatProvider,
+                  VoiceMode.voiceToText,
+                  loc.t('voice_to_text'),
+                  loc.t('voice_to_text_desc'),
+                  Iconsax.message_text,
+                ),
+                _buildVoiceModeBottomSheetOption(
+                  context,
+                  chatProvider,
+                  VoiceMode.voiceToVoice,
+                  loc.t('voice_to_voice'),
+                  loc.t('voice_to_voice_desc'),
+                  Iconsax.volume_high,
+                  enabled: chatProvider.isVoiceChatAvailable,
+                ),
+                if (!chatProvider.isVoiceChatAvailable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '⚠️ Voice-to-voice requires backend voice chat service',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVoiceModeBottomSheetOption(
+    BuildContext context,
+    AIChatProvider chatProvider,
+    VoiceMode mode,
+    String title,
+    String subtitle,
+    IconData icon, {
+    bool enabled = true,
+  }) {
+    final isSelected = chatProvider.voiceMode == mode;
+    return ListTile(
+      enabled: enabled,
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.2)
+              : Colors.grey.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: enabled
+              ? (isSelected ? AppTheme.primaryColor : null)
+              : Colors.grey,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: enabled ? null : Colors.grey,
+          fontWeight: isSelected ? FontWeight.bold : null,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: enabled ? null : Colors.grey,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Iconsax.tick_circle, color: AppTheme.primaryColor)
+          : null,
+      onTap: enabled
+          ? () {
+              chatProvider.setVoiceMode(mode);
+              Navigator.pop(context);
+            }
+          : null,
     );
   }
 
@@ -936,6 +1242,329 @@ class _AIChatScreenState extends State<AIChatScreen>
         },
       );
     });
+  }
+
+  void _showVoiceSettingsDialog() {
+    Future.delayed(Duration.zero, () {
+      showDialog(
+        context: context,
+        builder: (context) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+          final loc = AppLocalizations.of(context);
+
+          return AlertDialog(
+            backgroundColor:
+                isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.mediumRadius,
+            ),
+            title: Row(
+              children: [
+                const Icon(Iconsax.microphone, size: 24),
+                const SizedBox(width: 12),
+                Text(loc.t('voice_settings')),
+              ],
+            ),
+            content: Consumer<AIChatProvider>(
+              builder: (context, chatProvider, _) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Voice mode selection
+                    Text(
+                      loc.t('voice_mode'),
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildVoiceModeOption(
+                      context,
+                      chatProvider,
+                      VoiceMode.textOnly,
+                      loc.t('text_only'),
+                      loc.t('text_only_desc'),
+                      Iconsax.message_text,
+                    ),
+                    _buildVoiceModeOption(
+                      context,
+                      chatProvider,
+                      VoiceMode.voiceToText,
+                      loc.t('voice_to_text'),
+                      loc.t('voice_to_text_desc'),
+                      Iconsax.voice_square,
+                    ),
+                    _buildVoiceModeOption(
+                      context,
+                      chatProvider,
+                      VoiceMode.voiceToVoice,
+                      loc.t('voice_to_voice'),
+                      loc.t('voice_to_voice_desc'),
+                      Iconsax.voice_cricle,
+                    ),
+                    const SizedBox(height: 16),
+                    // Service status
+                    Text(
+                      loc.t('service_status'),
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildServiceStatus(
+                      loc.t('tts_service'),
+                      chatProvider.isTtsAvailable,
+                    ),
+                    _buildServiceStatus(
+                      loc.t('asr_service'),
+                      chatProvider.isAsrAvailable,
+                    ),
+                    _buildServiceStatus(
+                      loc.t('voice_chat_service'),
+                      chatProvider.isVoiceChatAvailable,
+                    ),
+                  ],
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // Refresh service status
+                  context.read<AIChatProvider>().refreshBackendStatus();
+                },
+                child: Text(loc.t('refresh')),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                ),
+                child: Text(loc.t('done')),
+              ),
+            ],
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildVoiceModeOption(
+    BuildContext context,
+    AIChatProvider chatProvider,
+    VoiceMode mode,
+    String title,
+    String subtitle,
+    IconData icon,
+  ) {
+    final isSelected = chatProvider.voiceMode == mode;
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        icon,
+        color: isSelected ? AppTheme.primaryColor : null,
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
+      trailing: isSelected
+          ? const Icon(Iconsax.tick_circle, color: AppTheme.primaryColor)
+          : null,
+      onTap: () => chatProvider.setVoiceMode(mode),
+    );
+  }
+
+  Widget _buildServiceStatus(String name, bool isAvailable) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isAvailable ? Colors.green : Colors.red,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(name),
+          const Spacer(),
+          Text(
+            isAvailable ? '✓' : '✗',
+            style: TextStyle(
+              color: isAvailable ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLlmProviderDialog() {
+    Future.delayed(Duration.zero, () {
+      final externalUrlController = TextEditingController(
+        text: context.read<AIChatProvider>().backendVoiceService.baseUrl,
+      );
+      final apiKeyController = TextEditingController();
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+          final loc = AppLocalizations.of(context);
+
+          return AlertDialog(
+            backgroundColor:
+                isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.mediumRadius,
+            ),
+            title: Row(
+              children: [
+                const Icon(Iconsax.cpu, size: 24),
+                const SizedBox(width: 12),
+                Text(loc.t('llm_provider')),
+              ],
+            ),
+            content: Consumer<AIChatProvider>(
+              builder: (context, chatProvider, _) {
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Provider selection
+                      Text(
+                        loc.t('select_provider'),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildProviderOption(
+                        context,
+                        chatProvider,
+                        LlmProvider.n8nLocal,
+                        loc.t('n8n_local'),
+                        loc.t('n8n_local_desc'),
+                        Iconsax.monitor,
+                      ),
+                      _buildProviderOption(
+                        context,
+                        chatProvider,
+                        LlmProvider.ollamaLocal,
+                        loc.t('ollama_local'),
+                        loc.t('ollama_local_desc'),
+                        Iconsax.cpu_setting,
+                      ),
+                      _buildProviderOption(
+                        context,
+                        chatProvider,
+                        LlmProvider.externalNgrok,
+                        loc.t('external_llm'),
+                        loc.t('external_llm_desc'),
+                        Iconsax.cloud,
+                      ),
+                      const SizedBox(height: 16),
+                      // External LLM config (if selected)
+                      if (chatProvider.llmProvider ==
+                          LlmProvider.externalNgrok) ...[
+                        Text(
+                          loc.t('external_config'),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: externalUrlController,
+                          decoration: InputDecoration(
+                            labelText: loc.t('llm_url'),
+                            hintText: 'https://your-ngrok-url.ngrok-free.app',
+                            border: OutlineInputBorder(
+                              borderRadius: AppTheme.smallRadius,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: apiKeyController,
+                          decoration: InputDecoration(
+                            labelText: loc.t('api_key'),
+                            hintText: 'sec',
+                            border: OutlineInputBorder(
+                              borderRadius: AppTheme.smallRadius,
+                            ),
+                          ),
+                          obscureText: true,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      // Status
+                      _buildServiceStatus(
+                        loc.t('local_server'),
+                        chatProvider.isServerAvailable,
+                      ),
+                      _buildServiceStatus(
+                        loc.t('external_llm'),
+                        chatProvider.isExternalLlmAvailable,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.t('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final chatProvider = context.read<AIChatProvider>();
+                  if (chatProvider.llmProvider == LlmProvider.externalNgrok) {
+                    chatProvider.configureExternalLlm(
+                      url: externalUrlController.text.trim(),
+                      apiKey: apiKeyController.text.trim(),
+                    );
+                  }
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(loc.t('llm_provider_updated'))),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                ),
+                child: Text(loc.t('save')),
+              ),
+            ],
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildProviderOption(
+    BuildContext context,
+    AIChatProvider chatProvider,
+    LlmProvider provider,
+    String title,
+    String subtitle,
+    IconData icon,
+  ) {
+    final isSelected = chatProvider.llmProvider == provider;
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        icon,
+        color: isSelected ? AppTheme.primaryColor : null,
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
+      trailing: isSelected
+          ? const Icon(Iconsax.tick_circle, color: AppTheme.primaryColor)
+          : null,
+      onTap: () => chatProvider.setLlmProvider(provider),
+    );
   }
 }
 

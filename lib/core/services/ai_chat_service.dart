@@ -1,10 +1,25 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:logger/logger.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/chat_message_model.dart';
 import '../config/mqtt_config.dart';
 import 'package:uuid/uuid.dart';
+
+/// LLM Provider types
+enum LlmProvider {
+  /// Local n8n workflow (default)
+  n8nLocal,
+
+  /// Local Ollama instance
+  ollamaLocal,
+
+  /// External LLM via ngrok (Colab deployment)
+  externalNgrok,
+}
 
 /// Service for communicating with the AI agent backend
 class AIChatService {
@@ -15,15 +30,74 @@ class AIChatService {
   // Production API endpoint (always active when workflow is active)
   String _baseUrl = '';
 
+  // LLM Provider configuration
+  LlmProvider _llmProvider = LlmProvider.n8nLocal;
+  String _externalLlmUrl = '';
+  String _externalLlmApiKey = '';
+  String _externalLlmModel = '';
+
+  // Voice chat endpoint
+  String _voiceChatUrl = '';
+
   AIChatService() {
     _baseUrl =
         'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+    _voiceChatUrl =
+        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/voice';
+
+    // Initialize external LLM settings from config
+    _externalLlmUrl = 'https://${MqttConfig.externalLlmDomain}';
+    _externalLlmApiKey = MqttConfig.externalLlmApiKey;
+    _externalLlmModel = MqttConfig.externalLlmModel;
   }
 
-  /// Set the AI agent server URL
+  /// Get current LLM provider
+  LlmProvider get llmProvider => _llmProvider;
+
+  /// Set LLM provider
+  void setLlmProvider(LlmProvider provider) {
+    _llmProvider = provider;
+    _logger.i('LLM provider changed to: $provider');
+  }
+
+  /// Set the AI agent server URL (for n8n)
   void setServerUrl(String url) {
     _baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
     _logger.i('AI Chat server URL updated: $_baseUrl');
+  }
+
+  /// Set external LLM configuration (for ngrok/Colab deployment)
+  void setExternalLlmConfig({
+    required String url,
+    required String apiKey,
+    String? model,
+  }) {
+    _externalLlmUrl =
+        url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+    _externalLlmApiKey = apiKey;
+    if (model != null) _externalLlmModel = model;
+    _logger.i('External LLM configured: $_externalLlmUrl');
+  }
+
+  /// Get available models from external LLM
+  Future<List<String>> getExternalModels() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_externalLlmUrl/v1/models'))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final models =
+            (data['data'] as List?)?.map((m) => m['id'] as String).toList() ??
+                [];
+        return models;
+      }
+      return [];
+    } catch (e) {
+      _logger.w('Failed to get external models: $e');
+      return [];
+    }
   }
 
   /// Send a message to the AI agent with streaming response
@@ -108,8 +182,20 @@ class AIChatService {
                   errorMsg = data['description'] as String;
                 }
 
+                // Provide helpful hints for common errors
+                String helpHint = '';
+                if (errorMsg.contains('empty response') ||
+                    errorMsg.contains('chat model')) {
+                  helpHint =
+                      '\n\n💡 Tip: The LLM model may not be loaded. Run:\ndocker exec ollama ollama pull qwen2.5:7b-instruct';
+                } else if (errorMsg.contains('connect') ||
+                    errorMsg.contains('ECONNREFUSED')) {
+                  helpHint =
+                      '\n\n💡 Tip: Check if Ollama container is running:\ndocker compose up -d ollama';
+                }
+
                 print('[AI Chat Service] Yielding error message: $errorMsg');
-                yield '⚠️ $errorMsg\n\n(Check n8n workflow logs for details)';
+                yield '⚠️ $errorMsg$helpHint';
                 continue;
               }
 
@@ -272,4 +358,209 @@ class AIChatService {
       _logger.w('Failed to clear chat history: $e');
     }
   }
+
+  /// Send message to external LLM (OpenAI-compatible API)
+  /// Used when _llmProvider is externalNgrok
+  Stream<String> sendMessageToExternalLlm(
+    String content,
+    String sessionId, {
+    bool filterThinkBlocks = true,
+  }) async* {
+    try {
+      _logger.d('Sending message to external LLM: $content');
+
+      final request = http.Request(
+        'POST',
+        Uri.parse('$_externalLlmUrl/v1/chat/completions'),
+      );
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['Authorization'] = 'Bearer $_externalLlmApiKey';
+
+      request.body = jsonEncode({
+        'model': _externalLlmModel,
+        'messages': [
+          {'role': 'user', 'content': content}
+        ],
+        'stream': false,
+      });
+
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final body = await response.stream.bytesToString();
+        final data = jsonDecode(body);
+
+        final reply = data['choices']?[0]?['message']?['content'] ?? '';
+
+        // Filter think blocks if needed
+        String filteredReply = reply;
+        if (filterThinkBlocks) {
+          filteredReply = reply
+              .replaceAll(RegExp(r'<think>.*?</think>', dotAll: true), '')
+              .trim();
+        }
+
+        yield filteredReply;
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid API key for external LLM');
+      } else {
+        final body = await response.stream.bytesToString();
+        throw Exception('External LLM error: ${response.statusCode} - $body');
+      }
+    } catch (e) {
+      _logger.e('Error sending to external LLM: $e');
+      rethrow;
+    }
+  }
+
+  /// Send voice message and receive voice reply via n8n /api/voice
+  /// Returns VoiceChatResponse with audio file path and transcriptions
+  Future<VoiceChatResponse?> sendVoiceMessage(
+    String audioFilePath,
+    String sessionId,
+  ) async {
+    try {
+      _logger.i('Sending voice message: $audioFilePath');
+
+      final file = File(audioFilePath);
+      if (!await file.exists()) {
+        _logger.e('Audio file not found: $audioFilePath');
+        return null;
+      }
+
+      final request = http.MultipartRequest('POST', Uri.parse(_voiceChatUrl));
+
+      // Add audio file
+      request.files.add(await http.MultipartFile.fromPath(
+        'audio',
+        audioFilePath,
+        contentType: MediaType('audio', _getAudioMimeType(audioFilePath)),
+      ));
+
+      // Add session ID
+      request.fields['sessionId'] = sessionId;
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 120));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final contentType = response.headers['content-type'] ?? '';
+
+        if (contentType.contains('audio')) {
+          // Save audio response
+          final directory = await getApplicationDocumentsDirectory();
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final filePath = '${directory.path}/ai_voice_reply_$timestamp.wav';
+
+          final audioFile = File(filePath);
+          await audioFile.writeAsBytes(response.bodyBytes);
+
+          return VoiceChatResponse(
+            audioFilePath: filePath,
+            userTranscription: response.headers['x-user-transcription'],
+            aiResponse: response.headers['x-ai-response'],
+          );
+        } else {
+          // JSON response
+          final data = jsonDecode(response.body);
+
+          if (data['audio'] != null) {
+            // Base64 encoded audio
+            final audioBytes = base64Decode(data['audio']);
+            final directory = await getApplicationDocumentsDirectory();
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final filePath = '${directory.path}/ai_voice_reply_$timestamp.wav';
+
+            final audioFile = File(filePath);
+            await audioFile.writeAsBytes(audioBytes);
+
+            return VoiceChatResponse(
+              audioFilePath: filePath,
+              userTranscription: data['transcription'],
+              aiResponse: data['response'],
+            );
+          } else if (data['error'] != null) {
+            _logger.e('Voice chat error: ${data['error']}');
+            return null;
+          }
+        }
+      } else {
+        _logger.e('Voice chat error: ${response.statusCode}');
+        return null;
+      }
+
+      return null;
+    } catch (e) {
+      _logger.e('Error in voice chat: $e');
+      return null;
+    }
+  }
+
+  String _getAudioMimeType(String filePath) {
+    final ext = filePath.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'wav':
+        return 'wav';
+      case 'mp3':
+        return 'mpeg';
+      case 'aac':
+        return 'aac';
+      case 'm4a':
+        return 'mp4';
+      case 'ogg':
+        return 'ogg';
+      default:
+        return 'octet-stream';
+    }
+  }
+
+  /// Check external LLM health
+  Future<bool> checkExternalLlmHealth() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_externalLlmUrl/v1/models'))
+          .timeout(const Duration(seconds: 10));
+      return response.statusCode == 200;
+    } catch (e) {
+      _logger.w('External LLM health check failed: $e');
+      return false;
+    }
+  }
+
+  /// Check voice chat endpoint health
+  Future<bool> checkVoiceChatHealth() async {
+    try {
+      // Just check if endpoint is reachable
+      final uri = Uri.parse(_voiceChatUrl);
+      final response = await http.head(uri).timeout(const Duration(seconds: 5));
+      // n8n returns various codes, as long as it's not a network error, it's "available"
+      return response.statusCode < 500;
+    } catch (e) {
+      _logger.w('Voice chat health check failed: $e');
+      return false;
+    }
+  }
+
+  /// Get voice chat URL
+  String get voiceChatUrl => _voiceChatUrl;
+
+  /// Get external LLM URL
+  String get externalLlmUrl => _externalLlmUrl;
+
+  /// Get external LLM model
+  String get externalLlmModel => _externalLlmModel;
+}
+
+/// Response from voice chat endpoint
+class VoiceChatResponse {
+  final String audioFilePath;
+  final String? userTranscription;
+  final String? aiResponse;
+
+  VoiceChatResponse({
+    required this.audioFilePath,
+    this.userTranscription,
+    this.aiResponse,
+  });
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'dart:async';
 
 enum NotificationType {
@@ -92,12 +94,52 @@ class AppNotification {
 }
 
 class NotificationService with ChangeNotifier {
+  static const String _storageKey = 'app_notifications';
   final List<AppNotification> _notifications = [];
   final StreamController<AppNotification> _notificationStreamController =
       StreamController<AppNotification>.broadcast();
 
   NotificationService() {
-    _initializeSampleNotifications();
+    _loadNotifications();
+  }
+
+  /// Load notifications from local storage
+  Future<void> _loadNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = prefs.getString(_storageKey);
+
+      if (notificationsJson != null && notificationsJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(notificationsJson);
+        _notifications.clear();
+        _notifications.addAll(
+          decoded
+              .map((json) =>
+                  AppNotification.fromMap(json as Map<String, dynamic>))
+              .toList(),
+        );
+        notifyListeners();
+      } else {
+        // Add sample notifications for first-time users
+        _initializeSampleNotifications();
+      }
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+      _initializeSampleNotifications();
+    }
+  }
+
+  /// Save notifications to local storage
+  Future<void> _saveNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = jsonEncode(
+        _notifications.map((n) => n.toMap()).toList(),
+      );
+      await prefs.setString(_storageKey, notificationsJson);
+    } catch (e) {
+      debugPrint('Error saving notifications: $e');
+    }
   }
 
   void _initializeSampleNotifications() {
@@ -129,6 +171,7 @@ class NotificationService with ChangeNotifier {
         timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
       ),
     ]);
+    _saveNotifications();
   }
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
@@ -160,6 +203,7 @@ class NotificationService with ChangeNotifier {
     // Show local notification based on settings
     await _showLocalNotification(notification);
 
+    await _saveNotifications();
     notifyListeners();
   }
 
@@ -168,6 +212,7 @@ class NotificationService with ChangeNotifier {
     final index = _notifications.indexWhere((n) => n.id == notificationId);
     if (index != -1) {
       _notifications[index] = _notifications[index].copyWith(isRead: true);
+      _saveNotifications();
       notifyListeners();
     }
   }
@@ -177,18 +222,21 @@ class NotificationService with ChangeNotifier {
     for (int i = 0; i < _notifications.length; i++) {
       _notifications[i] = _notifications[i].copyWith(isRead: true);
     }
+    _saveNotifications();
     notifyListeners();
   }
 
   // Delete notification
   void deleteNotification(String notificationId) {
     _notifications.removeWhere((n) => n.id == notificationId);
+    _saveNotifications();
     notifyListeners();
   }
 
   // Clear all notifications
   void clearAll() {
     _notifications.clear();
+    _saveNotifications();
     notifyListeners();
   }
 
@@ -276,7 +324,8 @@ class NotificationService with ChangeNotifier {
   void notifyUnrecognizedPerson({String? location}) {
     addNotification(
       title: '⚠️ Unrecognized Person Detected',
-      message: 'An unrecognized person was detected at ${location ?? 'entrance'}. Tap to view camera feed.',
+      message:
+          'An unrecognized person was detected at ${location ?? 'entrance'}. Tap to view camera feed.',
       type: NotificationType.security,
       priority: NotificationPriority.urgent,
       data: {

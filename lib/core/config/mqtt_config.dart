@@ -67,6 +67,16 @@ class MqttConfig {
   static const int hlsPort = 8888; // MediaMTX HLS
   static const int webrtcPort = 8889; // MediaMTX WebRTC
 
+  // Version 3: Voice & LLM Service ports
+  static const int piperTtsPort = 5000; // Piper TTS (Arabic synthesis)
+  static const int asrWhisperPort = 5003; // Faster-Whisper ASR
+  static const int ollamaPort = 11434; // Ollama LLM API
+
+  // External LLM (Colab/ngrok deployment)
+  static const String externalLlmDomain = 'hugely-chief-dingo.ngrok-free.app';
+  static const String externalLlmApiKey = 'sec';
+  static const String externalLlmModel = 'qwen2.5:7b-instruct';
+
   // Keep alive and reconnection
   static const int keepAlivePeriod = 60;
   static const int reconnectDelay = 5; // seconds

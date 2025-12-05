@@ -3,18 +3,38 @@ import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/chat_message_model.dart';
+import '../models/chat_session_model.dart';
 import '../services/ai_chat_service.dart';
 import '../services/voice_service.dart';
+import '../services/backend_voice_service.dart';
+import '../services/chat_storage_service.dart';
+
+/// Voice mode for AI chat
+enum VoiceMode {
+  /// Text only chat
+  textOnly,
+
+  /// Voice input, text output
+  voiceToText,
+
+  /// Voice input, voice output (full voice chat)
+  voiceToVoice,
+}
 
 /// Provider for managing AI chat state
 class AIChatProvider with ChangeNotifier {
   final AIChatService _chatService;
   final VoiceService _voiceService = VoiceService();
+  final BackendVoiceService _backendVoiceService = BackendVoiceService();
+  final ChatStorageService _storageService = ChatStorageService();
   final Logger _logger = Logger();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final Uuid _uuid = const Uuid();
 
   final List<ChatMessage> _messages = [];
+  List<ChatSession> _sessions = [];
+  ChatSession? _currentSession;
+  String? _currentUserId;
   bool _isLoading = false;
   bool _isServerAvailable = false;
   String? _error;
@@ -22,10 +42,21 @@ class AIChatProvider with ChangeNotifier {
   int _unreadCount = 0; // Track unread AI messages
   String? _currentLocale; // Current locale for speech recognition
 
+  // Voice mode settings
+  VoiceMode _voiceMode = VoiceMode.textOnly;
+  bool _isVoiceChatAvailable = false;
+  bool _isTtsAvailable = false;
+  bool _isAsrAvailable = false;
+  bool _isPlayingVoiceReply = false;
+
+  // LLM provider settings
+  bool _isExternalLlmAvailable = false;
+
   AIChatProvider({required AIChatService chatService})
       : _chatService = chatService {
     _checkServerHealth();
     _initializeVoiceService();
+    _checkBackendServices();
   }
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
@@ -36,7 +67,24 @@ class AIChatProvider with ChangeNotifier {
   bool get showThinkMode => _showThinkMode;
   int get unreadMessageCount => _unreadCount;
   VoiceService get voiceService => _voiceService;
+  BackendVoiceService get backendVoiceService => _backendVoiceService;
   String? get currentLocale => _currentLocale;
+
+  // Session getters
+  List<ChatSession> get sessions => List.unmodifiable(_sessions);
+  ChatSession? get currentSession => _currentSession;
+  bool get hasSessions => _sessions.isNotEmpty;
+
+  // Voice mode getters
+  VoiceMode get voiceMode => _voiceMode;
+  bool get isVoiceChatAvailable => _isVoiceChatAvailable;
+  bool get isTtsAvailable => _isTtsAvailable;
+  bool get isAsrAvailable => _isAsrAvailable;
+  bool get isPlayingVoiceReply => _isPlayingVoiceReply;
+
+  // LLM provider getters
+  LlmProvider get llmProvider => _chatService.llmProvider;
+  bool get isExternalLlmAvailable => _isExternalLlmAvailable;
 
   /// Initialize voice service
   Future<void> _initializeVoiceService() async {
@@ -45,6 +93,60 @@ class AIChatProvider with ChangeNotifier {
     } catch (e) {
       _logger.e('Failed to initialize voice service: $e');
     }
+  }
+
+  /// Check backend services availability (TTS, ASR, voice chat)
+  Future<void> _checkBackendServices() async {
+    try {
+      // Check TTS availability
+      _isTtsAvailable = await _backendVoiceService.checkTtsHealth();
+      _logger.i('TTS available: $_isTtsAvailable');
+
+      // Check ASR availability
+      _isAsrAvailable = await _backendVoiceService.checkAsrHealth();
+      _logger.i('ASR available: $_isAsrAvailable');
+
+      // Check voice chat availability
+      _isVoiceChatAvailable = await _chatService.checkVoiceChatHealth();
+      _logger.i('Voice chat available: $_isVoiceChatAvailable');
+
+      // Check external LLM availability
+      _isExternalLlmAvailable = await _chatService.checkExternalLlmHealth();
+      _logger.i('External LLM available: $_isExternalLlmAvailable');
+
+      notifyListeners();
+    } catch (e) {
+      _logger.e('Error checking backend services: $e');
+    }
+  }
+
+  /// Refresh backend service status
+  Future<void> refreshBackendStatus() async {
+    await _checkServerHealth();
+    await _checkBackendServices();
+  }
+
+  /// Set voice mode
+  void setVoiceMode(VoiceMode mode) {
+    _voiceMode = mode;
+    _logger.i('Voice mode changed to: $mode');
+    notifyListeners();
+  }
+
+  /// Set LLM provider
+  void setLlmProvider(LlmProvider provider) {
+    _chatService.setLlmProvider(provider);
+    notifyListeners();
+  }
+
+  /// Configure external LLM
+  void configureExternalLlm({
+    required String url,
+    required String apiKey,
+    String? model,
+  }) {
+    _chatService.setExternalLlmConfig(url: url, apiKey: apiKey, model: model);
+    _checkBackendServices(); // Re-check availability
   }
 
   /// Set locale for speech recognition
@@ -180,6 +282,9 @@ class AIChatProvider with ChangeNotifier {
         _incrementUnreadCount();
       }
 
+      // Save session after message exchange
+      await _saveCurrentSession();
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -193,6 +298,9 @@ class AIChatProvider with ChangeNotifier {
           error: 'Failed to send message',
         );
       }
+
+      // Still save the session to persist the user message
+      await _saveCurrentSession();
 
       _isLoading = false;
       notifyListeners();
@@ -215,15 +323,136 @@ class AIChatProvider with ChangeNotifier {
     );
   }
 
-  /// Load chat history from server
+  /// Initialize sessions for a user
+  Future<void> initializeSessions(String userId) async {
+    _currentUserId = userId;
+    _sessions = await _storageService.loadSessions(userId);
+
+    // Load the last active session or create a new one
+    final activeSessionId = await _storageService.getActiveSessionId(userId);
+    if (activeSessionId != null) {
+      _currentSession = _sessions.firstWhere(
+        (s) => s.id == activeSessionId,
+        orElse: () => _sessions.isNotEmpty
+            ? _sessions.first
+            : ChatSession.create(userId: userId),
+      );
+    } else if (_sessions.isNotEmpty) {
+      _currentSession = _sessions.first;
+    } else {
+      // Create a new session if none exists
+      _currentSession = ChatSession.create(userId: userId);
+      _sessions.add(_currentSession!);
+      await _storageService.saveSession(userId, _currentSession!);
+    }
+
+    // Load messages from current session
+    _messages.clear();
+    if (_currentSession != null) {
+      _messages.addAll(_currentSession!.messages);
+    }
+
+    notifyListeners();
+  }
+
+  /// Create a new chat session
+  Future<void> createNewSession(String userId) async {
+    final newSession = ChatSession.create(userId: userId);
+    _sessions.insert(0, newSession);
+    _currentSession = newSession;
+    _messages.clear();
+
+    await _storageService.saveSession(userId, newSession);
+    await _storageService.setActiveSessionId(userId, newSession.id);
+
+    notifyListeners();
+  }
+
+  /// Switch to a different session
+  Future<void> switchToSession(String userId, String sessionId) async {
+    final session = _sessions.firstWhere(
+      (s) => s.id == sessionId,
+      orElse: () => throw Exception('Session not found'),
+    );
+
+    _currentSession = session;
+    _messages.clear();
+    _messages.addAll(session.messages);
+
+    await _storageService.setActiveSessionId(userId, sessionId);
+
+    notifyListeners();
+  }
+
+  /// Delete a chat session
+  Future<void> deleteSession(String userId, String sessionId) async {
+    await _storageService.deleteSession(userId, sessionId);
+    _sessions.removeWhere((s) => s.id == sessionId);
+
+    // If deleted the current session, switch to another or create new
+    if (_currentSession?.id == sessionId) {
+      if (_sessions.isNotEmpty) {
+        _currentSession = _sessions.first;
+        _messages.clear();
+        _messages.addAll(_currentSession!.messages);
+        await _storageService.setActiveSessionId(userId, _currentSession!.id);
+      } else {
+        // Create a new session
+        await createNewSession(userId);
+      }
+    }
+
+    notifyListeners();
+  }
+
+  /// Delete all sessions
+  Future<void> deleteAllSessions(String userId) async {
+    await _storageService.clearAllSessions(userId);
+    _sessions.clear();
+    _messages.clear();
+
+    // Create a fresh session
+    await createNewSession(userId);
+  }
+
+  /// Save current session state (called after sending messages)
+  Future<void> _saveCurrentSession() async {
+    if (_currentSession == null || _currentUserId == null) return;
+
+    // Update session title from first user message if it's "New Chat"
+    String newTitle = _currentSession!.title;
+    if (_currentSession!.title == 'New Chat' && _messages.isNotEmpty) {
+      final firstUserMessage = _messages.firstWhere(
+        (m) => m.isUser,
+        orElse: () => _messages.first,
+      );
+      newTitle = firstUserMessage.content.length > 50
+          ? '${firstUserMessage.content.substring(0, 47)}...'
+          : firstUserMessage.content;
+    }
+
+    _currentSession = _currentSession!.copyWith(
+      messages: List.from(_messages),
+      lastMessageAt: DateTime.now(),
+      title: newTitle,
+    );
+
+    // Update in sessions list
+    final index = _sessions.indexWhere((s) => s.id == _currentSession!.id);
+    if (index != -1) {
+      _sessions[index] = _currentSession!;
+    }
+
+    await _storageService.saveSession(_currentUserId!, _currentSession!);
+  }
+
+  /// Load chat history from local storage (session-aware)
   Future<void> loadChatHistory(String userId) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final history = await _chatService.getChatHistory(userId);
-      _messages.clear();
-      _messages.addAll(history);
+      await initializeSessions(userId);
 
       _isLoading = false;
       notifyListeners();
@@ -234,10 +463,22 @@ class AIChatProvider with ChangeNotifier {
     }
   }
 
-  /// Clear all messages
+  /// Clear current session messages
   Future<void> clearMessages(String userId) async {
     try {
-      await _chatService.clearChatHistory(userId);
+      if (_currentSession != null) {
+        await _storageService.clearSessionMessages(userId, _currentSession!.id);
+        _currentSession = _currentSession!.copyWith(
+          messages: [],
+          title: 'New Chat',
+        );
+
+        // Update in sessions list
+        final index = _sessions.indexWhere((s) => s.id == _currentSession!.id);
+        if (index != -1) {
+          _sessions[index] = _currentSession!;
+        }
+      }
       _messages.clear();
       _error = null;
       notifyListeners();
@@ -277,6 +518,154 @@ class AIChatProvider with ChangeNotifier {
       _audioPlayer.play(AssetSource('Audio/message-incoming.mp3'));
     } catch (e) {
       _logger.w('Failed to play receive sound: $e');
+    }
+  }
+
+  /// Send voice-to-voice chat (full voice mode)
+  /// Records user voice, sends to backend, receives and plays AI voice response
+  Future<void> sendVoiceChatMessage(
+    String audioFilePath,
+    int durationMs,
+    String userId,
+  ) async {
+    _logger.i('Starting voice-to-voice chat');
+
+    // Create user voice message
+    final userMessage = ChatMessage(
+      id: _uuid.v4(),
+      content: '🎤 Voice message',
+      isUser: true,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sending,
+      type: MessageType.voice,
+      voiceFilePath: audioFilePath,
+      voiceDurationMs: durationMs,
+    );
+
+    _messages.add(userMessage);
+    notifyListeners();
+
+    // Update to sent
+    final userIndex = _messages.indexWhere((m) => m.id == userMessage.id);
+    if (userIndex != -1) {
+      _messages[userIndex] = userMessage.copyWith(status: MessageStatus.sent);
+      notifyListeners();
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final sessionId = _uuid.v4();
+
+      // Send to voice chat endpoint
+      final response = await _chatService.sendVoiceMessage(
+        audioFilePath,
+        sessionId,
+      );
+
+      if (response != null) {
+        // Update user message with transcription if available
+        if (response.userTranscription != null && userIndex != -1) {
+          _messages[userIndex] = _messages[userIndex].copyWith(
+            content: response.userTranscription,
+            transcription: response.userTranscription,
+          );
+          notifyListeners();
+        }
+
+        // Create AI voice response message
+        final aiMessage = ChatMessage(
+          id: _uuid.v4(),
+          content: response.aiResponse ?? '🔊 Voice response',
+          isUser: false,
+          timestamp: DateTime.now(),
+          status: MessageStatus.delivered,
+          type: MessageType.voice,
+          voiceFilePath: response.audioFilePath,
+          transcription: response.aiResponse,
+        );
+
+        _messages.add(aiMessage);
+        _incrementUnreadCount();
+
+        // Auto-play the voice response
+        await _playVoiceResponse(response.audioFilePath);
+      } else {
+        throw Exception('Failed to get voice response from AI');
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _logger.e('Error in voice chat: $e');
+      _error = e.toString();
+
+      if (userIndex != -1) {
+        _messages[userIndex] = _messages[userIndex].copyWith(
+          status: MessageStatus.error,
+          error: 'Voice chat failed',
+        );
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Play voice response audio
+  Future<void> _playVoiceResponse(String audioFilePath) async {
+    try {
+      _isPlayingVoiceReply = true;
+      notifyListeners();
+
+      await _audioPlayer.play(DeviceFileSource(audioFilePath));
+
+      // Wait for playback to complete
+      await _audioPlayer.onPlayerComplete.first;
+
+      _isPlayingVoiceReply = false;
+      notifyListeners();
+    } catch (e) {
+      _logger.e('Error playing voice response: $e');
+      _isPlayingVoiceReply = false;
+      notifyListeners();
+    }
+  }
+
+  /// Stop playing voice response
+  Future<void> stopVoiceResponse() async {
+    try {
+      await _audioPlayer.stop();
+      _isPlayingVoiceReply = false;
+      notifyListeners();
+    } catch (e) {
+      _logger.e('Error stopping voice response: $e');
+    }
+  }
+
+  /// Transcribe audio using backend ASR (Faster-Whisper)
+  Future<String?> transcribeWithBackend(String audioFilePath) async {
+    try {
+      final result = await _backendVoiceService.transcribeAudio(
+        audioFilePath,
+        language: _currentLocale?.split('_').first ?? 'ar',
+      );
+      return result?.text;
+    } catch (e) {
+      _logger.e('Backend transcription failed: $e');
+      return null;
+    }
+  }
+
+  /// Synthesize text to speech using backend TTS (Piper)
+  Future<String?> synthesizeWithBackend(String text) async {
+    try {
+      return await _backendVoiceService.synthesizeSpeech(text);
+    } catch (e) {
+      _logger.e('Backend TTS failed: $e');
+      return null;
     }
   }
 
