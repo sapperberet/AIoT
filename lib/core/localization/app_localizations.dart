@@ -58,6 +58,7 @@ class AppLocalizations {
       // Notifications
       'mark_all_read': 'Mark all as read',
       'clear_all': 'Clear all',
+      'search_notifications': 'Search notifications...',
       'no_notifications': 'No notifications yet',
       'no_notifications_desc':
           'When you receive notifications, they will appear here.',
@@ -349,6 +350,7 @@ class AppLocalizations {
       // Notifications
       'mark_all_read': 'Alle als gelesen markieren',
       'clear_all': 'Alle löschen',
+      'search_notifications': 'Benachrichtigungen durchsuchen...',
       'no_notifications': 'Noch keine Benachrichtigungen',
       'no_notifications_desc':
           'Wenn Sie Benachrichtigungen erhalten, werden sie hier angezeigt.',
@@ -648,6 +650,7 @@ class AppLocalizations {
       // Notifications
       'mark_all_read': 'تحديد الكل كمقروء',
       'clear_all': 'حذف الكل',
+      'search_notifications': 'البحث في الإشعارات...',
       'no_notifications': 'لا توجد إشعارات حتى الآن',
       'no_notifications_desc': 'عند استلام الإشعارات، ستظهر هنا.',
       'all': 'الكل',

@@ -5,6 +5,7 @@ import 'package:glassmorphism/glassmorphism.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/ai_chat_provider.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../screens/camera/camera_feed_screen.dart';
@@ -223,14 +224,23 @@ class CustomDrawer extends StatelessWidget {
                         ),
                         FadeInLeft(
                           delay: const Duration(milliseconds: 500),
-                          child: _buildMenuItem(
-                            context,
-                            icon: Iconsax.notification,
-                            title: loc.t('notifications'),
-                            badge: '3',
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.pushNamed(context, '/notifications');
+                          child: Consumer<NotificationService>(
+                            builder: (context, notificationService, _) {
+                              final unreadCount =
+                                  notificationService.unreadCount;
+                              return _buildMenuItem(
+                                context,
+                                icon: Iconsax.notification,
+                                title: loc.t('notifications'),
+                                badge: unreadCount > 0
+                                    ? unreadCount.toString()
+                                    : null,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(
+                                      context, '/notifications');
+                                },
+                              );
                             },
                           ),
                         ),

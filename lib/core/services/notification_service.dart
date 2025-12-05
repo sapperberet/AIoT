@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io' show Platform;
 
 enum NotificationType {
   deviceStatus,
@@ -99,8 +101,64 @@ class NotificationService with ChangeNotifier {
   final StreamController<AppNotification> _notificationStreamController =
       StreamController<AppNotification>.broadcast();
 
+  // For undo functionality
+  AppNotification? _lastDeletedNotification;
+  int? _lastDeletedIndex;
+
+  // Flutter Local Notifications
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  bool _isNotificationsInitialized = false;
+
   NotificationService() {
+    _initializeLocalNotifications();
     _loadNotifications();
+  }
+
+  /// Initialize local notifications for push notifications
+  Future<void> _initializeLocalNotifications() async {
+    try {
+      // Android initialization settings
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+
+      // iOS initialization settings
+      const DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
+
+      await _flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
+
+      // Request permissions for Android 13+
+      if (Platform.isAndroid) {
+        await _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+      }
+
+      _isNotificationsInitialized = true;
+      debugPrint('✅ Local notifications initialized');
+    } catch (e) {
+      debugPrint('❌ Error initializing local notifications: $e');
+    }
+  }
+
+  void _onNotificationTapped(NotificationResponse response) {
+    // Handle notification tap
+    debugPrint('Notification tapped: ${response.payload}');
   }
 
   /// Load notifications from local storage
@@ -226,12 +284,42 @@ class NotificationService with ChangeNotifier {
     notifyListeners();
   }
 
-  // Delete notification
+  // Delete notification (with undo support)
   void deleteNotification(String notificationId) {
-    _notifications.removeWhere((n) => n.id == notificationId);
-    _saveNotifications();
-    notifyListeners();
+    final index = _notifications.indexWhere((n) => n.id == notificationId);
+    if (index != -1) {
+      // Store for undo
+      _lastDeletedNotification = _notifications[index];
+      _lastDeletedIndex = index;
+
+      _notifications.removeAt(index);
+      _saveNotifications();
+      notifyListeners();
+    }
   }
+
+  // Undo last delete
+  bool undoDelete() {
+    if (_lastDeletedNotification != null && _lastDeletedIndex != null) {
+      // Restore at original position or at the end if index is out of bounds
+      final insertIndex = _lastDeletedIndex! <= _notifications.length
+          ? _lastDeletedIndex!
+          : _notifications.length;
+      _notifications.insert(insertIndex, _lastDeletedNotification!);
+
+      // Clear undo state
+      _lastDeletedNotification = null;
+      _lastDeletedIndex = null;
+
+      _saveNotifications();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  // Check if undo is available
+  bool get canUndo => _lastDeletedNotification != null;
 
   // Clear all notifications
   void clearAll() {
@@ -250,10 +338,85 @@ class NotificationService with ChangeNotifier {
     return _notifications.where((n) => !n.isRead).toList();
   }
 
-  // Show local notification (placeholder - will use flutter_local_notifications)
+  // Show local notification (push notification when app in background)
   Future<void> _showLocalNotification(AppNotification notification) async {
-    // TODO: Implement with flutter_local_notifications package
-    debugPrint('Notification: ${notification.title} - ${notification.message}');
+    if (!_isNotificationsInitialized) {
+      debugPrint('Notifications not initialized yet');
+      return;
+    }
+
+    try {
+      // Define notification details for Android
+      AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'smart_home_channel',
+        'Smart Home Notifications',
+        channelDescription: 'Notifications from Smart Home App',
+        importance: _getAndroidImportance(notification.priority),
+        priority: _getAndroidPriority(notification.priority),
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound('notification_sound'),
+        enableVibration: true,
+        icon: '@mipmap/ic_launcher',
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: BigTextStyleInformation(
+          notification.message,
+          htmlFormatBigText: true,
+          contentTitle: notification.title,
+          htmlFormatContentTitle: true,
+        ),
+      );
+
+      // Define notification details for iOS
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+      );
+
+      NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _flutterLocalNotificationsPlugin.show(
+        notification.id.hashCode,
+        notification.title,
+        notification.message,
+        notificationDetails,
+        payload: jsonEncode(notification.toMap()),
+      );
+
+      debugPrint('📱 Push notification sent: ${notification.title}');
+    } catch (e) {
+      debugPrint('❌ Error showing local notification: $e');
+    }
+  }
+
+  Importance _getAndroidImportance(NotificationPriority priority) {
+    switch (priority) {
+      case NotificationPriority.urgent:
+        return Importance.max;
+      case NotificationPriority.high:
+        return Importance.high;
+      case NotificationPriority.medium:
+        return Importance.defaultImportance;
+      case NotificationPriority.low:
+        return Importance.low;
+    }
+  }
+
+  Priority _getAndroidPriority(NotificationPriority priority) {
+    switch (priority) {
+      case NotificationPriority.urgent:
+        return Priority.max;
+      case NotificationPriority.high:
+        return Priority.high;
+      case NotificationPriority.medium:
+        return Priority.defaultPriority;
+      case NotificationPriority.low:
+        return Priority.low;
+    }
   }
 
   // Device status notifications

@@ -77,68 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        actions: [
-          Consumer<DeviceProvider>(
-            builder: (context, deviceProvider, child) {
-              return FadeInRight(
-                child: Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: deviceProvider.isConnectedToMqtt
-                        ? LinearGradient(
-                            colors: [
-                              AppTheme.successColor.withOpacity(0.3),
-                              AppTheme.successColor.withOpacity(0.1),
-                            ],
-                          )
-                        : LinearGradient(
-                            colors: [
-                              AppTheme.errorColor.withOpacity(0.3),
-                              AppTheme.errorColor.withOpacity(0.1),
-                            ],
-                          ),
-                    borderRadius: AppTheme.mediumRadius,
-                    border: Border.all(
-                      color: deviceProvider.isConnectedToMqtt
-                          ? AppTheme.successColor
-                          : AppTheme.errorColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        deviceProvider.isConnectedToMqtt
-                            ? Iconsax.wifi
-                            : Iconsax.wifi_square,
-                        size: 16,
-                        color: deviceProvider.isConnectedToMqtt
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        deviceProvider.isConnectedToMqtt
-                            ? AppLocalizations.of(context).t('local')
-                            : AppLocalizations.of(context).t('cloud'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: deviceProvider.isConnectedToMqtt
-                              ? AppTheme.successColor
-                              : AppTheme.errorColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+        actions: const [],
       ),
       body: Stack(
         children: [

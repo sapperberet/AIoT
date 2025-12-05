@@ -18,6 +18,14 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   NotificationType? _selectedFilter;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +106,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           FadeIn(
             child: Column(
               children: [
+                // Search bar
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context)
+                          .t('search_notifications'),
+                      prefixIcon: const Icon(Iconsax.search_normal),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                    ),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+
                 // Filter chips
                 _buildFilterChips(),
                 const SizedBox(height: 16),
@@ -106,10 +143,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Expanded(
                   child: Consumer<NotificationService>(
                     builder: (context, notificationService, child) {
-                      final notifications = _selectedFilter == null
+                      var notifications = _selectedFilter == null
                           ? notificationService.notifications
                           : notificationService
                               .getNotificationsByType(_selectedFilter!);
+
+                      // Apply search filter
+                      if (_searchQuery.isNotEmpty) {
+                        final query = _searchQuery.toLowerCase();
+                        notifications = notifications
+                            .where((n) =>
+                                n.title.toLowerCase().contains(query) ||
+                                n.message.toLowerCase().contains(query))
+                            .toList();
+                      }
 
                       if (notifications.isEmpty) {
                         return _buildEmptyState();
@@ -210,7 +257,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
-        context.read<NotificationService>().deleteNotification(notification.id);
+        final notificationService = context.read<NotificationService>();
+        notificationService.deleteNotification(notification.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Notification deleted'),
@@ -220,7 +268,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               label: 'Undo',
               textColor: AppTheme.primaryColor,
               onPressed: () {
-                // TODO: Implement undo functionality
+                notificationService.undoDelete();
               },
             ),
           ),
