@@ -48,7 +48,11 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat();
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _initializeVoiceMode();
   }
 
@@ -63,7 +67,6 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
   }
 
   Future<void> _initializeVoiceMode() async {
-    final chatProvider = context.read<AIChatProvider>();
     // Don't change voice mode, keep it independent
     setState(() {
       _statusMessage = AppLocalizations.of(context).t('ready_to_talk');

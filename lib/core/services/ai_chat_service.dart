@@ -129,7 +129,7 @@ class AIChatService {
             }),
           )
           .timeout(const Duration(
-              seconds: 120)); // 2 minute timeout for AI processing
+              seconds: 300)); // 5 minute timeout for AI processing
 
       print('[AI Chat Service] Response status: ${response.statusCode}');
       print('[AI Chat Service] Response body length: ${response.body.length}');

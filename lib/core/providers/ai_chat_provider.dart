@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -178,7 +179,10 @@ class AIChatProvider with ChangeNotifier {
   /// Increment unread count (called when AI sends a message)
   void _incrementUnreadCount() {
     _unreadCount++;
-    notifyListeners();
+    // Defer notifyListeners to avoid calling it during build
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
   }
 
   /// Check if AI agent server is available
@@ -310,7 +314,10 @@ class AIChatProvider with ChangeNotifier {
               content: buffer.toString(),
               status: MessageStatus.delivered,
             );
-            notifyListeners();
+            // Defer notifyListeners to avoid calling it during build
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              notifyListeners();
+            });
           }
         },
         onDone: () {
@@ -335,7 +342,10 @@ class AIChatProvider with ChangeNotifier {
           _saveCurrentSession();
 
           _isLoading = false;
-          notifyListeners();
+          // Defer notifyListeners to avoid calling it during build
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            notifyListeners();
+          });
 
           if (!completer.isCompleted) {
             completer.complete();
@@ -358,7 +368,10 @@ class AIChatProvider with ChangeNotifier {
           _saveCurrentSession();
 
           _isLoading = false;
-          notifyListeners();
+          // Defer notifyListeners to avoid calling it during build
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            notifyListeners();
+          });
 
           if (!completer.isCompleted) {
             completer.completeError(error);
@@ -385,7 +398,10 @@ class AIChatProvider with ChangeNotifier {
       await _saveCurrentSession();
 
       _isLoading = false;
-      notifyListeners();
+      // Defer notifyListeners to avoid calling it during build
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
     }
   }
 
