@@ -33,6 +33,7 @@ import 'ui/screens/automations/automations_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
 import 'ui/screens/chat/ai_chat_screen.dart';
 import 'ui/screens/chat/chat_sessions_screen.dart';
+import 'ui/screens/chat/voice_to_voice_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
@@ -212,6 +213,7 @@ class SmartHomeApp extends StatelessWidget {
               '/energy': (context) => const EnergyMonitorScreen(),
               '/ai-chat': (context) => const AIChatScreen(),
               '/chat-sessions': (context) => const ChatSessionsScreen(),
+              '/voice-to-voice': (context) => const VoiceToVoiceScreen(),
             },
           );
         },

@@ -9,6 +9,7 @@ class AuthAudioService {
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isEnabled = true;
+  bool _isPlaying = false;
 
   /// Enable or disable audio notifications
   void setEnabled(bool enabled) {
@@ -22,14 +23,24 @@ class AuthAudioService {
   /// Play "look at camera" notification
   Future<void> playLookAtCamera() async {
     if (!_isEnabled) return;
+    if (_isPlaying) {
+      debugPrint('🔊 Skipping look at camera audio: Another audio is playing');
+      return;
+    }
 
     try {
+      _isPlaying = true;
       await _audioPlayer.stop();
       await _audioPlayer.play(
         AssetSource('Audio/notification-look_at_camera.mp3'),
       );
       debugPrint('🔊 Playing: Look at camera notification');
+      // Reset flag after a delay to allow audio to start
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isPlaying = false;
+      });
     } catch (e) {
+      _isPlaying = false;
       debugPrint('❌ Error playing look at camera audio: $e');
     }
   }
@@ -37,14 +48,24 @@ class AuthAudioService {
   /// Play authentication success sound
   Future<void> playSuccess() async {
     if (!_isEnabled) return;
+    if (_isPlaying) {
+      debugPrint('🔊 Skipping success audio: Another audio is playing');
+      return;
+    }
 
     try {
+      _isPlaying = true;
       await _audioPlayer.stop();
       await _audioPlayer.play(
         AssetSource('Audio/success.mp3'),
       );
       debugPrint('🔊 Playing: Authentication success');
+      // Reset flag after a delay to allow audio to start
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isPlaying = false;
+      });
     } catch (e) {
+      _isPlaying = false;
       debugPrint('❌ Error playing success audio: $e');
     }
   }
@@ -52,14 +73,24 @@ class AuthAudioService {
   /// Play authentication error sound
   Future<void> playError() async {
     if (!_isEnabled) return;
+    if (_isPlaying) {
+      debugPrint('🔊 Skipping error audio: Another audio is playing');
+      return;
+    }
 
     try {
+      _isPlaying = true;
       await _audioPlayer.stop();
       await _audioPlayer.play(
         AssetSource('Audio/error.mp3'),
       );
       debugPrint('🔊 Playing: Authentication error');
+      // Reset flag after a delay to allow audio to start
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isPlaying = false;
+      });
     } catch (e) {
+      _isPlaying = false;
       debugPrint('❌ Error playing error audio: $e');
     }
   }
@@ -67,6 +98,7 @@ class AuthAudioService {
   /// Stop any currently playing audio
   Future<void> stop() async {
     try {
+      _isPlaying = false;
       await _audioPlayer.stop();
       debugPrint('🔊 Audio stopped');
     } catch (e) {
@@ -77,6 +109,7 @@ class AuthAudioService {
   /// Dispose of the audio player
   Future<void> dispose() async {
     try {
+      _isPlaying = false;
       await _audioPlayer.dispose();
       debugPrint('🔊 Audio service disposed');
     } catch (e) {

@@ -205,7 +205,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 400),
+                          delay: const Duration(milliseconds: 350),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.video,
@@ -223,7 +223,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 500),
+                          delay: const Duration(milliseconds: 400),
                           child: Consumer<NotificationService>(
                             builder: (context, notificationService, _) {
                               final unreadCount =
@@ -245,7 +245,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 500),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.timer,
@@ -257,7 +257,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 700),
+                          delay: const Duration(milliseconds: 600),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.flash_1,
@@ -269,7 +269,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 800),
+                          delay: const Duration(milliseconds: 700),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.info_circle,

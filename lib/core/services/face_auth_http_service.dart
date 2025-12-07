@@ -387,26 +387,18 @@ class FaceAuthHttpService {
       _logger.i('🌐 Calling face detection API: $apiUrl');
 
       try {
-        // VERSION 2: Uses RTSP stream from MediaMTX instead of direct webcam
-        final requestData = {
-          'persons_dir': '/data/persons',
-          'camera_url':
-              'rtsp://mediamtx:8554/cam', // Use RTSP stream (low latency)
-          'max_seconds':
-              '15', // Reduced from 30 to 15 seconds for faster response
-          'stop_on_first': 'true', // Stop on first recognized face
-          'model': 'hog', // Use HOG model (faster, CPU-friendly)
-          'tolerance': '0.6',
-          'frame_stride': '1', // Check every frame for faster detection (was 2)
-        };
+        // Use multipart/form-data format (matching curl -F command)
+        final uri = Uri.parse(apiUrl);
+        final request = http.MultipartRequest('POST', uri)
+          ..fields['persons_dir'] = '/data/persons'
+          ..fields['webcam'] = '0'
+          ..fields['max_seconds'] = '8'
+          ..fields['stop_on_first'] = 'true'
+          ..fields['annotated_dir'] = '/data/caps';
 
-        // Make HTTP POST request
-        final response = await _httpClient
-            .post(
-              Uri.parse(apiUrl),
-              body: requestData,
-            )
-            .timeout(_authTimeout);
+        // Send request and get response
+        final streamedResponse = await request.send().timeout(_authTimeout);
+        final response = await http.Response.fromStream(streamedResponse);
 
         _logger.i('📡 Response status: ${response.statusCode}');
 

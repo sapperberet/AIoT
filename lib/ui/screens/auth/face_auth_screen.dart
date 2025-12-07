@@ -39,7 +39,7 @@ class _FaceAuthScreenState extends State<FaceAuthScreen>
   @override
   void dispose() {
     _pulseController.dispose();
-    _audioService.stop(); // Stop any playing audio
+    // _audioService.stop(); // Removed to prevent native crash due to race condition
     super.dispose();
   }
 

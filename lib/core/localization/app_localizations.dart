@@ -237,6 +237,14 @@ class AppLocalizations {
       'voice_message': 'Voice message',
       'recording': 'Recording...',
       'send_voice': 'Send voice message',
+      'microphone_permission_required': 'Microphone Permission Required',
+      'microphone_permission_message':
+          'This app needs microphone access to record voice messages. Please grant permission in your device settings.',
+      'open_settings': 'Open Settings',
+      'error_starting_recording': 'Error starting recording',
+      'open_voice_to_voice_screen': 'Open Voice-to-Voice Screen',
+      'dedicated_voice_conversation':
+          'Dedicated screen for hands-free voice conversation',
 
       // Voice Settings
       'voice_settings': 'Voice Settings',
@@ -253,6 +261,12 @@ class AppLocalizations {
       'voice_chat_service': 'Voice Chat API',
       'refresh': 'Refresh',
       'done': 'Done',
+      'ready_to_talk': 'Ready to talk',
+      'listening': 'Listening...',
+      'recording_failed': 'Recording failed',
+      'tap_to_speak': 'Tap to Speak',
+      'v2v_instructions':
+          'Tap the button to start speaking. The system will automatically detect when you finish, or you can tap Send.',
 
       // LLM Provider Settings
       'llm_provider': 'AI Model Provider',
@@ -533,6 +547,14 @@ class AppLocalizations {
       'voice_message': 'Sprachnachricht',
       'recording': 'Aufnahme läuft...',
       'send_voice': 'Sprachnachricht senden',
+      'microphone_permission_required': 'Mikrofon-Berechtigung erforderlich',
+      'microphone_permission_message':
+          'Diese App benötigt Mikrofon-Zugriff, um Sprachnachrichten aufzunehmen. Bitte erteilen Sie die Berechtigung in Ihren Geräteeinstellungen.',
+      'open_settings': 'Einstellungen öffnen',
+      'error_starting_recording': 'Fehler beim Starten der Aufnahme',
+      'open_voice_to_voice_screen': 'Sprache-zu-Sprache-Bildschirm öffnen',
+      'dedicated_voice_conversation':
+          'Dedizierter Bildschirm für freihändige Sprachkonversation',
 
       // Voice Settings
       'voice_settings': 'Spracheinstellungen',
@@ -550,6 +572,12 @@ class AppLocalizations {
       'voice_chat_service': 'Sprach-Chat-API',
       'refresh': 'Aktualisieren',
       'done': 'Fertig',
+      'ready_to_talk': 'Bereit zum Sprechen',
+      'listening': 'Zuhören...',
+      'recording_failed': 'Aufnahme fehlgeschlagen',
+      'tap_to_speak': 'Tippen zum Sprechen',
+      'v2v_instructions':
+          'Tippen Sie auf die Schaltfläche, um zu sprechen. Das System erkennt automatisch, wenn Sie fertig sind, oder Sie können auf Senden tippen.',
 
       // LLM Provider Settings
       'llm_provider': 'KI-Modell-Anbieter',
@@ -828,6 +856,14 @@ class AppLocalizations {
       'voice_message': 'رسالة صوتية',
       'recording': 'جارٍ التسجيل...',
       'send_voice': 'إرسال رسالة صوتية',
+      'microphone_permission_required': 'إذن الميكروفون مطلوب',
+      'microphone_permission_message':
+          'يحتاج هذا التطبيق إلى الوصول إلى الميكروفون لتسجيل الرسائل الصوتية. يرجى منح الإذن في إعدادات جهازك.',
+      'open_settings': 'فتح الإعدادات',
+      'error_starting_recording': 'خطأ في بدء التسجيل',
+      'open_voice_to_voice_screen': 'فتح شاشة الصوت إلى الصوت',
+      'dedicated_voice_conversation':
+          'شاشة مخصصة للمحادثة الصوتية بدون استخدام اليدين',
 
       // Voice Settings
       'voice_settings': 'إعدادات الصوت',
@@ -841,9 +877,15 @@ class AppLocalizations {
       'service_status': 'حالة الخدمة',
       'tts_service': 'تحويل النص إلى كلام (Piper)',
       'asr_service': 'التعرف على الكلام (Whisper)',
-      'voice_chat_service': 'واجهة برمجة الدردشة الصوتية',
+      'voice_chat_service': 'واجهة برمجة تطبيقات الدردشة الصوتية',
       'refresh': 'تحديث',
       'done': 'تم',
+      'ready_to_talk': 'جاهز للتحدث',
+      'listening': 'استماع...',
+      'recording_failed': 'فشل التسجيل',
+      'tap_to_speak': 'اضغط للتحدث',
+      'v2v_instructions':
+          'اضغط على الزر لبدء التحدث. سيكتشف النظام تلقائيًا عند الانتهاء، أو يمكنك النقر على إرسال.',
 
       // LLM Provider Settings
       'llm_provider': 'مزود نموذج الذكاء الاصطناعي',

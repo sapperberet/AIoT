@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/ai_chat_provider.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -11,6 +12,7 @@ import '../../../core/models/chat_message_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/ai_chat_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/voice_service.dart';
 import '../../widgets/voice_recorder_widget.dart';
 import 'chat_theme_settings_dialog.dart';
 import '../../../core/providers/chat_theme_provider.dart';
@@ -160,38 +162,89 @@ class _AIChatScreenState extends State<AIChatScreen>
   Future<void> _startVoiceRecording() async {
     final chatProvider = context.read<AIChatProvider>();
     final voiceService = chatProvider.voiceService;
+    final loc = AppLocalizations.of(context);
 
-    // Start recording
-    final started = await voiceService.startRecording(
-      locale: chatProvider.currentLocale,
-    );
-
-    if (started) {
-      setState(() {
-        _isRecordingVoice = true;
-        _liveTranscription = '';
-      });
-
-      // Start live transcription
-      await voiceService.startLiveTranscription(
+    try {
+      // Start recording
+      final started = await voiceService.startRecording(
         locale: chatProvider.currentLocale,
-        onResult: (text) {
-          setState(() {
-            _liveTranscription = text;
-          });
-        },
       );
-    } else {
-      // Show error
+
+      if (started) {
+        setState(() {
+          _isRecordingVoice = true;
+          _liveTranscription = '';
+        });
+
+        // Start live transcription
+        await voiceService.startLiveTranscription(
+          locale: chatProvider.currentLocale,
+          onResult: (text) {
+            setState(() {
+              _liveTranscription = text;
+            });
+          },
+        );
+      } else {
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(loc.t('voice_permission_denied')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } on PermissionException catch (_) {
+      // Permission denied - guide user to settings
+      if (mounted) {
+        _showPermissionDialog();
+      }
+    } catch (e) {
+      // Other errors
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text(AppLocalizations.of(context).t('voice_permission_denied')),
+            content: Text('${loc.t('error_starting_recording')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    }
+  }
+
+  Future<void> _showPermissionDialog() async {
+    final loc = AppLocalizations.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Iconsax.microphone_slash, color: Colors.red),
+            const SizedBox(width: 8),
+            Expanded(child: Text(loc.t('microphone_permission_required'))),
+          ],
+        ),
+        content: Text(loc.t('microphone_permission_message')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(loc.t('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: Text(loc.t('open_settings')),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await openAppSettings();
     }
   }
 
@@ -1183,6 +1236,36 @@ class _AIChatScreenState extends State<AIChatScreen>
                       ),
                     ),
                   ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient.scale(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Iconsax.microphone_2,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  title: Text(
+                    loc.t('open_voice_to_voice_screen'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    loc.t('dedicated_voice_conversation'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Iconsax.arrow_right_3),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/voice-to-voice');
+                  },
+                ),
               ],
             ),
           ),

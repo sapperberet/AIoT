@@ -516,7 +516,8 @@ class AIChatService {
           // Save audio response
           final directory = await getApplicationDocumentsDirectory();
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final filePath = '${directory.path}/ai_voice_reply_$timestamp.wav';
+          final ext = _getExtensionFromMimeType(contentType);
+          final filePath = '${directory.path}/ai_voice_reply_$timestamp.$ext';
 
           final audioFile = File(filePath);
           await audioFile.writeAsBytes(response.bodyBytes);
@@ -535,7 +536,8 @@ class AIChatService {
             final audioBytes = base64Decode(data['audio']);
             final directory = await getApplicationDocumentsDirectory();
             final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final filePath = '${directory.path}/ai_voice_reply_$timestamp.wav';
+            // Default to mp3 if not specified
+            final filePath = '${directory.path}/ai_voice_reply_$timestamp.mp3';
 
             final audioFile = File(filePath);
             await audioFile.writeAsBytes(audioBytes);
@@ -578,6 +580,15 @@ class AIChatService {
       default:
         return 'octet-stream';
     }
+  }
+
+  String _getExtensionFromMimeType(String mimeType) {
+    if (mimeType.contains('wav')) return 'wav';
+    if (mimeType.contains('mpeg') || mimeType.contains('mp3')) return 'mp3';
+    if (mimeType.contains('aac')) return 'aac';
+    if (mimeType.contains('ogg')) return 'ogg';
+    if (mimeType.contains('mp4') || mimeType.contains('m4a')) return 'm4a';
+    return 'mp3'; // Default to mp3 as requested
   }
 
   /// Check external LLM health

@@ -19,6 +19,14 @@ class VoiceService {
   bool get isRecording => _isRecording;
   bool get isInitialized => _isInitialized;
 
+  /// Get recording progress stream
+  Stream<RecordingDisposition>? get onProgress => _recorder.onProgress;
+
+  /// Set subscription duration
+  Future<void> setSubscriptionDuration(Duration duration) async {
+    await _recorder.setSubscriptionDuration(duration);
+  }
+
   /// Initialize speech-to-text service
   Future<bool> initialize() async {
     try {
@@ -79,12 +87,19 @@ class VoiceService {
         return false;
       }
 
+      // Check microphone permission first
+      final micStatus = await Permission.microphone.status;
+      if (!micStatus.isGranted) {
+        _logger.e('Microphone permission not granted');
+        throw PermissionException('microphone');
+      }
+
       // Create recording file path
       final directory = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _currentRecordingPath = '${directory.path}/voice_$timestamp.aac';
 
-      // Start recording
+      // Start recording with AAC codec (better Android compatibility)
       await _recorder.startRecorder(
         toFile: _currentRecordingPath!,
         codec: Codec.aacADTS,
@@ -278,4 +293,14 @@ class VoiceRecordingResult {
     required this.filePath,
     required this.durationMs,
   });
+}
+
+/// Exception thrown when permission is not granted
+class PermissionException implements Exception {
+  final String permission;
+  PermissionException(this.permission);
+
+  @override
+  String toString() =>
+      'PermissionException: $permission permission not granted';
 }
