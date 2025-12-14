@@ -834,9 +834,10 @@ class DeviceProvider with ChangeNotifier {
     if (_userId != null) {
       _firestoreService.addAlarmEvent(_userId!, alarm);
     }
-    _notificationService.showNotification(
+    _notificationService.addNotification(
       title: '⚠️ GAS LEAK ALERT',
-      body: 'Dangerous gas level: ${level.toStringAsFixed(1)} ppm',
+      message: 'Dangerous gas level: ${level.toStringAsFixed(1)} ppm',
+      type: NotificationType.security,
     );
   }
 
@@ -854,9 +855,10 @@ class DeviceProvider with ChangeNotifier {
     if (_userId != null) {
       _firestoreService.addAlarmEvent(_userId!, alarm);
     }
-    _notificationService.showNotification(
+    _notificationService.addNotification(
       title: '🔥 SMOKE ALERT',
-      body: 'Smoke detected: ${level.toStringAsFixed(1)} ppm',
+      message: 'Smoke detected: ${level.toStringAsFixed(1)} ppm',
+      type: NotificationType.security,
     );
   }
 
@@ -874,9 +876,10 @@ class DeviceProvider with ChangeNotifier {
     if (_userId != null) {
       _firestoreService.addAlarmEvent(_userId!, alarm);
     }
-    _notificationService.showNotification(
+    _notificationService.addNotification(
       title: '💦 WATER LEAK ALERT',
-      body: 'Water detected in sensor area',
+      message: 'Water detected in sensor area',
+      type: NotificationType.security,
     );
   }
 

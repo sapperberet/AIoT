@@ -56,10 +56,31 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
       }
 
       if (success && mounted) {
-        // Ask if user wants to enable biometric
-        if (authProvider.isBiometricAvailable) {
+        final loc = AppLocalizations.of(context);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(loc.translate('account_created_successfully')),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Ask if user wants to enable biometric AFTER successful registration
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted && authProvider.isBiometricAvailable) {
           _showBiometricEnableDialog();
-        } else {
+        } else if (mounted) {
           Navigator.of(context).pushReplacementNamed('/home');
         }
       } else if (mounted && authProvider.errorMessage != null) {

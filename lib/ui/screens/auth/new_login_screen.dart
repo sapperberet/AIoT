@@ -30,19 +30,7 @@ class _NewLoginScreenState extends State<NewLoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Check if biometric is available and enabled
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkBiometricLogin();
-    });
-  }
-
-  Future<void> _checkBiometricLogin() async {
-    final authProvider = context.read<AuthProvider>();
-
-    if (authProvider.isBiometricAvailable && authProvider.isBiometricEnabled) {
-      // Show biometric prompt automatically if enabled
-      _handleBiometricLogin();
-    }
+    // Don't auto-prompt biometric - let user choose their login method
   }
 
   Future<void> _handleLogin() async {

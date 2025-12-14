@@ -778,6 +778,25 @@ class _QuickControlsSection extends StatelessWidget {
           const SizedBox(height: 8),
           _buildDeviceListItem(
             context,
+            icon: Icons.fence_rounded,
+            name: 'Gate Door',
+            deviceId: 'gate',
+            mqttTopic: 'home/gate/window/command',
+            isActive: deviceProvider.windowStates['gate'] ?? false,
+            activeColor: Colors.red,
+            inactiveColor: Colors.green,
+            activeLabel: 'CLOSE',
+            inactiveLabel: 'OPEN',
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              _showDoorWarningDialog(context, deviceProvider, 'Gate Door',
+                  deviceProvider.windowStates['gate'] ?? false);
+            },
+            isDark: isDark,
+          ),
+          const SizedBox(height: 8),
+          _buildDeviceListItem(
+            context,
             icon: Icons.notifications_active,
             name: 'Alert Buzzer',
             deviceId: 'buzzer',
@@ -799,14 +818,14 @@ class _QuickControlsSection extends StatelessWidget {
           // Windows Section
           _buildSectionHeader(context, 'Windows', Icons.window, isDark),
           const SizedBox(height: 8),
-          ...deviceProvider.windowStates.entries.map((entry) {
+          ...deviceProvider.windowStates.entries.where((entry) => entry.key != 'gate').map((entry) {
             final windowName = _formatName(entry.key);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildDeviceListItem(
                 context,
                 icon: Icons.window,
-                name: '$windowName Window',
+                name: windowName,
                 deviceId: 'window_${entry.key}',
                 mqttTopic: 'home/${entry.key}/window/command',
                 isActive: entry.value,
@@ -833,7 +852,8 @@ class _QuickControlsSection extends StatelessWidget {
             final isRgb = entry.key == 'rgb';
             // These lights are simple on/off without brightness controls
             final simpleOnOffLights = ['landscape', 'floor_1', 'floor_2'];
-            final hasNoBrightnessControl = simpleOnOffLights.contains(entry.key);
+            final hasNoBrightnessControl =
+                simpleOnOffLights.contains(entry.key);
             final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1268,9 +1288,6 @@ class _QuickControlsSection extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           color: AppTheme.mutedText,
-                        ),
-                      ),
-                    ],
                         ),
                       ),
                     ],
@@ -1756,7 +1773,7 @@ class _QuickControlsSection extends StatelessWidget {
     final specialCases = {
       'rgb': 'RGB',
       'front_window': 'Front Window',
-      'gate': 'Gate',
+      'gate': 'Gate Door',
     };
     if (specialCases.containsKey(id.toLowerCase())) {
       return specialCases[id.toLowerCase()]!;

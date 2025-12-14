@@ -36,45 +36,49 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     // Normal authentication flow
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
     final settingsProvider = context.read<SettingsProvider>();
 
+    // If user is already authenticated (has active Firebase session), go to home
     if (authProvider.isAuthenticated) {
+      debugPrint('✅ User already authenticated, going to home');
       Navigator.of(context).pushReplacementNamed('/home');
-    } else {
-      // Check if biometric login is enabled
-      if (settingsProvider.enableBiometricLogin) {
-        final isBiometricAvailable =
-            await _biometricService.isBiometricAvailable();
+      return;
+    }
 
-        if (isBiometricAvailable) {
-          // Try biometric authentication
-          final success = await _biometricService.authenticate(
-            localizedReason: 'Authenticate to access Smart Home',
-          );
+    // Check if user has previously enabled biometric AND has a stored session
+    // Only attempt biometric if they've logged in before
+    if (settingsProvider.enableBiometricLogin &&
+        authProvider.currentUser != null) {
+      final isBiometricAvailable =
+          await _biometricService.isBiometricAvailable();
 
-          if (success && mounted) {
-            // Biometric auth successful - go directly to home
-            // We need to sign in silently if there's a previous session
-            debugPrint(
-                '🔐 Biometric auth successful, checking for previous session...');
+      if (isBiometricAvailable) {
+        debugPrint(
+            '🔐 Attempting biometric authentication for returning user...');
 
-            // Check if user was previously authenticated (session exists)
-            if (authProvider.currentUser != null) {
-              Navigator.of(context).pushReplacementNamed('/home');
-              return;
-            }
-          }
+        final success = await _biometricService.authenticate(
+          localizedReason: 'Authenticate to access Smart Home',
+        );
+
+        if (success && mounted) {
+          debugPrint('✅ Biometric successful, going to home');
+          Navigator.of(context).pushReplacementNamed('/home');
+          return;
+        } else {
+          debugPrint('❌ Biometric failed or cancelled');
         }
       }
-
-      // If biometric is not enabled or failed, go to normal login
-      Navigator.of(context).pushReplacementNamed('/login');
     }
+
+    // First-time user or biometric not enabled - show proper login page
+    debugPrint('👤 New user or biometric not enabled, showing login screen');
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/modern-login');
   }
 
   @override

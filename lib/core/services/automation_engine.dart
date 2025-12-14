@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/automation_model.dart';
 import '../models/sensor_data_model.dart';
 import '../models/device_model.dart';
@@ -12,6 +13,7 @@ import 'event_log_service.dart';
 
 /// Engine that monitors sensors and executes automations
 class AutomationEngine {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final AutomationService _automationService;
   final SensorService _sensorService;
   final MqttService _mqttService;
@@ -320,10 +322,13 @@ class AutomationEngine {
 
     // Log to event log
     _eventLogService?.logEvent(
-      'Automation',
-      success
+      userId: _auth.currentUser?.uid ?? 'unknown',
+      type: EventType.automationTriggered,
+      title: 'Automation',
+      description: success
           ? 'Automation executed: ${automation.name}'
           : 'Automation failed: ${automation.name}',
+      severity: success ? EventSeverity.info : EventSeverity.critical,
       metadata: {
         'automationId': automation.id,
         'success': success,
@@ -591,7 +596,11 @@ class AutomationEngine {
     final title = action.parameters['title'] as String? ?? 'Automation';
     final message = action.parameters['message'] as String? ?? '';
 
-    _notificationService?.showNotification(title, message);
+    _notificationService?.addNotification(
+      title: title,
+      message: message,
+      type: NotificationType.info,
+    );
 
     return true;
   }
@@ -655,7 +664,12 @@ class AutomationEngine {
     final eventType = action.parameters['eventType'] as String? ?? 'Automation';
     final message = action.parameters['message'] as String? ?? '';
 
-    _eventLogService?.logEvent(eventType, message);
+    _eventLogService?.logEvent(
+      userId: _auth.currentUser?.uid ?? 'unknown',
+      type: EventType.automationTriggered,
+      title: eventType,
+      description: message,
+    );
 
     return true;
   }

@@ -446,6 +446,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
     switch (trigger.type) {
       case TriggerType.time:
         return 'At ${trigger.parameters['time']}';
+      case TriggerType.schedule:
+        return 'On schedule: ${trigger.parameters['schedule'] ?? 'recurring'}';
       case TriggerType.deviceState:
         return 'When device changes state';
       case TriggerType.temperature:
@@ -454,6 +456,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
         return 'At sunrise';
       case TriggerType.sunset:
         return 'At sunset';
+      default:
+        return 'Custom trigger';
     }
   }
 
@@ -461,27 +465,45 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
     switch (condition.type) {
       case ConditionType.time:
         return 'Between ${condition.parameters['after']} and ${condition.parameters['before']}';
+      case ConditionType.dayOfWeek:
+        return 'On ${condition.parameters['days']?.join(', ') ?? 'specific days'}';
       case ConditionType.deviceState:
         return 'If device is ${condition.parameters['state']}';
       case ConditionType.temperature:
         return 'If temperature is ${condition.parameters['temperature']}°C';
-      case ConditionType.day:
-        return 'On ${condition.parameters['days'].join(', ')}';
+      default:
+        return 'Custom condition';
     }
   }
 
   String _getActionDescription(AutomationAction action) {
     switch (action.type) {
+      case ActionType.deviceControl:
+        return 'Control ${action.deviceId}';
       case ActionType.turnOn:
         return 'Turn on ${action.deviceId}';
       case ActionType.turnOff:
         return 'Turn off ${action.deviceId}';
+      case ActionType.toggle:
+        return 'Toggle ${action.deviceId}';
       case ActionType.setBrightness:
         return 'Set brightness to ${action.parameters['brightness']}%';
       case ActionType.setTemperature:
         return 'Set temperature to ${action.parameters['temperature']}°C';
+      case ActionType.openClose:
+        return 'Open/Close ${action.deviceId}';
       case ActionType.sendNotification:
         return 'Send notification: ${action.parameters['message']}';
+      case ActionType.sendMqttMessage:
+        return 'Send MQTT message: ${action.parameters['topic'] ?? 'custom'}';
+      case ActionType.triggerAlarm:
+        return 'Trigger alarm';
+      case ActionType.playSound:
+        return 'Play sound';
+      case ActionType.adjustEnergy:
+        return 'Adjust energy settings';
+      case ActionType.logEvent:
+        return 'Log event: ${action.parameters['message'] ?? 'custom event'}';
     }
   }
 

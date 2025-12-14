@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/ai_chat_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/voice_service.dart';
+import '../../../core/config/mqtt_config.dart';
 import '../../widgets/voice_recorder_widget.dart';
 import 'chat_theme_settings_dialog.dart';
 import '../../../core/providers/chat_theme_provider.dart';

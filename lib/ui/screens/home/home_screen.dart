@@ -26,16 +26,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeDevices();
+    _checkAuthAndInitialize();
   }
 
-  Future<void> _initializeDevices() async {
+  Future<void> _checkAuthAndInitialize() async {
     final authProvider = context.read<AuthProvider>();
-    final deviceProvider = context.read<DeviceProvider>();
 
-    if (authProvider.currentUser != null) {
-      await deviceProvider.initialize(authProvider.currentUser!.uid);
+    // Check if user is authenticated
+    if (authProvider.currentUser == null) {
+      // User is not authenticated, redirect to login
+      debugPrint('❌ User not authenticated, redirecting to login');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/modern-login');
+        }
+      });
+      return;
     }
+
+    // User is authenticated, initialize devices
+    final deviceProvider = context.read<DeviceProvider>();
+    await deviceProvider.initialize(authProvider.currentUser!.uid);
   }
 
   @override

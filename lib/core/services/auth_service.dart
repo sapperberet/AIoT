@@ -35,19 +35,19 @@ class AuthService {
       debugPrint('🔍 Verifying network broker connection...');
 
       // Check if already connected
-      if (_mqttService.currentStatus == ConnectionStatus.connected) {
+      if (_mqttService?.currentStatus == ConnectionStatus.connected) {
         debugPrint('✅ Broker already connected');
         return true;
       }
 
       // Try to connect to broker
-      await _mqttService.connect();
+      await _mqttService?.connect();
 
       // Wait a bit for connection to establish
       await Future.delayed(const Duration(seconds: 2));
 
       final isConnected =
-          _mqttService.currentStatus == ConnectionStatus.connected;
+          _mqttService?.currentStatus == ConnectionStatus.connected;
 
       if (isConnected) {
         debugPrint('✅ Network broker verified successfully');

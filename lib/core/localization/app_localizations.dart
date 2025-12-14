@@ -145,6 +145,7 @@ class AppLocalizations {
       'enter_confirm_password': 'Please confirm your password',
       'sign_up': 'Sign Up',
       'already_have_account': 'Already have an account?',
+      'account_created_successfully': 'Account created successfully!',
 
       // Biometric Authentication
       'enable_biometric': 'Enable Biometric Authentication',
