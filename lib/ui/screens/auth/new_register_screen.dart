@@ -67,7 +67,8 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(loc.translate('account_created_pending_approval')),
+                    child:
+                        Text(loc.translate('account_created_pending_approval')),
                   ),
                 ],
               ),
@@ -75,7 +76,7 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
               duration: const Duration(seconds: 3),
             ),
           );
-          
+
           await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
             Navigator.of(context).pushReplacementNamed('/pending-approval');
@@ -117,9 +118,10 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
   void _showBiometricEnableDialog() {
     final authProvider = context.read<AuthProvider>();
     final loc = AppLocalizations.of(context);
-    
+
     // Determine navigation destination based on approval status
-    final destination = authProvider.isPendingApproval ? '/pending-approval' : '/home';
+    final destination =
+        authProvider.isPendingApproval ? '/pending-approval' : '/home';
 
     showDialog(
       context: context,

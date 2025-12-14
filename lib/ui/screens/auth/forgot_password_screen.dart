@@ -38,7 +38,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() {
           _isEmailSent = true;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -267,7 +267,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Iconsax.send_1, size: 20),
+                                            const Icon(Iconsax.send_1,
+                                                size: 20),
                                             const SizedBox(width: 8),
                                             Text(
                                               loc.translate('send_reset_link'),

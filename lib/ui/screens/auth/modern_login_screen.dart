@@ -91,7 +91,7 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
           Navigator.of(context).pushReplacementNamed('/pending-approval');
           return;
         }
-        
+
         if (success) {
           Navigator.of(context).pushReplacementNamed('/home');
         } else if (authProvider.errorMessage != null) {
@@ -360,7 +360,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              Navigator.of(context).pushNamed('/forgot-password');
+                              Navigator.of(context)
+                                  .pushNamed('/forgot-password');
                             },
                             child: Text(
                               loc.translate('forgot_password'),

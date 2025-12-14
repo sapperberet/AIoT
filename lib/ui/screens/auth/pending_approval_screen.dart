@@ -145,7 +145,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                               radius: 30,
                               backgroundColor: theme.colorScheme.primary,
                               child: Text(
-                                (user.displayName ?? user.email ?? 'U')[0].toUpperCase(),
+                                (user.displayName ?? user.email ?? 'U')[0]
+                                    .toUpperCase(),
                                 style: const TextStyle(
                                   fontSize: 24,
                                   color: Colors.white,
@@ -207,7 +208,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isCheckingStatus ? null : _checkApprovalStatus,
+                      onPressed:
+                          _isCheckingStatus ? null : _checkApprovalStatus,
                       icon: _isCheckingStatus
                           ? const SizedBox(
                               width: 20,

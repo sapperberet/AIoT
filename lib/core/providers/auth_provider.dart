@@ -51,7 +51,8 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isPendingApproval => _isPendingApproval;
   bool get isApproved => _userModel?.isApproved ?? false;
-  AccessLevel get userAccessLevel => _userModel?.accessLevel ?? AccessLevel.pending;
+  AccessLevel get userAccessLevel =>
+      _userModel?.accessLevel ?? AccessLevel.pending;
   bool get isAdmin => _userModel?.isAdmin ?? false;
   UserApprovalService get approvalService => _approvalService;
 
@@ -162,7 +163,7 @@ class AuthProvider with ChangeNotifier {
       return true;
     } catch (e) {
       final errorStr = e.toString();
-      
+
       // Handle USER_PENDING_APPROVAL - user exists but not approved yet
       if (errorStr == 'USER_PENDING_APPROVAL') {
         debugPrint('USER_PENDING_APPROVAL caught, user needs admin approval');
@@ -175,16 +176,18 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false; // Return false but set isPendingApproval flag
       }
-      
+
       // Handle PIGEON_ERROR_USER_AUTHENTICATED - sign-in succeeded but Pigeon API had issues
       if (errorStr == 'PIGEON_ERROR_USER_AUTHENTICATED') {
-        debugPrint('PIGEON_ERROR_USER_AUTHENTICATED caught, user is authenticated');
+        debugPrint(
+            'PIGEON_ERROR_USER_AUTHENTICATED caught, user is authenticated');
         _currentUser = _authService.currentUser;
         if (_currentUser != null) {
           debugPrint('Login succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
           // Check if user is pending approval
-          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+          if (_userModel?.accessLevel == AccessLevel.pending ||
+              !(_userModel?.isApproved ?? false)) {
             _isPendingApproval = true;
             _isLoading = false;
             notifyListeners();
@@ -211,7 +214,8 @@ class AuthProvider with ChangeNotifier {
           debugPrint('Login succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
           // Check if user is pending approval
-          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+          if (_userModel?.accessLevel == AccessLevel.pending ||
+              !(_userModel?.isApproved ?? false)) {
             _isPendingApproval = true;
             _isLoading = false;
             notifyListeners();
@@ -253,9 +257,10 @@ class AuthProvider with ChangeNotifier {
       // Load user data from Firestore
       if (_currentUser != null) {
         await _loadUserData();
-        
+
         // Check if this is the first admin (auto-approved) or pending approval
-        if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+        if (_userModel?.accessLevel == AccessLevel.pending ||
+            !(_userModel?.isApproved ?? false)) {
           _isPendingApproval = true;
           _isLoading = false;
           notifyListeners();
@@ -277,7 +282,8 @@ class AuthProvider with ChangeNotifier {
           debugPrint('Registration succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
           // Check if pending approval
-          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+          if (_userModel?.accessLevel == AccessLevel.pending ||
+              !(_userModel?.isApproved ?? false)) {
             _isPendingApproval = true;
           }
           _isLoading = false;
@@ -301,7 +307,8 @@ class AuthProvider with ChangeNotifier {
           debugPrint('Registration succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
           // Check if pending approval
-          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+          if (_userModel?.accessLevel == AccessLevel.pending ||
+              !(_userModel?.isApproved ?? false)) {
             _isPendingApproval = true;
           }
           _isLoading = false;

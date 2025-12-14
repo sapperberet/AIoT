@@ -47,7 +47,8 @@ class UserAccount {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastSignIn: (data['lastSignIn'] as Timestamp?)?.toDate(),
       lastSignInDevice: data['lastSignInDevice'],
-      accessLevel: AccessLevelExtension.fromString(data['accessLevel'] as String?),
+      accessLevel:
+          AccessLevelExtension.fromString(data['accessLevel'] as String?),
       isApproved: data['isApproved'] ?? false,
       isBanned: data['isBanned'] ?? false,
       banReason: data['banReason'],
@@ -155,7 +156,8 @@ class UserManagementService {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
         final data = doc.data();
-        final accessLevel = AccessLevelExtension.fromString(data?['accessLevel'] as String?);
+        final accessLevel =
+            AccessLevelExtension.fromString(data?['accessLevel'] as String?);
         return accessLevel == AccessLevel.high;
       }
       return false;
@@ -322,7 +324,8 @@ class UserManagementService {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('✅ User access level changed to ${level.displayName}: $userId');
+      debugPrint(
+          '✅ User access level changed to ${level.displayName}: $userId');
       return true;
     } catch (e) {
       debugPrint('❌ Error changing access level: $e');

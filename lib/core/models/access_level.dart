@@ -50,10 +50,13 @@ extension AccessLevelExtension on AccessLevel {
   }
 
   bool get canApproveUsers => this == AccessLevel.high;
-  bool get canManageUsers => this == AccessLevel.high || this == AccessLevel.mid;
+  bool get canManageUsers =>
+      this == AccessLevel.high || this == AccessLevel.mid;
   bool get canManageDevices => this != AccessLevel.pending;
-  bool get canManageAutomations => this == AccessLevel.high || this == AccessLevel.mid;
-  bool get canViewReports => this == AccessLevel.high || this == AccessLevel.mid;
+  bool get canManageAutomations =>
+      this == AccessLevel.high || this == AccessLevel.mid;
+  bool get canViewReports =>
+      this == AccessLevel.high || this == AccessLevel.mid;
   bool get canAccessSettings => this != AccessLevel.pending;
   bool get isApproved => this != AccessLevel.pending;
 

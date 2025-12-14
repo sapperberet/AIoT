@@ -110,9 +110,11 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                             IconButton(
                               icon: const Icon(Icons.copy, size: 20),
                               onPressed: () {
-                                Clipboard.setData(ClipboardData(text: user.otp!));
+                                Clipboard.setData(
+                                    ClipboardData(text: user.otp!));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('OTP copied to clipboard')),
+                                  const SnackBar(
+                                      content: Text('OTP copied to clipboard')),
                                 );
                               },
                             ),
@@ -121,7 +123,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                       if (user.isOtpExpired)
                         Container(
                           margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -137,7 +140,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                 const SizedBox(height: 16),
 
                 // Request details
-                _buildDetailRow('Requested', DateFormat.yMMMd().add_jm().format(user.requestedAt)),
+                _buildDetailRow('Requested',
+                    DateFormat.yMMMd().add_jm().format(user.requestedAt)),
                 const SizedBox(height: 16),
 
                 // Enter OTP field
@@ -223,7 +227,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${user.displayName} has been approved as ${selectedLevel.displayName}'),
+                      content: Text(
+                          '${user.displayName} has been approved as ${selectedLevel.displayName}'),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -231,7 +236,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Failed to approve user. OTP may be invalid or expired.'),
+                      content: Text(
+                          'Failed to approve user. OTP may be invalid or expired.'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -258,7 +264,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to reject ${user.displayName}\'s access request?'),
+            Text(
+                'Are you sure you want to reject ${user.displayName}\'s access request?'),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
@@ -284,7 +291,9 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
               final success = await _approvalService.rejectUser(
                 pendingUserId: user.uid,
                 rejectedByUserId: currentUser.uid,
-                reason: reasonController.text.isNotEmpty ? reasonController.text : null,
+                reason: reasonController.text.isNotEmpty
+                    ? reasonController.text
+                    : null,
               );
 
               Navigator.pop(context);
@@ -292,7 +301,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${user.displayName}\'s request has been rejected'),
+                    content: Text(
+                        '${user.displayName}\'s request has been rejected'),
                     backgroundColor: Colors.orange,
                   ),
                 );
@@ -318,7 +328,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w500, color: Colors.grey),
             ),
           ),
           Expanded(child: Text(value)),
@@ -398,7 +409,8 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                             ),
                             title: Text(
                               user.displayName,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,7 +426,9 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      DateFormat.yMMMd().add_jm().format(user.requestedAt),
+                                      DateFormat.yMMMd()
+                                          .add_jm()
+                                          .format(user.requestedAt),
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey[600],
@@ -447,12 +461,14 @@ class _UserApprovalScreenState extends State<UserApprovalScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Iconsax.close_circle, color: Colors.red),
+                                  icon: const Icon(Iconsax.close_circle,
+                                      color: Colors.red),
                                   onPressed: () => _showRejectDialog(user),
                                   tooltip: 'Reject',
                                 ),
                                 IconButton(
-                                  icon: const Icon(Iconsax.tick_circle, color: Colors.green),
+                                  icon: const Icon(Iconsax.tick_circle,
+                                      color: Colors.green),
                                   onPressed: () => _showApprovalDialog(user),
                                   tooltip: 'Approve',
                                 ),

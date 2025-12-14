@@ -35,9 +35,10 @@ class AuthService {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (!doc.exists) return false;
-      
+
       final data = doc.data()!;
-      final accessLevel = AccessLevelExtension.fromString(data['accessLevel'] as String?);
+      final accessLevel =
+          AccessLevelExtension.fromString(data['accessLevel'] as String?);
       return data['isApproved'] == true && accessLevel.isApproved;
     } catch (e) {
       debugPrint('❌ Error checking user approval: $e');
@@ -50,7 +51,7 @@ class AuthService {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (!doc.exists) return AccessLevel.pending;
-      
+
       final data = doc.data()!;
       return AccessLevelExtension.fromString(data['accessLevel'] as String?);
     } catch (e) {
@@ -80,10 +81,10 @@ class AuthService {
             .collection('users')
             .doc(credential.user!.uid)
             .get();
-        
+
         if (userDoc.exists) {
           final userData = userDoc.data()!;
-          
+
           // Check if banned
           if (userData['isBanned'] == true) {
             await _auth.signOut();
@@ -96,9 +97,11 @@ class AuthService {
 
           // Check approval status (only if checkApproval is true)
           if (checkApproval) {
-            final accessLevel = AccessLevelExtension.fromString(userData['accessLevel'] as String?);
-            final isApproved = userData['isApproved'] == true && accessLevel.isApproved;
-            
+            final accessLevel = AccessLevelExtension.fromString(
+                userData['accessLevel'] as String?);
+            final isApproved =
+                userData['isApproved'] == true && accessLevel.isApproved;
+
             if (!isApproved) {
               // Don't sign out - keep them signed in but return a specific error
               // so UI can show the pending approval screen
@@ -291,7 +294,7 @@ class AuthService {
   Future<void> _createUserDocument(User user, String? displayName) async {
     // Check if this should be the first admin
     final needsFirstAdmin = await _approvalService.needsFirstAdminSetup();
-    
+
     final userModel = UserModel(
       uid: user.uid,
       email: user.email!,

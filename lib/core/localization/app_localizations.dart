@@ -343,11 +343,15 @@ class AppLocalizations {
       'account_approved': 'Account Approved',
       'account_rejected': 'Account Rejected',
       'pending_approval_title': 'Account Pending Approval',
-      'pending_approval_description': 'Your registration was successful! An administrator has been notified and will review your access request shortly.',
-      'pending_approval_info': 'An OTP code has been sent to administrators. You will be able to access the app once an admin approves your request.',
+      'pending_approval_description':
+          'Your registration was successful! An administrator has been notified and will review your access request shortly.',
+      'pending_approval_info':
+          'An OTP code has been sent to administrators. You will be able to access the app once an admin approves your request.',
       'check_approval_status': 'Check Approval Status',
-      'approval_still_pending': 'Your account is still pending approval. Please wait for an administrator to approve your access.',
-      'account_created_pending_approval': 'Account created! Waiting for admin approval.',
+      'approval_still_pending':
+          'Your account is still pending approval. Please wait for an administrator to approve your access.',
+      'account_created_pending_approval':
+          'Account created! Waiting for admin approval.',
 
       // Chat Theme Settings
       'chat_appearance': 'Chat Appearance',
@@ -682,11 +686,15 @@ class AppLocalizations {
       'account_approved': 'Konto Genehmigt',
       'account_rejected': 'Konto Abgelehnt',
       'pending_approval_title': 'Konto wartet auf Genehmigung',
-      'pending_approval_description': 'Ihre Registrierung war erfolgreich! Ein Administrator wurde benachrichtigt und wird Ihre Zugriffsanfrage in Kürze prüfen.',
-      'pending_approval_info': 'Ein OTP-Code wurde an Administratoren gesendet. Sie können auf die App zugreifen, sobald ein Administrator Ihre Anfrage genehmigt.',
+      'pending_approval_description':
+          'Ihre Registrierung war erfolgreich! Ein Administrator wurde benachrichtigt und wird Ihre Zugriffsanfrage in Kürze prüfen.',
+      'pending_approval_info':
+          'Ein OTP-Code wurde an Administratoren gesendet. Sie können auf die App zugreifen, sobald ein Administrator Ihre Anfrage genehmigt.',
       'check_approval_status': 'Genehmigungsstatus prüfen',
-      'approval_still_pending': 'Ihr Konto wartet noch auf Genehmigung. Bitte warten Sie, bis ein Administrator Ihren Zugang genehmigt.',
-      'account_created_pending_approval': 'Konto erstellt! Warten auf Admin-Genehmigung.',
+      'approval_still_pending':
+          'Ihr Konto wartet noch auf Genehmigung. Bitte warten Sie, bis ein Administrator Ihren Zugang genehmigt.',
+      'account_created_pending_approval':
+          'Konto erstellt! Warten auf Admin-Genehmigung.',
 
       // Chat Theme Settings
       'chat_appearance': 'Chat-Erscheinung',
@@ -1011,11 +1019,15 @@ class AppLocalizations {
       'account_approved': 'تمت الموافقة على الحساب',
       'account_rejected': 'تم رفض الحساب',
       'pending_approval_title': 'الحساب في انتظار الموافقة',
-      'pending_approval_description': 'تم التسجيل بنجاح! تم إخطار المسؤول وسيراجع طلب الوصول الخاص بك قريباً.',
-      'pending_approval_info': 'تم إرسال رمز OTP إلى المسؤولين. ستتمكن من الوصول إلى التطبيق بمجرد موافقة المسؤول على طلبك.',
+      'pending_approval_description':
+          'تم التسجيل بنجاح! تم إخطار المسؤول وسيراجع طلب الوصول الخاص بك قريباً.',
+      'pending_approval_info':
+          'تم إرسال رمز OTP إلى المسؤولين. ستتمكن من الوصول إلى التطبيق بمجرد موافقة المسؤول على طلبك.',
       'check_approval_status': 'التحقق من حالة الموافقة',
-      'approval_still_pending': 'حسابك لا يزال في انتظار الموافقة. يرجى الانتظار حتى يوافق المسؤول على وصولك.',
-      'account_created_pending_approval': 'تم إنشاء الحساب! في انتظار موافقة المسؤول.',
+      'approval_still_pending':
+          'حسابك لا يزال في انتظار الموافقة. يرجى الانتظار حتى يوافق المسؤول على وصولك.',
+      'account_created_pending_approval':
+          'تم إنشاء الحساب! في انتظار موافقة المسؤول.',
 
       // Chat Theme Settings
       'chat_appearance': 'مظهر المحادثة',

@@ -40,7 +40,8 @@ class UserModel {
       photoUrl: json['photoUrl'] as String?,
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       preferences: json['preferences'] as Map<String, dynamic>? ?? {},
-      accessLevel: AccessLevelExtension.fromString(json['accessLevel'] as String?),
+      accessLevel:
+          AccessLevelExtension.fromString(json['accessLevel'] as String?),
       isApproved: json['isApproved'] as bool? ?? false,
       approvedAt: (json['approvedAt'] as Timestamp?)?.toDate(),
       approvedBy: json['approvedBy'] as String?,
@@ -67,7 +68,8 @@ class UserModel {
       'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
       'approvedBy': approvedBy,
       'pendingApprovalOtp': pendingApprovalOtp,
-      'otpGeneratedAt': otpGeneratedAt != null ? Timestamp.fromDate(otpGeneratedAt!) : null,
+      'otpGeneratedAt':
+          otpGeneratedAt != null ? Timestamp.fromDate(otpGeneratedAt!) : null,
     };
   }
 
@@ -103,11 +105,10 @@ class UserModel {
 
   /// Check if user can access the main app features
   bool get canAccessApp => isApproved && accessLevel.isApproved;
-  
+
   /// Check if user is an admin
   bool get isAdmin => accessLevel == AccessLevel.high;
-  
+
   /// Check if user can approve other users
   bool get canApproveUsers => accessLevel.canApproveUsers;
 }
-

@@ -31,7 +31,8 @@ class PendingUserRequest {
       uid: doc.id,
       email: data['email'] ?? '',
       displayName: data['displayName'] ?? 'Unknown',
-      requestedAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      requestedAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       otp: data['pendingApprovalOtp'],
       otpGeneratedAt: (data['otpGeneratedAt'] as Timestamp?)?.toDate(),
       otpVerified: data['otpVerified'] ?? false,
@@ -119,7 +120,8 @@ class UserApprovalService {
       });
 
       // Get pending user details
-      final userDoc = await _firestore.collection('users').doc(pendingUserId).get();
+      final userDoc =
+          await _firestore.collection('users').doc(pendingUserId).get();
       final userData = userDoc.data();
       final pendingUserEmail = userData?['email'] ?? 'Unknown';
       final pendingUserName = userData?['displayName'] ?? 'New User';
@@ -145,7 +147,8 @@ class UserApprovalService {
         await _firestore.collection('notifications').add({
           'userId': admin.uid,
           'title': 'New User Approval Required',
-          'message': '$pendingUserName ($pendingUserEmail) is requesting access. OTP: $otp',
+          'message':
+              '$pendingUserName ($pendingUserEmail) is requesting access. OTP: $otp',
           'type': 'user_approval',
           'data': {
             'pendingUserId': pendingUserId,
@@ -173,7 +176,8 @@ class UserApprovalService {
   }) async {
     try {
       // Get pending user document
-      final userDoc = await _firestore.collection('users').doc(pendingUserId).get();
+      final userDoc =
+          await _firestore.collection('users').doc(pendingUserId).get();
       if (!userDoc.exists) {
         debugPrint('❌ Pending user not found');
         return false;
@@ -181,7 +185,8 @@ class UserApprovalService {
 
       final userData = userDoc.data()!;
       final storedOtp = userData['pendingApprovalOtp'];
-      final otpGeneratedAt = (userData['otpGeneratedAt'] as Timestamp?)?.toDate();
+      final otpGeneratedAt =
+          (userData['otpGeneratedAt'] as Timestamp?)?.toDate();
 
       // Verify OTP
       if (storedOtp != otp) {
@@ -235,13 +240,15 @@ class UserApprovalService {
       await _firestore.collection('notifications').add({
         'userId': pendingUserId,
         'title': 'Account Approved!',
-        'message': 'Your account has been approved. You can now access the app.',
+        'message':
+            'Your account has been approved. You can now access the app.',
         'type': 'account_approved',
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
       });
 
-      debugPrint('✅ User approved: $pendingUserId with level: ${assignedLevel.displayName}');
+      debugPrint(
+          '✅ User approved: $pendingUserId with level: ${assignedLevel.displayName}');
       return true;
     } catch (e) {
       debugPrint('❌ Error approving user: $e');
@@ -320,7 +327,8 @@ class UserApprovalService {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('✅ User access level changed: $userId -> ${newLevel.displayName}');
+      debugPrint(
+          '✅ User access level changed: $userId -> ${newLevel.displayName}');
       return true;
     } catch (e) {
       debugPrint('❌ Error changing access level: $e');
@@ -369,11 +377,7 @@ class UserApprovalService {
     final user = _auth.currentUser;
     if (user == null) return Stream.value(false);
 
-    return _firestore
-        .collection('users')
-        .doc(user.uid)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('users').doc(user.uid).snapshots().map((doc) {
       if (!doc.exists) return false;
       final data = doc.data()!;
       return data['isApproved'] == true &&
