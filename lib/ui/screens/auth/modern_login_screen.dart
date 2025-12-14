@@ -85,15 +85,23 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
         _passwordController.text,
       );
 
-      if (success && mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else if (mounted && authProvider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage!),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (mounted) {
+        // Check if user is pending approval
+        if (authProvider.isPendingApproval) {
+          Navigator.of(context).pushReplacementNamed('/pending-approval');
+          return;
+        }
+        
+        if (success) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else if (authProvider.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.errorMessage!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -345,7 +353,27 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
                           },
                         ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+
+                        // Forgot Password Link
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pushNamed('/forgot-password');
+                            },
+                            child: Text(
+                              loc.translate('forgot_password'),
+                              style: TextStyle(
+                                color: AppTheme.accentColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
 
                         // Login Button
                         SizedBox(

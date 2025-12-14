@@ -33,6 +33,8 @@ import 'ui/screens/auth/modern_login_screen.dart';
 import 'ui/screens/auth/email_verification_screen.dart';
 import 'ui/screens/auth/face_auth_screen.dart';
 import 'ui/screens/auth/email_password_layer_screen.dart';
+import 'ui/screens/auth/forgot_password_screen.dart';
+import 'ui/screens/auth/pending_approval_screen.dart';
 import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
@@ -43,6 +45,7 @@ import 'ui/screens/chat/ai_chat_screen.dart';
 import 'ui/screens/chat/chat_sessions_screen.dart';
 import 'ui/screens/chat/voice_to_voice_screen.dart';
 import 'ui/screens/admin/user_management_screen.dart';
+import 'ui/screens/admin/user_approval_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
@@ -285,6 +288,8 @@ class SmartHomeApp extends StatelessWidget {
               '/verify-email': (context) => const EmailVerificationScreen(),
               '/face-auth': (context) => const FaceAuthScreen(),
               '/modern-login': (context) => const ModernLoginScreen(),
+              '/forgot-password': (context) => const ForgotPasswordScreen(),
+              '/pending-approval': (context) => const PendingApprovalScreen(),
               '/auth/email-password': (context) =>
                   const EmailPasswordLayerScreen(),
               '/home': (context) => const HomeScreen(),
@@ -298,6 +303,7 @@ class SmartHomeApp extends StatelessWidget {
               '/chat-sessions': (context) => const ChatSessionsScreen(),
               '/voice-to-voice': (context) => const VoiceToVoiceScreen(),
               '/user-management': (context) => const UserManagementScreen(),
+              '/user-approval': (context) => const UserApprovalScreen(),
             },
           );
         },

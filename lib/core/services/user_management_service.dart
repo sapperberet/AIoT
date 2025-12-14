@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../models/access_level.dart';
 
 /// Model for user account information
 class UserAccount {
@@ -9,7 +10,8 @@ class UserAccount {
   final DateTime createdAt;
   final DateTime? lastSignIn;
   final String? lastSignInDevice;
-  final bool isAdmin;
+  final AccessLevel accessLevel;
+  final bool isApproved;
   final bool isBanned;
   final String? banReason;
   final DateTime? bannedAt;
@@ -23,13 +25,17 @@ class UserAccount {
     required this.createdAt,
     this.lastSignIn,
     this.lastSignInDevice,
-    this.isAdmin = false,
+    this.accessLevel = AccessLevel.pending,
+    this.isApproved = false,
     this.isBanned = false,
     this.banReason,
     this.bannedAt,
     this.bannedBy,
     this.signInCount = 0,
   });
+
+  // Legacy compatibility
+  bool get isAdmin => accessLevel == AccessLevel.high;
 
   factory UserAccount.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -41,7 +47,8 @@ class UserAccount {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastSignIn: (data['lastSignIn'] as Timestamp?)?.toDate(),
       lastSignInDevice: data['lastSignInDevice'],
-      isAdmin: data['isAdmin'] ?? false,
+      accessLevel: AccessLevelExtension.fromString(data['accessLevel'] as String?),
+      isApproved: data['isApproved'] ?? false,
       isBanned: data['isBanned'] ?? false,
       banReason: data['banReason'],
       bannedAt: (data['bannedAt'] as Timestamp?)?.toDate(),
@@ -58,7 +65,8 @@ class UserAccount {
       'createdAt': Timestamp.fromDate(createdAt),
       'lastSignIn': lastSignIn != null ? Timestamp.fromDate(lastSignIn!) : null,
       'lastSignInDevice': lastSignInDevice,
-      'isAdmin': isAdmin,
+      'accessLevel': accessLevel.toStorageString(),
+      'isApproved': isApproved,
       'isBanned': isBanned,
       'banReason': banReason,
       'bannedAt': bannedAt != null ? Timestamp.fromDate(bannedAt!) : null,
@@ -141,18 +149,34 @@ class UserManagementService {
     }
   }
 
-  /// Check if user is admin
+  /// Check if user is admin (high access level)
   Future<bool> isUserAdmin(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
         final data = doc.data();
-        return data?['isAdmin'] ?? false;
+        final accessLevel = AccessLevelExtension.fromString(data?['accessLevel'] as String?);
+        return accessLevel == AccessLevel.high;
       }
       return false;
     } catch (e) {
       debugPrint('❌ Error checking admin status: $e');
       return false;
+    }
+  }
+
+  /// Get user's access level
+  Future<AccessLevel> getUserAccessLevel(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        return AccessLevelExtension.fromString(data?['accessLevel'] as String?);
+      }
+      return AccessLevel.pending;
+    } catch (e) {
+      debugPrint('❌ Error getting access level: $e');
+      return AccessLevel.pending;
     }
   }
 
@@ -246,14 +270,15 @@ class UserManagementService {
     }
   }
 
-  /// Make user admin
+  /// Make user admin (set access level to high)
   Future<bool> makeUserAdmin({
     required String userId,
     required String promotedByUserId,
   }) async {
     try {
       await _firestore.collection('users').doc(userId).update({
-        'isAdmin': true,
+        'accessLevel': AccessLevel.high.toStorageString(),
+        'isApproved': true,
         'promotedAt': FieldValue.serverTimestamp(),
         'promotedBy': promotedByUserId,
       });
@@ -274,14 +299,45 @@ class UserManagementService {
     }
   }
 
-  /// Remove admin privileges
+  /// Set user access level
+  Future<bool> setUserAccessLevel({
+    required String userId,
+    required AccessLevel level,
+    required String changedByUserId,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'accessLevel': level.toStorageString(),
+        'isApproved': level.isApproved,
+        'accessLevelChangedAt': FieldValue.serverTimestamp(),
+        'accessLevelChangedBy': changedByUserId,
+      });
+
+      // Log the change
+      await _firestore.collection('admin_actions').add({
+        'action': 'change_access_level',
+        'targetUserId': userId,
+        'performedBy': changedByUserId,
+        'newLevel': level.toStorageString(),
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ User access level changed to ${level.displayName}: $userId');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error changing access level: $e');
+      return false;
+    }
+  }
+
+  /// Remove admin privileges (demote to regular user)
   Future<bool> removeAdminPrivileges({
     required String userId,
     required String removedByUserId,
   }) async {
     try {
       await _firestore.collection('users').doc(userId).update({
-        'isAdmin': false,
+        'accessLevel': AccessLevel.low.toStorageString(),
       });
 
       // Log the demotion

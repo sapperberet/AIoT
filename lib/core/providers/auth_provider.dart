@@ -4,19 +4,23 @@ import '../services/auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../services/face_auth_service.dart';
 import '../services/face_auth_http_service.dart';
+import '../services/user_approval_service.dart';
 import '../models/user_model.dart';
 import '../models/face_auth_model.dart';
+import '../models/access_level.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   final BiometricAuthService? _biometricAuthService;
   final FaceAuthService? _faceAuthService;
   final FaceAuthHttpService? _faceAuthHttpService;
+  final UserApprovalService _approvalService = UserApprovalService();
 
   User? _currentUser;
   UserModel? _userModel;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isPendingApproval = false;
 
   // Biometric authentication state
   bool _isBiometricAvailable = false;
@@ -45,6 +49,11 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
+  bool get isPendingApproval => _isPendingApproval;
+  bool get isApproved => _userModel?.isApproved ?? false;
+  AccessLevel get userAccessLevel => _userModel?.accessLevel ?? AccessLevel.pending;
+  bool get isAdmin => _userModel?.isAdmin ?? false;
+  UserApprovalService get approvalService => _approvalService;
 
   // Biometric auth getters
   bool get isBiometricAvailable => _isBiometricAvailable;
@@ -130,6 +139,7 @@ class AuthProvider with ChangeNotifier {
   Future<bool> signIn(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
+    _isPendingApproval = false;
     notifyListeners();
 
     try {
@@ -151,24 +161,69 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // If error contains type cast, try getting user anyway (it may have succeeded)
-      if (e.toString().contains('PigeonUserDetails') ||
-          e.toString().contains('type cast')) {
+      final errorStr = e.toString();
+      
+      // Handle USER_PENDING_APPROVAL - user exists but not approved yet
+      if (errorStr == 'USER_PENDING_APPROVAL') {
+        debugPrint('USER_PENDING_APPROVAL caught, user needs admin approval');
+        _currentUser = _authService.currentUser;
+        _isPendingApproval = true;
+        if (_currentUser != null) {
+          await _loadUserData();
+        }
+        _isLoading = false;
+        notifyListeners();
+        return false; // Return false but set isPendingApproval flag
+      }
+      
+      // Handle PIGEON_ERROR_USER_AUTHENTICATED - sign-in succeeded but Pigeon API had issues
+      if (errorStr == 'PIGEON_ERROR_USER_AUTHENTICATED') {
+        debugPrint('PIGEON_ERROR_USER_AUTHENTICATED caught, user is authenticated');
+        _currentUser = _authService.currentUser;
+        if (_currentUser != null) {
+          debugPrint('Login succeeded! User: ${_currentUser?.email}');
+          await _loadUserData();
+          // Check if user is pending approval
+          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+            _isPendingApproval = true;
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
+      // If error contains type cast or Pigeon errors, try getting user anyway (it may have succeeded)
+      if (errorStr.contains('PigeonUserDetails') ||
+          errorStr.contains('PigeonUserInfo') ||
+          errorStr.contains('List<Object?>') ||
+          errorStr.contains('type cast') ||
+          errorStr.contains('not a subtype') ||
+          errorStr.contains('Pigeon')) {
         debugPrint(
-            'Type cast error caught, checking if login succeeded anyway...');
+            'Type cast/Pigeon error caught, checking if login succeeded anyway...');
         _currentUser = _authService.currentUser;
 
         if (_currentUser != null) {
           // Login actually succeeded despite the error
           debugPrint('Login succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
+          // Check if user is pending approval
+          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+            _isPendingApproval = true;
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
           _isLoading = false;
           notifyListeners();
           return true;
         }
       }
 
-      _errorMessage = e.toString();
+      _errorMessage = errorStr;
       _isLoading = false;
       _currentUser = null;
       _userModel = null;
@@ -181,6 +236,7 @@ class AuthProvider with ChangeNotifier {
       String email, String password, String displayName) async {
     _isLoading = true;
     _errorMessage = null;
+    _isPendingApproval = false;
     notifyListeners();
 
     try {
@@ -197,23 +253,57 @@ class AuthProvider with ChangeNotifier {
       // Load user data from Firestore
       if (_currentUser != null) {
         await _loadUserData();
+        
+        // Check if this is the first admin (auto-approved) or pending approval
+        if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+          _isPendingApproval = true;
+          _isLoading = false;
+          notifyListeners();
+          return true; // Registration successful but pending approval
+        }
       }
 
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      // If error contains type cast, try getting user anyway (it may have succeeded)
-      if (e.toString().contains('PigeonUserDetails') ||
-          e.toString().contains('type cast')) {
+      final errorStr = e.toString();
+      // Handle PIGEON_ERROR_USER_AUTHENTICATED - registration succeeded but Pigeon API had issues
+      if (errorStr == 'PIGEON_ERROR_USER_AUTHENTICATED') {
         debugPrint(
-            'Type cast error caught, checking if registration succeeded anyway...');
+            'PIGEON_ERROR_USER_AUTHENTICATED caught, user is authenticated');
+        _currentUser = _authService.currentUser;
+        if (_currentUser != null) {
+          debugPrint('Registration succeeded! User: ${_currentUser?.email}');
+          await _loadUserData();
+          // Check if pending approval
+          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+            _isPendingApproval = true;
+          }
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
+      // If error contains type cast or Pigeon errors, try getting user anyway (it may have succeeded)
+      if (errorStr.contains('PigeonUserDetails') ||
+          errorStr.contains('PigeonUserInfo') ||
+          errorStr.contains('List<Object?>') ||
+          errorStr.contains('type cast') ||
+          errorStr.contains('not a subtype') ||
+          errorStr.contains('Pigeon')) {
+        debugPrint(
+            'Type cast/Pigeon error caught, checking if registration succeeded anyway...');
         _currentUser = _authService.currentUser;
 
         if (_currentUser != null) {
           // Registration actually succeeded despite the error
           debugPrint('Registration succeeded! User: ${_currentUser?.email}');
           await _loadUserData();
+          // Check if pending approval
+          if (_userModel?.accessLevel == AccessLevel.pending || !(_userModel?.isApproved ?? false)) {
+            _isPendingApproval = true;
+          }
           _isLoading = false;
           notifyListeners();
           return true;
@@ -233,6 +323,7 @@ class AuthProvider with ChangeNotifier {
     await _authService.signOut();
     _currentUser = null;
     _userModel = null;
+    _isPendingApproval = false;
     notifyListeners();
   }
 

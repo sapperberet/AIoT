@@ -818,7 +818,9 @@ class _QuickControlsSection extends StatelessWidget {
           // Windows Section
           _buildSectionHeader(context, 'Windows', Icons.window, isDark),
           const SizedBox(height: 8),
-          ...deviceProvider.windowStates.entries.where((entry) => entry.key != 'gate').map((entry) {
+          ...deviceProvider.windowStates.entries
+              .where((entry) => entry.key != 'gate')
+              .map((entry) {
             final windowName = _formatName(entry.key);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),

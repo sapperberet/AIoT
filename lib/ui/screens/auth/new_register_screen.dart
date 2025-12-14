@@ -58,7 +58,32 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
       if (success && mounted) {
         final loc = AppLocalizations.of(context);
 
-        // Show success message
+        // Check if user is pending approval (not first admin)
+        if (authProvider.isPendingApproval) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(loc.translate('account_created_pending_approval')),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/pending-approval');
+          }
+          return;
+        }
+
+        // Show success message (for first admin or approved user)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -92,6 +117,9 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
   void _showBiometricEnableDialog() {
     final authProvider = context.read<AuthProvider>();
     final loc = AppLocalizations.of(context);
+    
+    // Determine navigation destination based on approval status
+    final destination = authProvider.isPendingApproval ? '/pending-approval' : '/home';
 
     showDialog(
       context: context,
@@ -104,7 +132,7 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.of(context).pushReplacementNamed('/home');
+              Navigator.of(context).pushReplacementNamed(destination);
             },
             child: Text(loc.translate('skip')),
           ),
@@ -121,7 +149,7 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
                     ),
                   );
                 }
-                Navigator.of(context).pushReplacementNamed('/home');
+                Navigator.of(context).pushReplacementNamed(destination);
               }
             },
             child: Text(loc.translate('enable')),

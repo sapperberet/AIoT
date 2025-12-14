@@ -97,7 +97,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
     final platformController = _webViewController.platform;
     if (platformController is AndroidWebViewController) {
       // Enable WebGL and hardware acceleration
-      AndroidWebViewController.enableDebugging(true);
+      // Debugging disabled to prevent animation spam in logs
+      AndroidWebViewController.enableDebugging(false);
     }
 
     _webViewController

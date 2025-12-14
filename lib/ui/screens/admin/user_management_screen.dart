@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/user_management_service.dart';
+import '../../../core/services/user_approval_service.dart';
 import '../../../core/localization/app_localizations.dart';
 
 class UserManagementScreen extends StatefulWidget {
@@ -17,16 +18,29 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final UserManagementService _managementService = UserManagementService();
+  final UserApprovalService _approvalService = UserApprovalService();
   List<UserAccount> _users = [];
   List<UserAccount> _filteredUsers = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  String _filterType = 'all'; // all, new, suspicious, banned, admin
+  String _filterType = 'all'; // all, new, pending, suspicious, banned, admin
+  int _pendingApprovalCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _loadPendingApprovalCount();
+  }
+
+  Future<void> _loadPendingApprovalCount() async {
+    _approvalService.watchPendingUsers().listen((pending) {
+      if (mounted) {
+        setState(() {
+          _pendingApprovalCount = pending.length;
+        });
+      }
+    });
   }
 
   Future<void> _loadUsers() async {
@@ -48,6 +62,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     switch (_filterType) {
       case 'new':
         filtered = filtered.where((u) => u.isNewUser).toList();
+        break;
+      case 'pending':
+        filtered = filtered.where((u) => !u.isApproved).toList();
         break;
       case 'suspicious':
         filtered = filtered.where((u) => u.isSuspicious).toList();
@@ -377,6 +394,43 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       appBar: AppBar(
         title: Text(loc.translate('user_management')),
         actions: [
+          // Pending Approvals Button with Badge
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Iconsax.user_tick),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/user-approval');
+                },
+                tooltip: loc.translate('pending_approvals'),
+              ),
+              if (_pendingApprovalCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    child: Text(
+                      '$_pendingApprovalCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Iconsax.refresh),
             onPressed: _loadUsers,
@@ -420,6 +474,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     children: [
                       _buildFilterChip('all', loc.translate('all')),
                       _buildFilterChip('new', loc.translate('new_users')),
+                      _buildFilterChip('pending', loc.translate('pending')),
                       _buildFilterChip(
                           'suspicious', loc.translate('suspicious')),
                       _buildFilterChip('banned', loc.translate('banned')),

@@ -2,10 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import '../models/access_level.dart';
 import 'session_service.dart';
 import 'mqtt_service.dart';
 import 'user_activity_service.dart';
 import 'user_management_service.dart';
+import 'user_approval_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -13,6 +15,7 @@ class AuthService {
   final MqttService? _mqttService;
   final UserActivityService _activityService = UserActivityService();
   final UserManagementService _managementService = UserManagementService();
+  final UserApprovalService _approvalService = UserApprovalService();
 
   AuthService({MqttService? mqttService}) : _mqttService = mqttService;
 
@@ -24,63 +27,45 @@ class AuthService {
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Verify network broker connection
-  Future<bool> verifyNetworkBrokerConnection() async {
-    if (_mqttService == null) {
-      debugPrint('⚠️ MQTT service not available for broker verification');
-      return true; // Allow sign-in even if MQTT not configured
-    }
+  // Get approval service
+  UserApprovalService get approvalService => _approvalService;
 
+  // Check if user is approved to access the app
+  Future<bool> isUserApproved(String userId) async {
     try {
-      debugPrint('🔍 Verifying network broker connection...');
-
-      // Check if already connected
-      if (_mqttService?.currentStatus == ConnectionStatus.connected) {
-        debugPrint('✅ Broker already connected');
-        return true;
-      }
-
-      // Try to connect to broker
-      await _mqttService?.connect();
-
-      // Wait a bit for connection to establish
-      await Future.delayed(const Duration(seconds: 2));
-
-      final isConnected =
-          _mqttService?.currentStatus == ConnectionStatus.connected;
-
-      if (isConnected) {
-        debugPrint('✅ Network broker verified successfully');
-      } else {
-        debugPrint('❌ Failed to connect to network broker');
-      }
-
-      return isConnected;
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return false;
+      
+      final data = doc.data()!;
+      final accessLevel = AccessLevelExtension.fromString(data['accessLevel'] as String?);
+      return data['isApproved'] == true && accessLevel.isApproved;
     } catch (e) {
-      debugPrint('❌ Broker verification error: $e');
+      debugPrint('❌ Error checking user approval: $e');
       return false;
     }
   }
 
-  // Sign in with email and password (with broker verification)
+  // Get user's access level
+  Future<AccessLevel> getUserAccessLevel(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return AccessLevel.pending;
+      
+      final data = doc.data()!;
+      return AccessLevelExtension.fromString(data['accessLevel'] as String?);
+    } catch (e) {
+      debugPrint('❌ Error getting user access level: $e');
+      return AccessLevel.pending;
+    }
+  }
+
+  // Sign in with email and password (checks approval status)
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
     required String password,
-    bool verifyBroker = true,
+    bool checkApproval = true,
   }) async {
     try {
-      // Verify broker connection first (security check)
-      if (verifyBroker) {
-        final brokerVerified = await verifyNetworkBrokerConnection();
-        if (!brokerVerified) {
-          throw FirebaseAuthException(
-            code: 'broker-verification-failed',
-            message:
-                'Could not verify network broker connection. Please check your network and try again.',
-          );
-        }
-      }
-
       // Save login timestamp BEFORE sign-in to prevent session validation race condition
       await SessionService.saveLoginTimestamp();
 
@@ -95,13 +80,32 @@ class AuthService {
             .collection('users')
             .doc(credential.user!.uid)
             .get();
-        if (userDoc.exists && userDoc.data()?['isBanned'] == true) {
-          await _auth.signOut();
-          throw FirebaseAuthException(
-            code: 'user-banned',
-            message:
-                'Your account has been banned. Reason: ${userDoc.data()?['banReason'] ?? 'Violation of terms'}',
-          );
+        
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          
+          // Check if banned
+          if (userData['isBanned'] == true) {
+            await _auth.signOut();
+            throw FirebaseAuthException(
+              code: 'user-banned',
+              message:
+                  'Your account has been banned. Reason: ${userData['banReason'] ?? 'Violation of terms'}',
+            );
+          }
+
+          // Check approval status (only if checkApproval is true)
+          if (checkApproval) {
+            final accessLevel = AccessLevelExtension.fromString(userData['accessLevel'] as String?);
+            final isApproved = userData['isApproved'] == true && accessLevel.isApproved;
+            
+            if (!isApproved) {
+              // Don't sign out - keep them signed in but return a specific error
+              // so UI can show the pending approval screen
+              debugPrint('⚠️ User not yet approved: ${credential.user!.uid}');
+              throw 'USER_PENDING_APPROVAL';
+            }
+          }
         }
 
         // Record sign-in activity
@@ -253,8 +257,10 @@ class AuthService {
         // But if that also fails with Pigeon error, just return a mock credential
         debugPrint('🔧 Re-signing in to get credential...');
         try {
+          // Skip approval check for re-sign-in after registration
+          // (user just registered and is pending approval)
           return await signInWithEmailAndPassword(
-              email: email, password: password);
+              email: email, password: password, checkApproval: false);
         } catch (e) {
           final errorStr = e.toString();
           if (errorStr.contains('Pigeon') ||
@@ -281,8 +287,11 @@ class AuthService {
     }
   }
 
-  // Create user document in Firestore
+  // Create user document in Firestore with pending approval status
   Future<void> _createUserDocument(User user, String? displayName) async {
+    // Check if this should be the first admin
+    final needsFirstAdmin = await _approvalService.needsFirstAdminSetup();
+    
     final userModel = UserModel(
       uid: user.uid,
       email: user.email!,
@@ -292,9 +301,21 @@ class AuthService {
         'theme': 'system',
         'notifications': true,
       },
+      // First user becomes admin automatically, others start as pending
+      accessLevel: needsFirstAdmin ? AccessLevel.high : AccessLevel.pending,
+      isApproved: needsFirstAdmin, // First admin is auto-approved
     );
 
     await _firestore.collection('users').doc(user.uid).set(userModel.toJson());
+
+    // If not the first admin, generate OTP and notify admins
+    if (!needsFirstAdmin) {
+      debugPrint('🔧 Generating approval OTP for new user...');
+      await _approvalService.generateApprovalOtp(user.uid);
+      debugPrint('✅ Approval OTP generated and admins notified');
+    } else {
+      debugPrint('✅ First admin user created - auto-approved');
+    }
   }
 
   // Get user data from Firestore

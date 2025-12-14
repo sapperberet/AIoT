@@ -1,9 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessLevel == 'high';
+    }
+    
+    // Helper function to check if user is approved
+    function isApproved() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
+    }
+    
+    // Helper function to check if user has manager or admin access
+    function isManagerOrAdmin() {
+      let level = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessLevel;
+      return request.auth != null && (level == 'high' || level == 'mid');
+    }
+
     // User data rules - users can read/write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Users can read their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users can create their own document during registration
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Users can update their own data (except accessLevel and isApproved)
+      allow update: if request.auth != null && 
+                      (request.auth.uid == userId && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['accessLevel', 'isApproved', 'approvedBy']))
+                      || isAdmin();
+      // Only admins can delete users
+      allow delete: if isAdmin();
+      // Admins can read all users
+      allow read: if isAdmin();
       
       // User's devices subcollection
       match /devices/{deviceId} {
@@ -24,6 +54,50 @@ service cloud.firestore {
       match /events/{eventId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // User's settings subcollection - for app preferences
+      match /settings/{settingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Approval requests - only admins can read/write
+    match /approval_requests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null; // System creates these
+      allow update, delete: if isAdmin();
+    }
+    
+    // Admin actions log - only admins can read/write
+    match /admin_actions/{actionId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable log
+    }
+    
+    // Notifications - users can read/update their own notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && 
+                    request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+                      request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && 
+                      request.auth.uid == resource.data.userId;
+    }
+    
+    // User activities collection - global activity tracking
+    match /user_activities/{activityId} {
+      // Allow authenticated users to create their own activities
+      allow create: if request.auth != null;
+      // Allow users to read their own activities
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      // Allow users to update/delete their own activities
+      allow update, delete: if request.auth != null && 
+                               request.auth.uid == resource.data.userId;
+      // Admins can read all activities
+      allow read: if isAdmin();
     }
     
     // Face mappings - system managed (read for auth, write only for system)
@@ -38,11 +112,9 @@ service cloud.firestore {
                                         request.auth.uid == resource.data.userId);
     }
     
-    // Global device states - shared across all authenticated users
-    // This allows any authenticated user to read/write device states
-    // for real-time sync across all devices in the household
+    // Global device states - shared across all authenticated AND approved users
     match /global_device_states/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && isApproved();
     }
     
     // Deny all other access
