@@ -8,6 +8,8 @@ import '../../../core/providers/automation_provider.dart';
 import '../../../core/models/automation_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/floating_chat_button.dart';
+import 'automation_create_screen.dart';
+import 'automation_edit_screen.dart';
 
 class AutomationsScreen extends StatefulWidget {
   const AutomationsScreen({super.key});
@@ -508,27 +510,19 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   void _showCreateAutomationDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Automation creation coming soon!',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        behavior: SnackBarBehavior.floating,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AutomationCreateScreen(),
       ),
     );
   }
 
   void _showEditAutomationDialog(BuildContext context, Automation automation) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Edit automation: ${automation.name}',
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        behavior: SnackBarBehavior.floating,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AutomationEditScreen(automation: automation),
       ),
     );
   }

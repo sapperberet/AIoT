@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/user_approval_service.dart';
+import '../../../core/services/mqtt_service.dart';
 import '../../../core/localization/app_localizations.dart';
 
 /// Screen shown to users who have registered but are pending admin approval
@@ -20,12 +21,14 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
   final TextEditingController _otpController = TextEditingController();
   bool _isCheckingStatus = false;
   bool _isVerifyingOtp = false;
+  bool _isVerifyingMqtt = false;
   String? _otpError;
 
   @override
   void initState() {
     super.initState();
     _startApprovalListener();
+    _checkMqttAutoVerification();
   }
 
   @override
@@ -42,6 +45,64 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
         Navigator.of(context).pushReplacementNamed('/home');
       }
     });
+  }
+
+  /// Check if user is connected to MQTT broker for auto-verification
+  Future<void> _checkMqttAutoVerification() async {
+    try {
+      final mqttService = context.read<MqttService>();
+      if (mqttService.currentStatus == ConnectionStatus.connected) {
+        // Auto-verify via MQTT network
+        await _verifyViaMqtt();
+      }
+    } catch (e) {
+      debugPrint('MQTT check skipped: $e');
+    }
+  }
+
+  /// Verify user via MQTT network connection
+  Future<void> _verifyViaMqtt() async {
+    setState(() => _isVerifyingMqtt = true);
+
+    try {
+      final mqttService = context.read<MqttService>();
+
+      // Try to connect if not already connected
+      if (mqttService.currentStatus != ConnectionStatus.connected) {
+        await mqttService.connect();
+      }
+
+      if (mqttService.currentStatus == ConnectionStatus.connected) {
+        final result = await _approvalService.verifyViaMqttConnection();
+
+        if (!mounted) return;
+
+        if (result == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verified via network connection!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not connect to broker network'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('MQTT verification error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isVerifyingMqtt = false);
+      }
+    }
   }
 
   Future<void> _checkApprovalStatus() async {
@@ -377,6 +438,99 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                                       : const Text('Verify'),
                                 ),
                               ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // OR Divider
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 950),
+                      child: Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey[400])),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey[400])),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // MQTT Network Verification Button
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 975),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.teal.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Iconsax.wifi,
+                                  color: Colors.teal,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Network Verification',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'If you\'re connected to the home network (MQTT broker), you can verify automatically.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed:
+                                    _isVerifyingMqtt ? null : _verifyViaMqtt,
+                                icon: _isVerifyingMqtt
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Iconsax.wifi),
+                                label: Text(_isVerifyingMqtt
+                                    ? 'Connecting...'
+                                    : 'Verify via Network'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.teal,
+                                  foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                              ),
                             ),
                           ],
                         ),

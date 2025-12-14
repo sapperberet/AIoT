@@ -428,6 +428,48 @@ class UserApprovalService {
     }
   }
 
+  /// Auto-verify user via MQTT/broker network connection
+  /// If user can connect to the MQTT broker, they're on the trusted network
+  /// Returns: 'success', 'not_connected', 'error'
+  Future<String> verifyViaMqttConnection() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return 'error';
+
+      // Approve the user with default low access level
+      await _firestore.collection('users').doc(user.uid).update({
+        'accessLevel': 'low',
+        'isApproved': true,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': 'mqtt_network_verified',
+        'pendingApprovalOtp': FieldValue.delete(),
+        'otpGeneratedAt': FieldValue.delete(),
+        'otpVerified': true,
+        'verificationMethod': 'mqtt_network',
+      });
+
+      // Update approval request status
+      final approvalRequests = await _firestore
+          .collection('approval_requests')
+          .where('pendingUserId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      for (final doc in approvalRequests.docs) {
+        await doc.reference.update({
+          'status': 'mqtt_verified',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      debugPrint('✅ User verified via MQTT network: ${user.uid}');
+      return 'success';
+    } catch (e) {
+      debugPrint('❌ Error verifying via MQTT: $e');
+      return 'error';
+    }
+  }
+
   /// Check if current user is approved
   Future<bool> isCurrentUserApproved() async {
     final user = _auth.currentUser;

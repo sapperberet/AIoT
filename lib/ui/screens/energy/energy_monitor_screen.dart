@@ -774,8 +774,8 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
 
-    // Get estimated cost from provider (using default rate of 0.15 per kWh)
-    final estimatedCost = energyProvider.getEstimatedCost(ratePerKwh: 0.15);
+    // Get estimated cost from provider (using Egyptian electricity rate ~1.45 EGP per kWh)
+    final estimatedCost = energyProvider.getEstimatedCost(ratePerKwh: 1.45);
 
     return FadeInUp(
       delay: const Duration(milliseconds: 500),
@@ -803,7 +803,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                 borderRadius: AppTheme.smallRadius,
               ),
               child: const Icon(
-                Iconsax.dollar_circle,
+                Iconsax.money,
                 size: 28,
                 color: AppTheme.successColor,
               ),
@@ -823,7 +823,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                   const SizedBox(height: 4),
                   Text(
                     estimatedCost > 0
-                        ? '\$${estimatedCost.toStringAsFixed(2)}'
+                        ? '${estimatedCost.toStringAsFixed(2)} EGP'
                         : '--',
                     style: TextStyle(
                       fontSize: 28,

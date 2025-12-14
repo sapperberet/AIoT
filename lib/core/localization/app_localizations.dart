@@ -23,7 +23,9 @@ class AppLocalizations {
       'notifications': 'Notifications',
       'automations': 'Automations',
       'energy_monitor': 'Energy Monitor',
+      'sensor_monitor': 'Sensor Monitor',
       'device_health': 'Device Health',
+      'edit_automation': 'Edit Automation',
       'logout': 'Logout',
 
       // Settings
@@ -384,7 +386,9 @@ class AppLocalizations {
       'notifications': 'Benachrichtigungen',
       'automations': 'Automatisierungen',
       'energy_monitor': 'Energiemonitor',
+      'sensor_monitor': 'Sensormonitor',
       'device_health': 'Gerätezustand',
+      'edit_automation': 'Automatisierung bearbeiten',
       'logout': 'Abmelden',
 
       // Settings
@@ -728,7 +732,9 @@ class AppLocalizations {
       'notifications': 'الإشعارات',
       'automations': 'الأتمتة',
       'energy_monitor': 'مراقب الطاقة',
+      'sensor_monitor': 'مراقب الحساسات',
       'device_health': 'صحة الأجهزة',
+      'edit_automation': 'تعديل الأتمتة',
       'logout': 'تسجيل الخروج',
 
       // Settings

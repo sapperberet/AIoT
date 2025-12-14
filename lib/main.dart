@@ -44,6 +44,7 @@ import 'ui/screens/notifications/notifications_screen.dart';
 import 'ui/screens/automations/automations_screen.dart';
 import 'ui/screens/automations/automation_management_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
+import 'ui/screens/sensors/sensor_monitor_screen.dart';
 import 'ui/screens/chat/ai_chat_screen.dart';
 import 'ui/screens/chat/chat_sessions_screen.dart';
 import 'ui/screens/chat/voice_to_voice_screen.dart';
@@ -326,6 +327,7 @@ class SmartHomeApp extends StatelessWidget {
               '/automation-management': (context) =>
                   const AutomationManagementScreen(),
               '/energy': (context) => const EnergyMonitorScreen(),
+              '/sensors': (context) => const SensorMonitorScreen(),
               '/ai-chat': (context) => const AIChatScreen(),
               '/chat-sessions': (context) => const ChatSessionsScreen(),
               '/voice-to-voice': (context) => const VoiceToVoiceScreen(),

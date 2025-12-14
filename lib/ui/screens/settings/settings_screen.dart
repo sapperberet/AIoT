@@ -231,10 +231,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAuthenticationSection(BuildContext context) {
     final settingsProvider = context.watch<SettingsProvider>();
-    final _emailController =
-        TextEditingController(text: settingsProvider.userEmail);
-    final _passwordController =
-        TextEditingController(text: settingsProvider.userPassword);
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
     final loc = AppLocalizations.of(context);
@@ -244,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: _buildSection(
         'Authentication',
         [
-          // Info text
+          // Info text about 2FA
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -258,14 +254,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(
               children: [
                 Icon(
-                  Iconsax.info_circle,
+                  Iconsax.shield_tick,
                   color: AppTheme.primaryColor,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Face recognition is required for login. Add email/password as a second layer of protection.',
+                    'Two-Factor Authentication (2FA) sends a one-time password (OTP) to your email for additional security when signing in.',
                     style: TextStyle(
                       fontSize: 13,
                       color: textColor.withOpacity(0.8),
@@ -277,13 +273,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Enable Email/Password Toggle
+          // Enable 2FA (OTP) Toggle
           _buildSwitchTile(
-            'Enable Email & Password (2FA)',
+            'Enable Two-Factor Authentication (OTP)',
             settingsProvider.enableEmailPasswordAuth,
             (value) => settingsProvider.toggleEmailPasswordAuth(value),
-            icon: Iconsax.key,
+            icon: Iconsax.sms_tracking,
           ),
+
+          // 2FA info when enabled
+          if (settingsProvider.enableEmailPasswordAuth)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(top: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: AppTheme.smallRadius,
+                border: Border.all(
+                  color: Colors.green.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Iconsax.tick_circle,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'When you sign in, a 6-digit OTP code will be sent to your registered email address.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           const SizedBox(height: 16),
 
@@ -394,61 +424,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
-          // Email/Password fields (only shown when enabled)
-          if (settingsProvider.enableEmailPasswordAuth) ...[
-            const SizedBox(height: 16),
-            _buildTextField(
-              'Email',
-              _emailController.text,
-              (value) {
-                settingsProvider.setEmailPasswordCredentials(email: value);
-              },
-              icon: Iconsax.sms,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            _buildTextField(
-              'Password',
-              _passwordController.text,
-              (value) {
-                settingsProvider.setEmailPasswordCredentials(password: value);
-              },
-              icon: Iconsax.lock,
-              obscureText: true,
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.1),
-                borderRadius: AppTheme.smallRadius,
-                border: Border.all(
-                  color: AppTheme.accentColor.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Iconsax.shield_tick,
-                    color: AppTheme.accentColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'These credentials will be stored securely and used when email/password authentication is required.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.lightText.withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
