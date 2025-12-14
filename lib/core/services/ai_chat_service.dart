@@ -630,7 +630,8 @@ class AIChatService {
   /// Update broker endpoint (for MQTT and n8n services)
   void updateBrokerEndpoint(String newAddress, {int? port}) {
     _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/agent';
-    _voiceChatUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/voice';
+    _voiceChatUrl =
+        'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/voice';
     _logger.i('Broker endpoint updated: $newAddress');
   }
 
@@ -674,7 +675,7 @@ class AIChatService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         String responseText = '';
         if (data['output'] != null) {
           responseText = data['output'] as String;

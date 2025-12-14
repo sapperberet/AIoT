@@ -33,7 +33,7 @@ class AIChatProvider with ChangeNotifier {
   final Logger _logger = Logger();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final Uuid _uuid = const Uuid();
-  
+
   // Actions service (will be initialized later)
   AIChatActionsService? _actionsService;
 
@@ -192,7 +192,7 @@ class AIChatProvider with ChangeNotifier {
   /// Get current broker address
   String get currentBrokerAddress => _chatService.currentBrokerAddress;
 
-  /// Get current broker port  
+  /// Get current broker port
   int get currentBrokerPort => _chatService.currentBrokerPort;
 
   /// Configure external LLM
