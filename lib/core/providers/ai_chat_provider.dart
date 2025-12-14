@@ -10,6 +10,7 @@ import '../services/ai_chat_service.dart';
 import '../services/voice_service.dart';
 import '../services/backend_voice_service.dart';
 import '../services/chat_storage_service.dart';
+import '../services/ai_chat_actions_service.dart';
 
 /// Voice mode for AI chat
 enum VoiceMode {
@@ -32,6 +33,9 @@ class AIChatProvider with ChangeNotifier {
   final Logger _logger = Logger();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final Uuid _uuid = const Uuid();
+  
+  // Actions service (will be initialized later)
+  AIChatActionsService? _actionsService;
 
   final List<ChatMessage> _messages = [];
   List<ChatSession> _sessions = [];
@@ -147,6 +151,49 @@ class AIChatProvider with ChangeNotifier {
     _chatService.setLlmProvider(provider);
     notifyListeners();
   }
+
+  /// Initialize actions service (must be called after MQTT and other services are ready)
+  void initializeActionsService(AIChatActionsService actionsService) {
+    _actionsService = actionsService;
+    _logger.i('AI Chat actions service initialized');
+  }
+
+  /// Process AI response for automation actions
+  Future<Map<String, dynamic>?> processActions(
+    String aiResponse, {
+    String? userId,
+  }) async {
+    if (_actionsService == null) {
+      _logger.w('Actions service not initialized');
+      return null;
+    }
+
+    final results = await _actionsService!.parseAndExecuteActions(
+      aiResponse,
+      userId: userId,
+    );
+
+    if (results['success'] == true) {
+      _logger.i('✅ Executed actions: ${results['executedActions']}');
+    }
+
+    return results;
+  }
+
+  /// Update broker endpoint from settings
+  void updateBrokerEndpoint(String address, {int? port}) {
+    _chatService.updateBrokerEndpoint(address, port: port);
+    _backendVoiceService.updateBrokerAddress(address);
+    _checkServerHealth();
+    _checkBackendServices();
+    notifyListeners();
+  }
+
+  /// Get current broker address
+  String get currentBrokerAddress => _chatService.currentBrokerAddress;
+
+  /// Get current broker port  
+  int get currentBrokerPort => _chatService.currentBrokerPort;
 
   /// Configure external LLM
   void configureExternalLlm({
@@ -320,7 +367,7 @@ class AIChatProvider with ChangeNotifier {
             });
           }
         },
-        onDone: () {
+        onDone: () async {
           _activeStreamSubscription = null;
 
           if (!_isCancelled) {
@@ -330,6 +377,12 @@ class AIChatProvider with ChangeNotifier {
               _playReceiveSound();
               // Increment unread count when AI responds
               _incrementUnreadCount();
+
+              // Process actions in the response
+              if (responseText.contains('[ACTION:')) {
+                _logger.i('Detected action commands in AI response');
+                await processActions(responseText, userId: userId);
+              }
 
               // Trigger callback for notification
               if (onAIResponseReceived != null) {

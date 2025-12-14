@@ -8,6 +8,7 @@ import '../../../core/providers/device_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/floating_chat_button.dart';
+import '../../widgets/admin/user_activity_notification_widget.dart';
 import 'devices_tab.dart';
 import 'visualization_tab.dart';
 import 'logs_tab.dart';
@@ -77,7 +78,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        actions: const [],
+        actions: [
+          UserActivityNotificationWidget(
+            onViewUsers: () => Navigator.pushNamed(context, '/user-management'),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [

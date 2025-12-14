@@ -831,6 +831,9 @@ class _QuickControlsSection extends StatelessWidget {
           ...deviceProvider.lightStates.entries.map((entry) {
             final lightName = _formatName(entry.key);
             final isRgb = entry.key == 'rgb';
+            // These lights are simple on/off without brightness controls
+            final simpleOnOffLights = ['landscape', 'floor_1', 'floor_2'];
+            final hasNoBrightnessControl = simpleOnOffLights.contains(entry.key);
             final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -850,6 +853,7 @@ class _QuickControlsSection extends StatelessWidget {
                 activeLabel: 'ON',
                 inactiveLabel: 'OFF',
                 isRgb: isRgb,
+                hasNoBrightnessControl: hasNoBrightnessControl,
                 onTap: () {
                   HapticFeedback.mediumImpact();
                   deviceProvider.toggleLightById(entry.key);
@@ -858,7 +862,7 @@ class _QuickControlsSection extends StatelessWidget {
                   HapticFeedback.heavyImpact();
                   if (isRgb) {
                     _showRgbColorDialog(context, deviceProvider);
-                  } else {
+                  } else if (!hasNoBrightnessControl) {
                     _showBrightnessDialog(
                         context, deviceProvider, entry.key, lightName);
                   }
@@ -1145,6 +1149,7 @@ class _QuickControlsSection extends StatelessWidget {
     required VoidCallback onTap,
     required VoidCallback onLongPress,
     required bool isDark,
+    bool hasNoBrightnessControl = false,
   }) {
     final stateColor = isActive ? activeColor : inactiveColor;
     return GestureDetector(
@@ -1225,34 +1230,47 @@ class _QuickControlsSection extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      isRgb
-                          ? 'Hold to change color'
-                          : 'Hold to adjust brightness',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.mutedText,
-                      ),
-                    ),
-                    if (isActive && !isRgb) ...[
-                      const SizedBox(height: 4),
-                      // Mini brightness bar
-                      Container(
-                        height: 4,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(2),
+                    if (!hasNoBrightnessControl) ...[
+                      Text(
+                        isRgb
+                            ? 'Hold to change color'
+                            : 'Hold to adjust brightness',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.mutedText,
                         ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: brightness / 100,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: activeColor,
-                              borderRadius: BorderRadius.circular(2),
+                      ),
+                      if (isActive && !isRgb) ...[
+                        const SizedBox(height: 4),
+                        // Mini brightness bar
+                        Container(
+                          height: 4,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: brightness / 100,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: activeColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
                           ),
+                        ),
+                      ],
+                    ] else ...[
+                      Text(
+                        'Tap to toggle',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.mutedText,
+                        ),
+                      ),
+                    ],
                         ),
                       ),
                     ],
@@ -1280,7 +1298,7 @@ class _QuickControlsSection extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isActive && !isRgb) ...[
+                    if (isActive && !isRgb && !hasNoBrightnessControl) ...[
                       Text(
                         '$brightness%',
                         style: const TextStyle(
@@ -1734,8 +1752,12 @@ class _QuickControlsSection extends StatelessWidget {
   }
 
   String _formatName(String id) {
-    // Handle special cases like 'rgb' -> 'RGB'
-    final specialCases = {'rgb': 'RGB'};
+    // Handle special cases
+    final specialCases = {
+      'rgb': 'RGB',
+      'front_window': 'Front Window',
+      'gate': 'Gate',
+    };
     if (specialCases.containsKey(id.toLowerCase())) {
       return specialCases[id.toLowerCase()]!;
     }

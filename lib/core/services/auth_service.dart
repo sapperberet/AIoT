@@ -3,10 +3,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import 'session_service.dart';
+import 'mqtt_service.dart';
+import 'user_activity_service.dart';
+import 'user_management_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final MqttService? _mqttService;
+  final UserActivityService _activityService = UserActivityService();
+  final UserManagementService _managementService = UserManagementService();
+
+  AuthService({MqttService? mqttService}) : _mqttService = mqttService;
 
   // Firebase automatically persists user sessions on mobile platforms
 
@@ -16,12 +24,63 @@ class AuthService {
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Sign in with email and password
+  // Verify network broker connection
+  Future<bool> verifyNetworkBrokerConnection() async {
+    if (_mqttService == null) {
+      debugPrint('⚠️ MQTT service not available for broker verification');
+      return true; // Allow sign-in even if MQTT not configured
+    }
+
+    try {
+      debugPrint('🔍 Verifying network broker connection...');
+
+      // Check if already connected
+      if (_mqttService.currentStatus == ConnectionStatus.connected) {
+        debugPrint('✅ Broker already connected');
+        return true;
+      }
+
+      // Try to connect to broker
+      await _mqttService.connect();
+
+      // Wait a bit for connection to establish
+      await Future.delayed(const Duration(seconds: 2));
+
+      final isConnected =
+          _mqttService.currentStatus == ConnectionStatus.connected;
+
+      if (isConnected) {
+        debugPrint('✅ Network broker verified successfully');
+      } else {
+        debugPrint('❌ Failed to connect to network broker');
+      }
+
+      return isConnected;
+    } catch (e) {
+      debugPrint('❌ Broker verification error: $e');
+      return false;
+    }
+  }
+
+  // Sign in with email and password (with broker verification)
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
     required String password,
+    bool verifyBroker = true,
   }) async {
     try {
+      // Verify broker connection first (security check)
+      if (verifyBroker) {
+        final brokerVerified = await verifyNetworkBrokerConnection();
+        if (!brokerVerified) {
+          throw FirebaseAuthException(
+            code: 'broker-verification-failed',
+            message:
+                'Could not verify network broker connection. Please check your network and try again.',
+          );
+        }
+      }
+
       // Save login timestamp BEFORE sign-in to prevent session validation race condition
       await SessionService.saveLoginTimestamp();
 
@@ -30,6 +89,35 @@ class AuthService {
         password: password,
       );
 
+      if (credential.user != null) {
+        // Check if user is banned
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(credential.user!.uid)
+            .get();
+        if (userDoc.exists && userDoc.data()?['isBanned'] == true) {
+          await _auth.signOut();
+          throw FirebaseAuthException(
+            code: 'user-banned',
+            message:
+                'Your account has been banned. Reason: ${userDoc.data()?['banReason'] ?? 'Violation of terms'}',
+          );
+        }
+
+        // Record sign-in activity
+        await _activityService.recordSignIn(
+          userId: credential.user!.uid,
+          email: credential.user!.email ?? email,
+          displayName: credential.user!.displayName ?? 'User',
+        );
+
+        // Increment sign-in count
+        await _firestore.collection('users').doc(credential.user!.uid).update({
+          'signInCount': FieldValue.increment(1),
+        });
+      }
+
+      debugPrint('✅ User signed in: ${credential.user?.email}');
       return credential;
     } on FirebaseAuthException catch (e) {
       // Check for wrong-password before handling the exception
@@ -146,6 +234,13 @@ class AuthService {
       debugPrint('🔧 Creating Firestore user document...');
       await _createUserDocument(user, displayName);
       debugPrint('✅ Firestore user document created');
+
+      // Record new user registration activity
+      await _activityService.recordNewUserRegistration(
+        userId: user.uid,
+        email: user.email ?? email,
+        displayName: displayName ?? 'User',
+      );
 
       // Login timestamp already saved at the beginning
       debugPrint('✅ Registration complete');

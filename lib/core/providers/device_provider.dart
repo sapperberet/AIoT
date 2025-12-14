@@ -5,7 +5,9 @@ import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import '../services/event_log_service.dart';
+import '../services/sensor_service.dart';
 import '../models/device_model.dart';
+import '../models/sensor_data_model.dart';
 import '../config/mqtt_config.dart';
 import 'home_visualization_provider.dart';
 
@@ -18,6 +20,7 @@ class DeviceProvider with ChangeNotifier {
   final FirestoreService _firestoreService;
   final NotificationService _notificationService;
   EventLogService? _eventLogService;
+  SensorService? _sensorService;
 
   List<Device> _devices = [];
   List<AlarmEvent> _alarms = [];
@@ -31,10 +34,10 @@ class DeviceProvider with ChangeNotifier {
   bool _isGarageDoorOpen = false;
   bool _isBuzzerActive = false;
 
-  // Windows: front_window, side_window
+  // Windows: front_window, gate
   Map<String, bool> _windowStates = {
     'front_window': false,
-    'side_window': false,
+    'gate': false,
   };
 
   // Lights: landscape, floor_1, floor_2, rgb (with extra properties)
@@ -61,9 +64,21 @@ class DeviceProvider with ChangeNotifier {
 
   // Fan states: 0=off, 1=low, 2=medium, 3=high
   Map<String, int> _fanStates = {
-    'living_room': 0,
-    'bedroom': 0,
+    'kitchen': 0,
   };
+
+  // Sensor states (latest readings)
+  double _temperature = 0.0;
+  double _humidity = 0.0;
+  double _gasLevel = 0.0;
+  double _lightLevel = 0.0; // LDR sensor
+  double _energyConsumption = 0.0;
+  bool _motionDetected = false;
+  double _smokeLevel = 0.0;
+  bool _waterDetected = false;
+  double _soundLevel = 0.0;
+  double _pressure = 0.0;
+  double _airQuality = 0.0;
 
   // Callback for visualization sync (legacy, kept for compatibility)
   VisualizationSyncCallback? _visualizationCallback;
@@ -98,6 +113,19 @@ class DeviceProvider with ChangeNotifier {
       _alarms.where((a) => !a.acknowledged).toList();
   bool get isConnectedToMqtt => _isConnectedToMqtt;
   bool get useCloudMode => _useCloudMode;
+
+  // Sensor data getters
+  double get temperature => _temperature;
+  double get humidity => _humidity;
+  double get gasLevel => _gasLevel;
+  double get lightLevel => _lightLevel;
+  double get energyConsumption => _energyConsumption;
+  bool get motionDetected => _motionDetected;
+  double get smokeLevel => _smokeLevel;
+  bool get waterDetected => _waterDetected;
+  double get soundLevel => _soundLevel;
+  double get pressure => _pressure;
+  double get airQuality => _airQuality;
 
   // New device state getters
   bool get isMainDoorOpen => _isMainDoorOpen;
@@ -135,6 +163,11 @@ class DeviceProvider with ChangeNotifier {
   /// Set event log service (for dependency injection)
   void setEventLogService(EventLogService service) {
     _eventLogService = service;
+  }
+
+  /// Set sensor service (for dependency injection)
+  void setSensorService(SensorService service) {
+    _sensorService = service;
   }
 
   /// Set visualization sync callback (legacy)
@@ -445,6 +478,20 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.faceRecognizedTopic);
     _mqttService.subscribe(MqttConfig.faceUnrecognizedTopic);
 
+    // Subscribe to sensor topics
+    _mqttService.subscribe(MqttConfig.allSensorsTopic);
+    _mqttService.subscribe(MqttConfig.temperatureTopic);
+    _mqttService.subscribe(MqttConfig.humidityTopic);
+    _mqttService.subscribe(MqttConfig.gasTopic);
+    _mqttService.subscribe(MqttConfig.ldrTopic);
+    _mqttService.subscribe(MqttConfig.energyTopic);
+    _mqttService.subscribe(MqttConfig.motionSensorTopic);
+    _mqttService.subscribe(MqttConfig.smokeTopic);
+    _mqttService.subscribe(MqttConfig.waterTopic);
+    _mqttService.subscribe(MqttConfig.soundTopic);
+    _mqttService.subscribe(MqttConfig.pressureTopic);
+    _mqttService.subscribe(MqttConfig.airQualityTopic);
+
     // Subscribe to device status topics
     for (var device in _devices) {
       _mqttService.subscribe(MqttConfig.deviceStatusTopic(device.id));
@@ -461,6 +508,12 @@ class DeviceProvider with ChangeNotifier {
       return;
     } else if (message.topic == MqttConfig.faceRecognizedTopic) {
       _handleRecognizedFace(payload);
+      return;
+    }
+
+    // Handle sensor data
+    if (message.topic.contains('/sensors/')) {
+      _handleSensorData(message.topic, payload);
       return;
     }
 
@@ -661,6 +714,170 @@ class DeviceProvider with ChangeNotifier {
       'speed': speed,
     });
     notifyListeners();
+  }
+
+  /// Handle sensor data from MQTT
+  void _handleSensorData(String topic, Map<String, dynamic> payload) {
+    debugPrint('📊 Sensor data received on $topic: $payload');
+
+    // Extract sensor type from topic: home/sensors/{type}
+    final parts = topic.split('/');
+    final sensorType = parts.length > 2 ? parts[2] : '';
+
+    // Extract value from payload
+    final value = (payload['value'] as num?)?.toDouble() ??
+        (payload['data'] as num?)?.toDouble() ??
+        0.0;
+
+    // Store sensor data using sensor service if available
+    SensorType? type;
+
+    // Update sensor state based on type
+    switch (sensorType) {
+      case 'temperature':
+      case 'temp':
+        _temperature = value;
+        type = SensorType.temperature;
+        debugPrint('🌡️ Temperature: ${value}°C');
+        break;
+      case 'humidity':
+        _humidity = value;
+        type = SensorType.humidity;
+        debugPrint('💧 Humidity: $value%');
+        break;
+      case 'gas':
+        _gasLevel = value;
+        type = SensorType.gas;
+        debugPrint('☣️ Gas: ${value}ppm');
+        // Check if gas level is dangerous
+        if (value > 300.0 && _userId != null) {
+          _createGasAlarm(value);
+        }
+        break;
+      case 'ldr':
+      case 'light':
+        _lightLevel = value;
+        type = SensorType.ldr;
+        debugPrint('☀️ Light Level: ${value}lux');
+        break;
+      case 'energy':
+      case 'power':
+        _energyConsumption = value;
+        type = SensorType.energy;
+        debugPrint('⚡ Energy: ${value}kWh');
+        break;
+      case 'motion':
+        _motionDetected = value > 0;
+        type = SensorType.motion;
+        debugPrint('🏃 Motion: ${_motionDetected ? "DETECTED" : "Clear"}');
+        break;
+      case 'smoke':
+        _smokeLevel = value;
+        type = SensorType.smoke;
+        debugPrint('🔥 Smoke: ${value}ppm');
+        if (value > 100.0 && _userId != null) {
+          _createSmokeAlarm(value);
+        }
+        break;
+      case 'water':
+        _waterDetected = value > 0;
+        type = SensorType.water;
+        debugPrint('💦 Water: ${_waterDetected ? "DETECTED" : "Dry"}');
+        if (_waterDetected && _userId != null) {
+          _createWaterAlarm();
+        }
+        break;
+      case 'sound':
+        _soundLevel = value;
+        type = SensorType.sound;
+        debugPrint('🔊 Sound: ${value}dB');
+        break;
+      case 'pressure':
+        _pressure = value;
+        type = SensorType.pressure;
+        debugPrint('🌡️ Pressure: ${value}hPa');
+        break;
+      case 'air_quality':
+      case 'airquality':
+        _airQuality = value;
+        type = SensorType.airQuality;
+        debugPrint('🌬️ Air Quality: $value AQI');
+        break;
+      default:
+        debugPrint('⚠️ Unknown sensor type: $sensorType');
+    }
+
+    // Store sensor data in service for history and analytics
+    if (type != null && _sensorService != null) {
+      _sensorService!.processSensorReading(
+        sensorId: sensorType,
+        type: type,
+        value: value,
+        metadata: {'topic': topic, 'raw_payload': payload},
+      );
+    }
+
+    notifyListeners();
+  }
+
+  /// Create gas alarm when dangerous levels detected
+  void _createGasAlarm(double level) {
+    final alarm = AlarmEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      location: 'home',
+      type: 'gas_leak',
+      severity: 'critical',
+      message: 'Dangerous gas level detected: ${level.toStringAsFixed(1)} ppm',
+      timestamp: DateTime.now(),
+    );
+    _alarms.insert(0, alarm);
+    if (_userId != null) {
+      _firestoreService.addAlarmEvent(_userId!, alarm);
+    }
+    _notificationService.showNotification(
+      title: '⚠️ GAS LEAK ALERT',
+      body: 'Dangerous gas level: ${level.toStringAsFixed(1)} ppm',
+    );
+  }
+
+  /// Create smoke alarm
+  void _createSmokeAlarm(double level) {
+    final alarm = AlarmEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      location: 'home',
+      type: 'smoke_detected',
+      severity: 'critical',
+      message: 'Smoke detected: ${level.toStringAsFixed(1)} ppm',
+      timestamp: DateTime.now(),
+    );
+    _alarms.insert(0, alarm);
+    if (_userId != null) {
+      _firestoreService.addAlarmEvent(_userId!, alarm);
+    }
+    _notificationService.showNotification(
+      title: '🔥 SMOKE ALERT',
+      body: 'Smoke detected: ${level.toStringAsFixed(1)} ppm',
+    );
+  }
+
+  /// Create water alarm
+  void _createWaterAlarm() {
+    final alarm = AlarmEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      location: 'home',
+      type: 'water_leak',
+      severity: 'high',
+      message: 'Water leak detected!',
+      timestamp: DateTime.now(),
+    );
+    _alarms.insert(0, alarm);
+    if (_userId != null) {
+      _firestoreService.addAlarmEvent(_userId!, alarm);
+    }
+    _notificationService.showNotification(
+      title: '💦 WATER LEAK ALERT',
+      body: 'Water detected in sensor area',
+    );
   }
 
   void _handleUnrecognizedFace(Map<String, dynamic> payload) {

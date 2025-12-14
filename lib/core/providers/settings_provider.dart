@@ -151,12 +151,31 @@ class SettingsProvider with ChangeNotifier {
     String? username,
     String? password,
   }) {
-    if (brokerAddress != null) _mqttBrokerAddress = brokerAddress;
+    if (brokerAddress != null) {
+      _mqttBrokerAddress = brokerAddress;
+      // Also update AI server URL to use the new broker address
+      _aiServerUrl = 'http://$brokerAddress:${MqttConfig.n8nPort}/api/agent';
+    }
     if (brokerPort != null) _mqttBrokerPort = brokerPort;
     if (username != null) _mqttUsername = username;
     if (password != null) _mqttPassword = password;
     notifyListeners();
     saveSettings(); // Auto-save
+  }
+
+  // Update broker endpoint (convenience method for AI chat)
+  void updateBrokerEndpoint(String address, {int? port}) {
+    updateMqttSettings(
+      brokerAddress: address,
+      brokerPort: port,
+    );
+  }
+
+  // Update AI server URL directly
+  void updateAiServerUrl(String url) {
+    _aiServerUrl = url;
+    notifyListeners();
+    saveSettings();
   }
 
   // Toggle notification settings
@@ -306,7 +325,7 @@ class SettingsProvider with ChangeNotifier {
 
           // AI Chat settings
           _aiServerUrl = userSettings['aiServerUrl'] as String? ??
-              'http://192.168.1.100:8000';
+              'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
 
           notifyListeners();
           // Also save to local storage for offline access
@@ -427,8 +446,8 @@ class SettingsProvider with ChangeNotifier {
       _enableAuthAudio = prefs.getBool('enableAuthAudio') ?? true;
       _enableBiometricLogin = prefs.getBool('enableBiometricLogin') ?? false;
 
-      _aiServerUrl =
-          prefs.getString('aiServerUrl') ?? 'http://192.168.1.100:8000';
+      _aiServerUrl = prefs.getString('aiServerUrl') ??
+          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
 
       notifyListeners();
     } catch (e) {

@@ -493,8 +493,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
     final nameLower = meshName.toLowerCase();
     if (nameLower.contains('front')) {
       return 'front_window';
-    } else if (nameLower.contains('side')) {
-      return 'side_window';
+    } else if (nameLower.contains('gate')) {
+      return 'gate';
     } else if (nameLower.contains('back')) {
       return 'back_window';
     }

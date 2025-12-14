@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_auth_service.dart';
 import '../services/face_auth_service.dart';
 import '../services/face_auth_http_service.dart';
 import '../models/user_model.dart';
@@ -8,6 +9,7 @@ import '../models/face_auth_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
+  final BiometricAuthService? _biometricAuthService;
   final FaceAuthService? _faceAuthService;
   final FaceAuthHttpService? _faceAuthHttpService;
 
@@ -16,6 +18,11 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Biometric authentication state
+  bool _isBiometricAvailable = false;
+  bool _isBiometricEnabled = false;
+  String? _biometricDescription;
+
   // Face authentication state
   FaceAuthStatus _faceAuthStatus = FaceAuthStatus.idle;
   FaceAuthBeacon? _discoveredBeacon;
@@ -23,9 +30,11 @@ class AuthProvider with ChangeNotifier {
 
   AuthProvider({
     required AuthService authService,
+    BiometricAuthService? biometricAuthService,
     FaceAuthService? faceAuthService,
     FaceAuthHttpService? faceAuthHttpService,
   })  : _authService = authService,
+        _biometricAuthService = biometricAuthService,
         _faceAuthService = faceAuthService,
         _faceAuthHttpService = faceAuthHttpService {
     _init();
@@ -36,6 +45,11 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
+
+  // Biometric auth getters
+  bool get isBiometricAvailable => _isBiometricAvailable;
+  bool get isBiometricEnabled => _isBiometricEnabled;
+  String? get biometricDescription => _biometricDescription;
 
   // Face auth getters
   FaceAuthStatus get faceAuthStatus => _faceAuthStatus;
@@ -56,6 +70,7 @@ class AuthProvider with ChangeNotifier {
           return;
         }
         await _loadUserData();
+        await _checkBiometricStatus();
       } else {
         _userModel = null;
       }
@@ -64,6 +79,9 @@ class AuthProvider with ChangeNotifier {
 
     // Check session validity on app start
     _checkSessionValidity();
+
+    // Initialize biometric status
+    _checkBiometricAvailability();
 
     // Initialize face auth listeners if available
     if (_faceAuthService != null) {
@@ -221,6 +239,134 @@ class AuthProvider with ChangeNotifier {
   Future<void> sendEmailVerification() async {
     if (_currentUser != null && !_currentUser!.emailVerified) {
       await _currentUser!.sendEmailVerification();
+    }
+  }
+
+  // ========== BIOMETRIC AUTHENTICATION METHODS ==========
+
+  /// Check if biometric authentication is available on device
+  Future<void> _checkBiometricAvailability() async {
+    if (_biometricAuthService == null) {
+      _isBiometricAvailable = false;
+      return;
+    }
+
+    try {
+      final canCheck = await _biometricAuthService!.canCheckBiometrics();
+      final isSupported = await _biometricAuthService!.isDeviceSupported();
+      _isBiometricAvailable = canCheck && isSupported;
+
+      if (_isBiometricAvailable) {
+        _biometricDescription =
+            await _biometricAuthService!.getBiometricsDescription();
+        debugPrint('✅ Biometric available: $_biometricDescription');
+      } else {
+        debugPrint('⚠️ Biometric authentication not available');
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error checking biometric availability: $e');
+      _isBiometricAvailable = false;
+    }
+  }
+
+  /// Check if biometric is enabled for current user
+  Future<void> _checkBiometricStatus() async {
+    if (_biometricAuthService == null || _currentUser == null) {
+      _isBiometricEnabled = false;
+      return;
+    }
+
+    try {
+      _isBiometricEnabled = await _biometricAuthService!.isBiometricEnabled();
+      final lastUser = await _biometricAuthService!.getLastBiometricUser();
+
+      // Disable if it was enabled for a different user
+      if (_isBiometricEnabled && lastUser != _currentUser!.uid) {
+        _isBiometricEnabled = false;
+        await _biometricAuthService!.disableBiometric();
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error checking biometric status: $e');
+      _isBiometricEnabled = false;
+    }
+  }
+
+  /// Authenticate using biometric (fingerprint, face ID)
+  Future<bool> authenticateWithBiometric() async {
+    if (_biometricAuthService == null) {
+      _errorMessage = 'Biometric authentication not available';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final authenticated = await _biometricAuthService!.authenticate(
+        localizedReason: 'Please authenticate to access your account',
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      return authenticated;
+    } catch (e) {
+      _errorMessage = 'Biometric authentication failed: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Enable biometric authentication for current user
+  Future<bool> enableBiometric() async {
+    if (_biometricAuthService == null || _currentUser == null) {
+      _errorMessage = 'Cannot enable biometric authentication';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      // First authenticate to confirm
+      final authenticated = await _biometricAuthService!.authenticate(
+        localizedReason: 'Authenticate to enable biometric login',
+      );
+
+      if (authenticated) {
+        await _biometricAuthService!.enableBiometric(_currentUser!.uid);
+        _isBiometricEnabled = true;
+        notifyListeners();
+        debugPrint('✅ Biometric authentication enabled');
+        return true;
+      } else {
+        _errorMessage = 'Biometric authentication failed';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to enable biometric: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Disable biometric authentication
+  Future<void> disableBiometric() async {
+    if (_biometricAuthService == null) return;
+
+    try {
+      await _biometricAuthService!.disableBiometric();
+      _isBiometricEnabled = false;
+      notifyListeners();
+      debugPrint('✅ Biometric authentication disabled');
+    } catch (e) {
+      _errorMessage = 'Failed to disable biometric: $e';
+      notifyListeners();
     }
   }
 

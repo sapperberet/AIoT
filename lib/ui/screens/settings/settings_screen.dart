@@ -91,6 +91,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildAuthenticationSection(context),
               const SizedBox(height: 24),
 
+              // User Management Section (Admin Only)
+              _buildUserManagementSection(context),
+              const SizedBox(height: 24),
+
               // Connection Mode Section
               _buildConnectionModeSection(context),
               const SizedBox(height: 24),
@@ -426,6 +430,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserManagementSection(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final authProvider = context.watch<AuthProvider>();
+
+    // Only show for logged-in users
+    if (authProvider.currentUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    return FadeInUp(
+      delay: const Duration(milliseconds: 175),
+      child: _buildSection(
+        loc.t('user_management'),
+        [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: Colors.purple.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Iconsax.shield_tick,
+                  color: Colors.purple,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'View and manage user accounts, monitor new sign-ins, and take action on suspicious activity.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.lightText.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Iconsax.people,
+                color: Colors.purple,
+                size: 20,
+              ),
+            ),
+            title: const Text('Manage Users'),
+            subtitle: const Text('View all users, ban/kick accounts'),
+            trailing: const Icon(Iconsax.arrow_right_3),
+            onTap: () => Navigator.pushNamed(context, '/user-management'),
+          ),
         ],
       ),
     );

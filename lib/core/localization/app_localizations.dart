@@ -141,7 +141,16 @@ class AppLocalizations {
       'password_length': 'Password must be at least 6 characters',
       'enter_name': 'Please enter your name',
       'passwords_match': 'Passwords do not match',
+      'passwords_dont_match': 'Passwords do not match',
       'enter_confirm_password': 'Please confirm your password',
+      'sign_up': 'Sign Up',
+      'already_have_account': 'Already have an account?',
+
+      // Biometric Authentication
+      'enable_biometric': 'Enable Biometric Authentication',
+      'biometric_enabled': 'Biometric authentication enabled',
+      'skip': 'Skip',
+      'enable': 'Enable',
 
       // Face Authentication
       'face_auth_title': 'Face Recognition',
@@ -289,15 +298,24 @@ class AppLocalizations {
           'Verify your identity to enable biometric login',
       'biometric_enabled_success': 'Biometric login enabled successfully',
       'biometric_login_description':
-          'Use {biometricType} to quickly log in and bypass face recognition',
+          'Use {biometricType} for quick login and bypass face recognition',
       'biometric_login_prompt': 'Authenticate to access Smart Home',
       'biometric_not_available':
           'Biometric authentication is not available on this device',
       'biometric_login_failed': 'Biometric authentication failed',
       'biometric_disabled': 'Biometric Login',
-      'enable_in_settings': 'Enable in Settings after login',
+      'enable_in_settings': 'Enable in Settings after logging in',
       'enable_biometric_in_settings':
           'Enable biometric login in Settings after your first login',
+
+      // User Management
+      'user_management': 'User Management',
+      'search_users': 'Search users by name, email, or ID...',
+      'new_users': 'New Users',
+      'suspicious': 'Suspicious',
+      'banned': 'Banned',
+      'admins': 'Administrators',
+      'no_users_found': 'No users found',
 
       // Chat Theme Settings
       'chat_appearance': 'Chat Appearance',
@@ -613,6 +631,15 @@ class AppLocalizations {
       'enable_biometric_in_settings':
           'Biometrische Anmeldung in den Einstellungen nach der ersten Anmeldung aktivieren',
 
+      // User Management
+      'user_management': 'Benutzerverwaltung',
+      'search_users': 'Benutzer nach Name, E-Mail oder ID suchen...',
+      'new_users': 'Neue Benutzer',
+      'suspicious': 'Verdächtig',
+      'banned': 'Gesperrt',
+      'admins': 'Administratoren',
+      'no_users_found': 'Keine Benutzer gefunden',
+
       // Chat Theme Settings
       'chat_appearance': 'Chat-Erscheinung',
       'themes': 'Themen',
@@ -915,6 +942,17 @@ class AppLocalizations {
       'enable_in_settings': 'تفعيل في الإعدادات بعد تسجيل الدخول',
       'enable_biometric_in_settings':
           'تفعيل تسجيل الدخول بالبصمة في الإعدادات بعد أول تسجيل دخول',
+
+      // User Management
+      'user_management': 'إدارة المستخدمين',
+      'search_users':
+          'البحث عن المستخدمين بالاسم أو البريد الإلكتروني أو المعرف...',
+      'new_users': 'مستخدمون جدد',
+      'suspicious': 'مشبوه',
+      'banned': 'محظور',
+      'admins': 'المسؤولون',
+      'no_users_found': 'لم يتم العثور على مستخدمين',
+
       // Chat Theme Settings
       'chat_appearance': 'مظهر المحادثة',
       'themes': 'السمات',

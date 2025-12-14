@@ -32,6 +32,11 @@ class BackendVoiceService {
     _logger.i('Backend voice service base URL updated: $_customBaseUrl');
   }
 
+  /// Update broker address (convenience method)
+  void updateBrokerAddress(String address) {
+    setBaseUrl('http://$address');
+  }
+
   /// Check if TTS service is available
   Future<bool> checkTtsHealth() async {
     try {

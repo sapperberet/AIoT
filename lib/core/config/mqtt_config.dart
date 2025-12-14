@@ -97,6 +97,23 @@ class MqttConfig {
   static const String faceUnrecognizedTopic =
       '$topicPrefix/app/face-unrecognized';
 
+  // Sensor Topics (ESP32/IoT device data)
+  static const String sensorDataTopic = '$topicPrefix/sensors/+/data';
+  static const String temperatureTopic = '$topicPrefix/sensors/temperature';
+  static const String humidityTopic = '$topicPrefix/sensors/humidity';
+  static const String gasTopic = '$topicPrefix/sensors/gas';
+  static const String ldrTopic = '$topicPrefix/sensors/ldr';
+  static const String energyTopic = '$topicPrefix/sensors/energy';
+  static const String motionSensorTopic = '$topicPrefix/sensors/motion';
+  static const String smokeTopic = '$topicPrefix/sensors/smoke';
+  static const String waterTopic = '$topicPrefix/sensors/water';
+  static const String soundTopic = '$topicPrefix/sensors/sound';
+  static const String pressureTopic = '$topicPrefix/sensors/pressure';
+  static const String airQualityTopic = '$topicPrefix/sensors/air_quality';
+
+  // Generic sensor data topic (wildcard for all sensors)
+  static const String allSensorsTopic = '$topicPrefix/sensors/#';
+
   // Beacon discovery settings
   static const int beaconPort = 18830;
   static const String beaconServiceName = 'face-broker';

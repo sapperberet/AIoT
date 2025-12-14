@@ -1331,7 +1331,8 @@ class _AIChatScreenState extends State<AIChatScreen>
   void _showServerConfigDialog() {
     final settingsProvider = context.read<SettingsProvider>();
     final textController = TextEditingController(
-      text: settingsProvider.aiServerUrl ?? 'http://192.168.1.100:8000',
+      text: settingsProvider.aiServerUrl ??
+          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent',
     );
 
     Future.delayed(Duration.zero, () {

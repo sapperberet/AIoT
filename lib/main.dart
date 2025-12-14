@@ -6,12 +6,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/services/auth_service.dart';
 import 'core/services/mqtt_service.dart';
+import 'core/services/biometric_auth_service.dart';
 import 'core/services/face_auth_service.dart';
 import 'core/services/face_auth_http_service.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/ai_chat_service.dart';
+import 'core/services/ai_chat_actions_service.dart';
 import 'core/services/event_log_service.dart';
+import 'core/services/sensor_service.dart';
+import 'core/services/automation_service.dart';
+import 'core/services/automation_engine.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
@@ -22,6 +27,8 @@ import 'core/providers/chat_theme_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
+import 'ui/screens/auth/new_login_screen.dart';
+import 'ui/screens/auth/new_register_screen.dart';
 import 'ui/screens/auth/modern_login_screen.dart';
 import 'ui/screens/auth/email_verification_screen.dart';
 import 'ui/screens/auth/face_auth_screen.dart';
@@ -30,10 +37,12 @@ import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
 import 'ui/screens/automations/automations_screen.dart';
+import 'ui/screens/automations/automation_management_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
 import 'ui/screens/chat/ai_chat_screen.dart';
 import 'ui/screens/chat/chat_sessions_screen.dart';
 import 'ui/screens/chat/voice_to_voice_screen.dart';
+import 'ui/screens/admin/user_management_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
@@ -96,11 +105,16 @@ class SmartHomeApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Services
-        Provider<AuthService>(
-          create: (_) => AuthService(),
-        ),
         Provider<MqttService>(
           create: (_) => MqttService(),
+        ),
+        Provider<AuthService>(
+          create: (context) => AuthService(
+            mqttService: context.read<MqttService>(),
+          ),
+        ),
+        Provider<BiometricAuthService>(
+          create: (_) => BiometricAuthService(),
         ),
         Provider<FaceAuthService>(
           create: (context) => FaceAuthService(
@@ -116,8 +130,42 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<EventLogService>(
           create: (_) => EventLogService(),
         ),
+        Provider<SensorService>(
+          create: (_) => SensorService(),
+        ),
         Provider<AIChatService>(
           create: (_) => AIChatService(),
+        ),
+        ChangeNotifierProvider<AutomationService>(
+          create: (_) => AutomationService()..initialize(),
+        ),
+        ProxyProvider6<
+            SensorService,
+            MqttService,
+            NotificationService,
+            EventLogService,
+            AutomationService,
+            DeviceProvider,
+            AutomationEngine>(
+          create: (context) => AutomationEngine(
+            automationService: context.read<AutomationService>(),
+            sensorService: context.read<SensorService>(),
+            mqttService: context.read<MqttService>(),
+            notificationService: context.read<NotificationService>(),
+            eventLogService: context.read<EventLogService>(),
+          )..start(),
+          update: (context, sensorService, mqttService, notificationService,
+              eventLogService, automationService, deviceProvider, engine) {
+            return engine ??
+                AutomationEngine(
+                  automationService: automationService,
+                  sensorService: sensorService,
+                  mqttService: mqttService,
+                  notificationService: notificationService,
+                  eventLogService: eventLogService,
+                )
+              ..start();
+          },
         ),
 
         // State Providers
@@ -127,6 +175,7 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             authService: context.read<AuthService>(),
+            biometricAuthService: context.read<BiometricAuthService>(),
             faceAuthService: context.read<FaceAuthService>(),
             faceAuthHttpService: context.read<FaceAuthHttpService>(),
           ),
@@ -143,6 +192,7 @@ class SmartHomeApp extends StatelessWidget {
           ),
           update: (context, vizProvider, deviceProvider) {
             deviceProvider?.setHomeVisualizationProvider(vizProvider);
+            deviceProvider?.setSensorService(context.read<SensorService>());
             return deviceProvider!;
           },
         ),
@@ -155,10 +205,39 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AutomationProvider>(
           create: (_) => AutomationProvider(),
         ),
-        ChangeNotifierProvider<AIChatProvider>(
-          create: (context) => AIChatProvider(
-            chatService: context.read<AIChatService>(),
+        // AI Chat Actions Service (must be created before AIChatProvider)
+        ProxyProvider3<AutomationService, MqttService, FirestoreService,
+            AIChatActionsService>(
+          create: (context) => AIChatActionsService(
+            automationService: context.read<AutomationService>(),
+            mqttService: context.read<MqttService>(),
+            firestoreService: context.read<FirestoreService>(),
           ),
+          update:
+              (context, automationService, mqttService, firestoreService, _) {
+            return AIChatActionsService(
+              automationService: automationService,
+              mqttService: mqttService,
+              firestoreService: firestoreService,
+            );
+          },
+        ),
+        ChangeNotifierProxyProvider<AIChatActionsService, AIChatProvider>(
+          create: (context) {
+            final provider = AIChatProvider(
+              chatService: context.read<AIChatService>(),
+            );
+            // Initialize actions service
+            final actionsService = context.read<AIChatActionsService>();
+            provider.initializeActionsService(actionsService);
+            return provider;
+          },
+          update: (context, actionsService, provider) {
+            if (provider != null) {
+              provider.initializeActionsService(actionsService);
+            }
+            return provider!;
+          },
         ),
         ChangeNotifierProvider<ChatThemeProvider>(
           create: (_) => ChatThemeProvider(),
@@ -201,19 +280,24 @@ class SmartHomeApp extends StatelessWidget {
             ],
             home: const SplashScreen(),
             routes: {
-              '/login': (context) => const ModernLoginScreen(),
+              '/login': (context) => const NewLoginScreen(),
+              '/register': (context) => const NewRegisterScreen(),
               '/verify-email': (context) => const EmailVerificationScreen(),
               '/face-auth': (context) => const FaceAuthScreen(),
+              '/modern-login': (context) => const ModernLoginScreen(),
               '/auth/email-password': (context) =>
                   const EmailPasswordLayerScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
               '/notifications': (context) => const NotificationsScreen(),
               '/automations': (context) => const AutomationsScreen(),
+              '/automation-management': (context) =>
+                  const AutomationManagementScreen(),
               '/energy': (context) => const EnergyMonitorScreen(),
               '/ai-chat': (context) => const AIChatScreen(),
               '/chat-sessions': (context) => const ChatSessionsScreen(),
               '/voice-to-voice': (context) => const VoiceToVoiceScreen(),
+              '/user-management': (context) => const UserManagementScreen(),
             },
           );
         },

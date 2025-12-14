@@ -626,6 +626,82 @@ class AIChatService {
 
   /// Get external LLM model
   String get externalLlmModel => _externalLlmModel;
+
+  /// Update broker endpoint (for MQTT and n8n services)
+  void updateBrokerEndpoint(String newAddress, {int? port}) {
+    _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/agent';
+    _voiceChatUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/voice';
+    _logger.i('Broker endpoint updated: $newAddress');
+  }
+
+  /// Get current broker address
+  String get currentBrokerAddress {
+    final uri = Uri.parse(_baseUrl);
+    return uri.host;
+  }
+
+  /// Get current broker port
+  int get currentBrokerPort {
+    final uri = Uri.parse(_baseUrl);
+    return uri.port;
+  }
+
+  /// Send a message with action intent
+  /// The AI can respond with action commands that will be parsed and executed
+  Future<Map<String, dynamic>> sendMessageWithActions(
+    String content,
+    String userId,
+    String sessionId, {
+    bool includeActions = true,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(_baseUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'chatInput': content,
+              'message': content,
+              'sessionId': sessionId,
+              'userId': userId,
+              'enableActions': includeActions,
+              'systemPrompt': includeActions
+                  ? 'You can control smart home devices. When you want to perform an action, use this format: [ACTION:type:param1:param2]. Available actions: open_door, close_door, open_window, close_window, turn_light, set_fan, trigger_alarm. Example: "I\'ll open the door for you [ACTION:open_door:main_door]"'
+                  : null,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        String responseText = '';
+        if (data['output'] != null) {
+          responseText = data['output'] as String;
+        } else if (data['response'] != null) {
+          responseText = data['response'] as String;
+        }
+
+        return {
+          'success': true,
+          'response': responseText,
+          'hasActions': responseText.contains('[ACTION:'),
+          'rawData': data,
+        };
+      }
+
+      return {
+        'success': false,
+        'error': 'Failed to get response: ${response.statusCode}',
+      };
+    } catch (e) {
+      _logger.e('Error sending message with actions: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
 }
 
 /// Response from voice chat endpoint
