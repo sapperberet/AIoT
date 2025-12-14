@@ -744,7 +744,9 @@ class AIChatProvider with ChangeNotifier {
         // Auto-play the voice response
         await _playVoiceResponse(response.audioFilePath);
       } else {
-        throw Exception('Failed to get voice response from AI');
+        // More descriptive error for voice chat failure
+        throw Exception(
+            'Voice chat backend unavailable. Please check that the n8n voice workflow is configured correctly and accepts POST requests at /api/voice');
       }
 
       _isLoading = false;

@@ -486,12 +486,16 @@ class AIChatService {
   ) async {
     try {
       _logger.i('Sending voice message: $audioFilePath');
+      _logger.i('Voice chat URL: $_voiceChatUrl');
 
       final file = File(audioFilePath);
       if (!await file.exists()) {
         _logger.e('Audio file not found: $audioFilePath');
         return null;
       }
+
+      final fileSize = await file.length();
+      _logger.i('Audio file size: $fileSize bytes');
 
       final request = http.MultipartRequest('POST', Uri.parse(_voiceChatUrl));
 
@@ -505,9 +509,14 @@ class AIChatService {
       // Add session ID
       request.fields['sessionId'] = sessionId;
 
+      _logger.i('Sending voice request to n8n...');
       final streamedResponse =
           await request.send().timeout(const Duration(seconds: 120));
       final response = await http.Response.fromStream(streamedResponse);
+
+      _logger.i('Voice response status: ${response.statusCode}');
+      _logger.i(
+          'Voice response content-type: ${response.headers['content-type']}');
 
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
@@ -522,44 +531,72 @@ class AIChatService {
           final audioFile = File(filePath);
           await audioFile.writeAsBytes(response.bodyBytes);
 
+          _logger.i('Audio response saved to: $filePath');
           return VoiceChatResponse(
             audioFilePath: filePath,
             userTranscription: response.headers['x-user-transcription'],
             aiResponse: response.headers['x-ai-response'],
           );
         } else {
-          // JSON response
-          final data = jsonDecode(response.body);
+          // JSON response - check if body is empty first
+          if (response.body.isEmpty) {
+            _logger.e('Voice chat error: Empty response body');
+            return null;
+          }
 
-          if (data['audio'] != null) {
-            // Base64 encoded audio
-            final audioBytes = base64Decode(data['audio']);
-            final directory = await getApplicationDocumentsDirectory();
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            // Default to mp3 if not specified
-            final filePath = '${directory.path}/ai_voice_reply_$timestamp.mp3';
+          try {
+            final data = jsonDecode(response.body);
 
-            final audioFile = File(filePath);
-            await audioFile.writeAsBytes(audioBytes);
+            if (data['audio'] != null) {
+              // Base64 encoded audio
+              final audioBytes = base64Decode(data['audio']);
+              final directory = await getApplicationDocumentsDirectory();
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              // Default to mp3 if not specified
+              final filePath =
+                  '${directory.path}/ai_voice_reply_$timestamp.mp3';
 
-            return VoiceChatResponse(
-              audioFilePath: filePath,
-              userTranscription: data['transcription'],
-              aiResponse: data['response'],
-            );
-          } else if (data['error'] != null) {
-            _logger.e('Voice chat error: ${data['error']}');
+              final audioFile = File(filePath);
+              await audioFile.writeAsBytes(audioBytes);
+
+              _logger.i('Audio response (base64) saved to: $filePath');
+              return VoiceChatResponse(
+                audioFilePath: filePath,
+                userTranscription: data['transcription'],
+                aiResponse: data['response'],
+              );
+            } else if (data['error'] != null) {
+              _logger.e('Voice chat error from server: ${data['error']}');
+              return null;
+            }
+          } on FormatException catch (e) {
+            _logger.e('Failed to parse voice response JSON: $e');
+            _logger.e(
+                'Response body (first 500 chars): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
             return null;
           }
         }
+      } else if (response.statusCode == 405) {
+        // Method Not Allowed - n8n webhook configuration issue
+        _logger.e('Voice chat error 405: Method Not Allowed');
+        _logger.e(
+            'The n8n webhook at $_voiceChatUrl does not accept POST requests.');
+        _logger.e(
+            'Please check that the n8n webhook is configured to accept POST method.');
+        return null;
       } else {
         _logger.e('Voice chat error: ${response.statusCode}');
+        // Log response body for debugging (may contain error details)
+        if (response.body.isNotEmpty && response.body.length < 1000) {
+          _logger.e('Response body: ${response.body}');
+        }
         return null;
       }
 
       return null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _logger.e('Error in voice chat: $e');
+      _logger.e('Stack trace: $stackTrace');
       return null;
     }
   }

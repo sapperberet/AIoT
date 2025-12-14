@@ -80,7 +80,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      final loc = AppLocalizations.of(context);
 
       final success = await authProvider.signIn(
         _emailController.text.trim(),

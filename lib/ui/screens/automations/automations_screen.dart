@@ -24,7 +24,6 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
 
     return Scaffold(
@@ -824,20 +823,20 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
       'triggers': automation.triggers
           .map((t) => {
                 'type': t.type.name,
-                'config': t.config,
+                'parameters': t.parameters,
               })
           .toList(),
       'conditions': automation.conditions
           .map((c) => {
                 'type': c.type.name,
-                'config': c.config,
+                'parameters': c.parameters,
               })
           .toList(),
       'actions': automation.actions
           .map((a) => {
                 'type': a.type.name,
                 'deviceId': a.deviceId,
-                'config': a.config,
+                'parameters': a.parameters,
               })
           .toList(),
       'metadata': {
