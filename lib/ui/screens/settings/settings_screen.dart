@@ -439,8 +439,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final loc = AppLocalizations.of(context);
     final authProvider = context.watch<AuthProvider>();
 
-    // Only show for logged-in users
-    if (authProvider.currentUser == null) {
+    // Only show for admin users (high access level)
+    if (authProvider.currentUser == null || !authProvider.isAdmin) {
       return const SizedBox.shrink();
     }
 
@@ -469,7 +469,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'View and manage user accounts, monitor new sign-ins, and take action on suspicious activity.',
+                    'View and manage user accounts, approve new registrations, and monitor activity.',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.lightText.withOpacity(0.8),
@@ -497,6 +497,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('View all users, ban/kick accounts'),
             trailing: const Icon(Iconsax.arrow_right_3),
             onTap: () => Navigator.pushNamed(context, '/user-management'),
+          ),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Iconsax.user_tick,
+                color: Colors.orange,
+                size: 20,
+              ),
+            ),
+            title: Text(loc.translate('pending_approvals')),
+            subtitle: const Text('Approve new user registrations'),
+            trailing: const Icon(Iconsax.arrow_right_3),
+            onTap: () => Navigator.pushNamed(context, '/user-approval'),
           ),
         ],
       ),

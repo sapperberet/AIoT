@@ -34,6 +34,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
       // Admins can read all users
       allow read: if isAdmin();
+      // Allow authenticated users to query for admin users (needed during registration to notify admins)
+      allow read: if request.auth != null;
       
       // User's devices subcollection
       match /devices/{deviceId} {

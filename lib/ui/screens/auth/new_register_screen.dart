@@ -118,6 +118,8 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
   void _showBiometricEnableDialog() {
     final authProvider = context.read<AuthProvider>();
     final loc = AppLocalizations.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
     // Determine navigation destination based on approval status
     final destination =
@@ -125,7 +127,7 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(loc.translate('enable_biometric')),
         content: Text(
           'Would you like to enable ${authProvider.biometricDescription ?? 'biometric'} authentication for faster login?',
@@ -133,26 +135,24 @@ class _NewRegisterScreenState extends State<NewRegisterScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.of(context).pushReplacementNamed(destination);
+              Navigator.pop(dialogContext);
+              navigator.pushReplacementNamed(destination);
             },
             child: Text(loc.translate('skip')),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               final enabled = await authProvider.enableBiometric();
-              if (mounted) {
-                if (enabled) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(loc.translate('biometric_enabled')),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-                Navigator.of(context).pushReplacementNamed(destination);
+              if (enabled) {
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(loc.translate('biometric_enabled')),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               }
+              navigator.pushReplacementNamed(destination);
             },
             child: Text(loc.translate('enable')),
           ),

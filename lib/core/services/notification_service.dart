@@ -419,6 +419,63 @@ class NotificationService with ChangeNotifier {
     }
   }
 
+  /// Show a system notification (for push notifications from FCM)
+  Future<void> showSystemNotification({
+    required String title,
+    required String message,
+    String? payload,
+    NotificationPriority priority = NotificationPriority.medium,
+  }) async {
+    if (!_isNotificationsInitialized) {
+      debugPrint('Notifications not initialized yet');
+      return;
+    }
+
+    try {
+      AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'smart_home_push_channel',
+        'Push Notifications',
+        channelDescription: 'Push notifications from Smart Home App',
+        importance: _getAndroidImportance(priority),
+        priority: _getAndroidPriority(priority),
+        playSound: true,
+        enableVibration: true,
+        icon: '@mipmap/ic_launcher',
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: BigTextStyleInformation(
+          message,
+          htmlFormatBigText: true,
+          contentTitle: title,
+          htmlFormatContentTitle: true,
+        ),
+      );
+
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+      );
+
+      NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch % 100000,
+        title,
+        message,
+        notificationDetails,
+        payload: payload,
+      );
+
+      debugPrint('📱 System notification shown: $title');
+    } catch (e) {
+      debugPrint('❌ Error showing system notification: $e');
+    }
+  }
+
   // Device status notifications
   void notifyDeviceStatusChange(String deviceName, bool isOnline) {
     addNotification(

@@ -17,6 +17,8 @@ import 'core/services/event_log_service.dart';
 import 'core/services/sensor_service.dart';
 import 'core/services/automation_service.dart';
 import 'core/services/automation_engine.dart';
+import 'core/services/energy_service.dart';
+import 'core/services/push_notification_service.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
@@ -24,6 +26,7 @@ import 'core/providers/settings_provider.dart';
 import 'core/providers/automation_provider.dart';
 import 'core/providers/ai_chat_provider.dart';
 import 'core/providers/chat_theme_provider.dart';
+import 'core/providers/energy_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
@@ -46,6 +49,7 @@ import 'ui/screens/chat/chat_sessions_screen.dart';
 import 'ui/screens/chat/voice_to_voice_screen.dart';
 import 'ui/screens/admin/user_management_screen.dart';
 import 'ui/screens/admin/user_approval_screen.dart';
+import 'ui/screens/admin/device_health_screen.dart';
 import 'firebase_options.dart';
 
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
@@ -142,6 +146,11 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AutomationService>(
           create: (_) => AutomationService()..initialize(),
         ),
+        Provider<EnergyService>(
+          create: (context) => EnergyService(
+            mqttService: context.read<MqttService>(),
+          ),
+        ),
         ProxyProvider6<
             SensorService,
             MqttService,
@@ -175,6 +184,14 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<NotificationService>(
           create: (_) => NotificationService(),
         ),
+        // Push Notification Service (Firebase Cloud Messaging)
+        ProxyProvider<NotificationService, PushNotificationService>(
+          create: (_) => PushNotificationService(),
+          update: (context, notificationService, pushService) {
+            pushService?.initialize(notificationService: notificationService);
+            return pushService ?? PushNotificationService();
+          },
+        ),
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             authService: context.read<AuthService>(),
@@ -207,6 +224,16 @@ class SmartHomeApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<AutomationProvider>(
           create: (_) => AutomationProvider(),
+        ),
+        ChangeNotifierProxyProvider2<MqttService, EnergyService,
+            EnergyProvider>(
+          create: (context) => EnergyProvider(
+            energyService: context.read<EnergyService>(),
+            mqttService: context.read<MqttService>(),
+          )..initialize(),
+          update: (context, mqttService, energyService, energyProvider) {
+            return energyProvider!;
+          },
         ),
         // AI Chat Actions Service (must be created before AIChatProvider)
         ProxyProvider3<AutomationService, MqttService, FirestoreService,
@@ -304,6 +331,7 @@ class SmartHomeApp extends StatelessWidget {
               '/voice-to-voice': (context) => const VoiceToVoiceScreen(),
               '/user-management': (context) => const UserManagementScreen(),
               '/user-approval': (context) => const UserApprovalScreen(),
+              '/device-health': (context) => const DeviceHealthScreen(),
             },
           );
         },
