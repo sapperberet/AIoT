@@ -146,7 +146,7 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AutomationService>(
           create: (_) => AutomationService()..initialize(),
         ),
-        Provider<EnergyService>(
+        ChangeNotifierProvider<EnergyService>(
           create: (context) => EnergyService(
             mqttService: context.read<MqttService>(),
           ),

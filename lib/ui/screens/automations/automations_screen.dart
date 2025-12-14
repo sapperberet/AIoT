@@ -508,25 +508,27 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   void _showCreateAutomationDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Automation creation coming soon!'),
-        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
+        content: const Text(
+          'Automation creation coming soon!',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: AppTheme.primaryColor,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   void _showEditAutomationDialog(BuildContext context, Automation automation) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Edit automation: ${automation.name}'),
-        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
+        content: Text(
+          'Edit automation: ${automation.name}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: AppTheme.primaryColor,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

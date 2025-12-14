@@ -53,25 +53,23 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
   Future<void> _handleBiometricLogin() async {
     final loc = AppLocalizations.of(context);
+    final authProvider = context.read<AuthProvider>();
 
-    final success = await _biometricService.authenticate(
-      localizedReason: loc.translate('biometric_login_prompt'),
-    );
+    // SECURITY: Use authProvider.authenticateWithBiometric() which validates
+    // that the Firebase user still exists before allowing biometric access
+    final success = await authProvider.authenticateWithBiometric();
 
     if (success && mounted) {
-      // Check if there's an existing Firebase session
-      final authProvider = context.read<AuthProvider>();
-      if (authProvider.currentUser != null) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else {
-        // No existing session, show message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(loc.translate('biometric_login_failed')),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else if (mounted) {
+      // Show appropriate error message
+      final errorMessage = authProvider.errorMessage ?? loc.translate('biometric_login_failed');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+        ),
+      );
     }
   }
 

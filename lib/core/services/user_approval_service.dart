@@ -423,4 +423,46 @@ class UserApprovalService {
       return true; // Assume needs setup on error
     }
   }
+
+  /// List of designated admin emails that should be auto-approved as admins
+  static const List<String> designatedAdminEmails = [
+    'ahmedamromran2003@gmail.com',
+  ];
+
+  /// Check if the email is a designated admin
+  static bool isDesignatedAdmin(String email) {
+    return designatedAdminEmails.contains(email.toLowerCase().trim());
+  }
+
+  /// Bootstrap admin for a designated admin email
+  /// This auto-approves users with designated admin emails as high-level admins
+  Future<bool> bootstrapDesignatedAdmin(String userId, String email) async {
+    try {
+      // Check if this email is designated as admin
+      if (!isDesignatedAdmin(email)) {
+        debugPrint('📋 $email is not a designated admin');
+        return false;
+      }
+
+      debugPrint('🔐 Bootstrapping designated admin: $email');
+
+      // Update user to be an approved admin
+      await _firestore.collection('users').doc(userId).update({
+        'accessLevel': 'high',
+        'isApproved': true,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': 'system_bootstrap',
+        'isDesignatedAdmin': true,
+        'pendingApprovalOtp': FieldValue.delete(),
+        'otpGeneratedAt': FieldValue.delete(),
+        'otpVerified': true,
+      });
+
+      debugPrint('✅ Designated admin bootstrapped: $email');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error bootstrapping designated admin: $e');
+      return false;
+    }
+  }
 }

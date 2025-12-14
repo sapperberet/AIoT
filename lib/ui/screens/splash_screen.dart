@@ -44,8 +44,19 @@ class _SplashScreenState extends State<SplashScreen> {
     final settingsProvider = context.read<SettingsProvider>();
 
     // If user is already authenticated (has active Firebase session), go to home
+    // SECURITY: Also verify the Firebase user is still valid
     if (authProvider.isAuthenticated) {
-      debugPrint('✅ User already authenticated, going to home');
+      debugPrint('✅ User already authenticated, verifying session...');
+      
+      // Verify user still exists in Firebase Auth before allowing access
+      final isValid = await _verifyFirebaseUser(authProvider);
+      if (!isValid) {
+        debugPrint('🚫 User no longer valid in Firebase, redirecting to login');
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/modern-login');
+        return;
+      }
+      
       Navigator.of(context).pushReplacementNamed('/home');
       return;
     }
@@ -61,16 +72,20 @@ class _SplashScreenState extends State<SplashScreen> {
         debugPrint(
             '🔐 Attempting biometric authentication for returning user...');
 
-        final success = await _biometricService.authenticate(
-          localizedReason: 'Authenticate to access Smart Home',
-        );
+        // SECURITY: Use authProvider.authenticateWithBiometric() which validates
+        // that the Firebase user still exists before allowing biometric access
+        final success = await authProvider.authenticateWithBiometric();
 
         if (success && mounted) {
-          debugPrint('✅ Biometric successful, going to home');
+          debugPrint('✅ Biometric successful (Firebase user verified), going to home');
           Navigator.of(context).pushReplacementNamed('/home');
           return;
         } else {
-          debugPrint('❌ Biometric failed or cancelled');
+          debugPrint('❌ Biometric failed or user no longer valid');
+          // Show error if there's one
+          if (authProvider.errorMessage != null) {
+            debugPrint('🚫 Auth error: ${authProvider.errorMessage}');
+          }
         }
       }
     }
@@ -79,6 +94,32 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint('👤 New user or biometric not enabled, showing login screen');
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/modern-login');
+  }
+  
+  /// Verify that the Firebase user still exists and is valid
+  Future<bool> _verifyFirebaseUser(AuthProvider authProvider) async {
+    try {
+      final user = authProvider.currentUser;
+      if (user == null) return false;
+      
+      // Try to reload the user - this will fail if user was deleted
+      await user.reload();
+      return true;
+    } catch (e) {
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('user-not-found') ||
+          errorStr.contains('user-disabled') ||
+          errorStr.contains('user-token-expired') ||
+          errorStr.contains('invalid-user-token')) {
+        debugPrint('🚫 Firebase user verification failed: $e');
+        // Sign out the invalid user
+        await authProvider.signOut();
+        return false;
+      }
+      // For network errors, allow cached session
+      debugPrint('⚠️ Could not verify user (network issue?), allowing cached session: $e');
+      return true;
+    }
   }
 
   @override

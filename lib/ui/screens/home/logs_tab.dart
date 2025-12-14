@@ -298,6 +298,9 @@ class _LogsTabState extends State<LogsTab> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildEmptyState(BuildContext context, String title, String subtitle) {
+    final authProvider = context.read<AuthProvider>();
+    final eventLogService = context.read<EventLogService>();
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -311,6 +314,29 @@ class _LogsTabState extends State<LogsTab> with SingleTickerProviderStateMixin {
                   .textTheme
                   .bodyMedium
                   ?.copyWith(color: Colors.grey)),
+          const SizedBox(height: 24),
+          // Add sample events button for testing
+          if (authProvider.currentUser != null)
+            ElevatedButton.icon(
+              onPressed: () async {
+                await eventLogService
+                    .seedSampleEvents(authProvider.currentUser!.uid);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Sample events added! Pull to refresh.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Iconsax.add_circle),
+              label: const Text('Add Sample Events'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
         ],
       ),
     );

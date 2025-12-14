@@ -462,28 +462,35 @@ class EventLogService with ChangeNotifier {
   }
 
   /// Get security events only
+  /// Uses client-side filtering to avoid Firestore composite index requirements
   Stream<List<EventLog>> getSecurityEventsStream(String userId,
       {int limit = 50}) {
+    // Fetch more events and filter client-side to avoid composite index issues
+    final securityTypes = {
+      EventType.doorOpened.name,
+      EventType.doorClosed.name,
+      EventType.windowOpened.name,
+      EventType.windowClosed.name,
+      EventType.garageOpened.name,
+      EventType.garageClosed.name,
+      EventType.personRecognized.name,
+      EventType.personUnrecognized.name,
+      EventType.alarmTriggered.name,
+      EventType.accessGranted.name,
+      EventType.accessDenied.name,
+    };
+
     return _firestore
         .collection('users')
         .doc(userId)
         .collection(_eventsCollection)
-        .where('type', whereIn: [
-          EventType.doorOpened.name,
-          EventType.doorClosed.name,
-          EventType.windowOpened.name,
-          EventType.windowClosed.name,
-          EventType.garageOpened.name,
-          EventType.garageClosed.name,
-          EventType.personRecognized.name,
-          EventType.personUnrecognized.name,
-          EventType.alarmTriggered.name,
-        ])
         .orderBy('timestamp', descending: true)
-        .limit(limit)
+        .limit(limit * 3) // Fetch more to ensure we get enough security events
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => EventLog.fromJson({...doc.data(), 'id': doc.id}))
+            .where((event) => securityTypes.contains(event.type.name))
+            .take(limit)
             .toList());
   }
 
@@ -636,6 +643,68 @@ class EventLogService with ChangeNotifier {
     } catch (e) {
       _logger.e('Error exporting events: $e');
       return [];
+    }
+  }
+
+  /// Seed sample events for testing purposes
+  Future<void> seedSampleEvents(String userId) async {
+    try {
+      _logger.i('Seeding sample events for testing...');
+
+      // Seed sample events of different types
+      await logDoorEvent(
+        userId: userId,
+        isOpen: true,
+        location: 'Front Door',
+        triggeredBy: 'Motion sensor',
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      await logWindowEvent(
+        userId: userId,
+        isOpen: false,
+        location: 'Living Room',
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      await logLightEvent(
+        userId: userId,
+        isOn: true,
+        location: 'Kitchen',
+        brightness: 80,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      await logAlarmEvent(
+        userId: userId,
+        alarmType: 'Motion',
+        location: 'Backyard',
+        message: 'Motion detected in backyard',
+        severity: EventSeverity.warning,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      await logPersonEvent(
+        userId: userId,
+        recognized: true,
+        personName: 'John',
+        location: 'Front Door',
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      await logGarageEvent(
+        userId: userId,
+        isOpen: false,
+      );
+
+      _logger.i('Sample events seeded successfully');
+    } catch (e) {
+      _logger.e('Error seeding sample events: $e');
     }
   }
 }

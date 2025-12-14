@@ -394,6 +394,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   /// Authenticate using biometric (fingerprint, face ID)
+  /// SECURITY: Verifies Firebase Auth user still exists before allowing access
   Future<bool> authenticateWithBiometric() async {
     if (_biometricAuthService == null) {
       _errorMessage = 'Biometric authentication not available';
@@ -405,9 +406,70 @@ class AuthProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
+      // SECURITY: First verify the Firebase Auth user still exists
+      // This prevents "ghost users" who were deleted from Firebase Auth
+      // but still have biometric enabled locally
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        _errorMessage = 'No authenticated session. Please log in again.';
+        _isLoading = false;
+        // Clear biometric settings since no valid session
+        await _biometricAuthService!.disableBiometric();
+        notifyListeners();
+        return false;
+      }
+
+      // Try to reload the user to verify they still exist in Firebase Auth
+      try {
+        await firebaseUser.reload();
+        // Get fresh user reference after reload
+        final refreshedUser = FirebaseAuth.instance.currentUser;
+        if (refreshedUser == null) {
+          // User was deleted from Firebase Auth
+          _errorMessage = 'Your account has been removed. Please contact an administrator.';
+          _isLoading = false;
+          await _biometricAuthService!.disableBiometric();
+          await signOut();
+          notifyListeners();
+          return false;
+        }
+      } catch (e) {
+        final errorStr = e.toString().toLowerCase();
+        // Check for user-not-found or user-disabled errors
+        if (errorStr.contains('user-not-found') ||
+            errorStr.contains('user-disabled') ||
+            errorStr.contains('user-token-expired') ||
+            errorStr.contains('invalid-user-token')) {
+          debugPrint('🚫 Firebase user no longer valid: $e');
+          _errorMessage = 'Your account is no longer valid. Please log in again.';
+          _isLoading = false;
+          await _biometricAuthService!.disableBiometric();
+          await signOut();
+          notifyListeners();
+          return false;
+        }
+        // For network errors, allow biometric if we have a cached user
+        // (graceful offline handling)
+        debugPrint('⚠️ Could not verify user, allowing cached session: $e');
+      }
+
+      // Now perform the actual biometric authentication
       final authenticated = await _biometricAuthService!.authenticate(
         localizedReason: 'Please authenticate to access your account',
       );
+
+      if (authenticated) {
+        // Reload user data to ensure we have latest info
+        await _loadUserData();
+        
+        // Check if user is not approved (pending approval)
+        if (_userModel != null && !_userModel!.isApproved) {
+          _errorMessage = 'Your account is pending approval.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      }
 
       _isLoading = false;
       notifyListeners();

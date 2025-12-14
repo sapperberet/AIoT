@@ -103,10 +103,20 @@ class AuthService {
                 userData['isApproved'] == true && accessLevel.isApproved;
 
             if (!isApproved) {
-              // Don't sign out - keep them signed in but return a specific error
-              // so UI can show the pending approval screen
-              debugPrint('⚠️ User not yet approved: ${credential.user!.uid}');
-              throw 'USER_PENDING_APPROVAL';
+              // Check if this is a designated admin who should be auto-approved
+              if (UserApprovalService.isDesignatedAdmin(credential.user!.email ?? '')) {
+                debugPrint('🔐 Designated admin detected, auto-approving: ${credential.user!.email}');
+                await _approvalService.bootstrapDesignatedAdmin(
+                  credential.user!.uid, 
+                  credential.user!.email!
+                );
+                // Continue with login - user is now approved
+              } else {
+                // Don't sign out - keep them signed in but return a specific error
+                // so UI can show the pending approval screen
+                debugPrint('⚠️ User not yet approved: ${credential.user!.uid}');
+                throw 'USER_PENDING_APPROVAL';
+              }
             }
           }
         }
@@ -294,6 +304,9 @@ class AuthService {
   Future<void> _createUserDocument(User user, String? displayName) async {
     // Check if this should be the first admin
     final needsFirstAdmin = await _approvalService.needsFirstAdminSetup();
+    
+    // Check if this is a designated admin email
+    final isDesignatedAdmin = UserApprovalService.isDesignatedAdmin(user.email ?? '');
 
     final userModel = UserModel(
       uid: user.uid,
@@ -304,20 +317,25 @@ class AuthService {
         'theme': 'system',
         'notifications': true,
       },
-      // First user becomes admin automatically, others start as pending
-      accessLevel: needsFirstAdmin ? AccessLevel.high : AccessLevel.pending,
-      isApproved: needsFirstAdmin, // First admin is auto-approved
+      // First user or designated admin becomes admin automatically, others start as pending
+      accessLevel: (needsFirstAdmin || isDesignatedAdmin) ? AccessLevel.high : AccessLevel.pending,
+      isApproved: (needsFirstAdmin || isDesignatedAdmin), // Designated admins are auto-approved
     );
 
     await _firestore.collection('users').doc(user.uid).set(userModel.toJson());
 
-    // If not the first admin, generate OTP and notify admins
-    if (!needsFirstAdmin) {
+    // Log designated admin bootstrap
+    if (isDesignatedAdmin && !needsFirstAdmin) {
+      debugPrint('✅ Designated admin user created - auto-approved: ${user.email}');
+    } else if (needsFirstAdmin) {
+      debugPrint('✅ First admin user created - auto-approved');
+    }
+
+    // If not an admin (first or designated), generate OTP and notify admins
+    if (!needsFirstAdmin && !isDesignatedAdmin) {
       debugPrint('🔧 Generating approval OTP for new user...');
       await _approvalService.generateApprovalOtp(user.uid);
       debugPrint('✅ Approval OTP generated and admins notified');
-    } else {
-      debugPrint('✅ First admin user created - auto-approved');
     }
   }
 
