@@ -75,6 +75,9 @@ dependencies:
   
   # Local Notifications (push notifications when app in background)
   flutter_local_notifications: ^17.2.4
+  
+  # Email sending for OTP verification
+  mailer: ^6.1.0
 
 dev_dependencies:
   flutter_test:

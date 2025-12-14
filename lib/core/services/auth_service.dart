@@ -76,13 +76,29 @@ class AuthService {
       );
 
       if (credential.user != null) {
-        // Check if user is banned
+        // Check if user exists in Firestore
         final userDoc = await _firestore
             .collection('users')
             .doc(credential.user!.uid)
             .get();
 
-        if (userDoc.exists) {
+        if (!userDoc.exists) {
+          // User exists in Firebase Auth but not in Firestore
+          // This can happen if designated admin was created in Firebase Console
+          if (UserApprovalService.isDesignatedAdmin(
+              credential.user!.email ?? '')) {
+            debugPrint(
+                '🔐 Designated admin first login - creating Firestore document');
+            await _createDesignatedAdminDocument(credential.user!);
+          } else {
+            // Non-admin user without Firestore document - create pending document
+            debugPrint(
+                '⚠️ User without Firestore document - creating pending document');
+            await _createUserDocument(
+                credential.user!, credential.user!.displayName);
+            throw 'USER_PENDING_APPROVAL';
+          }
+        } else {
           final userData = userDoc.data()!;
 
           // Check if banned
@@ -104,12 +120,12 @@ class AuthService {
 
             if (!isApproved) {
               // Check if this is a designated admin who should be auto-approved
-              if (UserApprovalService.isDesignatedAdmin(credential.user!.email ?? '')) {
-                debugPrint('🔐 Designated admin detected, auto-approving: ${credential.user!.email}');
+              if (UserApprovalService.isDesignatedAdmin(
+                  credential.user!.email ?? '')) {
+                debugPrint(
+                    '🔐 Designated admin detected, auto-approving: ${credential.user!.email}');
                 await _approvalService.bootstrapDesignatedAdmin(
-                  credential.user!.uid, 
-                  credential.user!.email!
-                );
+                    credential.user!.uid, credential.user!.email!);
                 // Continue with login - user is now approved
               } else {
                 // Don't sign out - keep them signed in but return a specific error
@@ -300,13 +316,40 @@ class AuthService {
     }
   }
 
+  /// Create a Firestore document for a designated admin (first-time login)
+  /// This is used when admin was created in Firebase Console but hasn't logged in yet
+  Future<void> _createDesignatedAdminDocument(User user) async {
+    final userModel = UserModel(
+      uid: user.uid,
+      email: user.email!,
+      displayName: user.displayName ?? 'System Administrator',
+      createdAt: DateTime.now(),
+      preferences: {
+        'theme': 'system',
+        'notifications': true,
+      },
+      accessLevel: AccessLevel.high,
+      isApproved: true,
+    );
+
+    await _firestore.collection('users').doc(user.uid).set({
+      ...userModel.toJson(),
+      'isDesignatedAdmin': true,
+      'approvedAt': FieldValue.serverTimestamp(),
+      'approvedBy': 'system_bootstrap',
+    });
+
+    debugPrint('✅ Designated admin document created: ${user.email}');
+  }
+
   // Create user document in Firestore with pending approval status
   Future<void> _createUserDocument(User user, String? displayName) async {
     // Check if this should be the first admin
     final needsFirstAdmin = await _approvalService.needsFirstAdminSetup();
-    
+
     // Check if this is a designated admin email
-    final isDesignatedAdmin = UserApprovalService.isDesignatedAdmin(user.email ?? '');
+    final isDesignatedAdmin =
+        UserApprovalService.isDesignatedAdmin(user.email ?? '');
 
     final userModel = UserModel(
       uid: user.uid,
@@ -318,15 +361,19 @@ class AuthService {
         'notifications': true,
       },
       // First user or designated admin becomes admin automatically, others start as pending
-      accessLevel: (needsFirstAdmin || isDesignatedAdmin) ? AccessLevel.high : AccessLevel.pending,
-      isApproved: (needsFirstAdmin || isDesignatedAdmin), // Designated admins are auto-approved
+      accessLevel: (needsFirstAdmin || isDesignatedAdmin)
+          ? AccessLevel.high
+          : AccessLevel.pending,
+      isApproved: (needsFirstAdmin ||
+          isDesignatedAdmin), // Designated admins are auto-approved
     );
 
     await _firestore.collection('users').doc(user.uid).set(userModel.toJson());
 
     // Log designated admin bootstrap
     if (isDesignatedAdmin && !needsFirstAdmin) {
-      debugPrint('✅ Designated admin user created - auto-approved: ${user.email}');
+      debugPrint(
+          '✅ Designated admin user created - auto-approved: ${user.email}');
     } else if (needsFirstAdmin) {
       debugPrint('✅ First admin user created - auto-approved');
     }

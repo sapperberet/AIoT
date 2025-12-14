@@ -426,7 +426,8 @@ class AuthProvider with ChangeNotifier {
         final refreshedUser = FirebaseAuth.instance.currentUser;
         if (refreshedUser == null) {
           // User was deleted from Firebase Auth
-          _errorMessage = 'Your account has been removed. Please contact an administrator.';
+          _errorMessage =
+              'Your account has been removed. Please contact an administrator.';
           _isLoading = false;
           await _biometricAuthService!.disableBiometric();
           await signOut();
@@ -441,7 +442,8 @@ class AuthProvider with ChangeNotifier {
             errorStr.contains('user-token-expired') ||
             errorStr.contains('invalid-user-token')) {
           debugPrint('🚫 Firebase user no longer valid: $e');
-          _errorMessage = 'Your account is no longer valid. Please log in again.';
+          _errorMessage =
+              'Your account is no longer valid. Please log in again.';
           _isLoading = false;
           await _biometricAuthService!.disableBiometric();
           await signOut();
@@ -461,7 +463,7 @@ class AuthProvider with ChangeNotifier {
       if (authenticated) {
         // Reload user data to ensure we have latest info
         await _loadUserData();
-        
+
         // Check if user is not approved (pending approval)
         if (_userModel != null && !_userModel!.isApproved) {
           _errorMessage = 'Your account is pending approval.';

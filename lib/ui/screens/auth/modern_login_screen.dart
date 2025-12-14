@@ -63,7 +63,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
       Navigator.of(context).pushReplacementNamed('/home');
     } else if (mounted) {
       // Show appropriate error message
-      final errorMessage = authProvider.errorMessage ?? loc.translate('biometric_login_failed');
+      final errorMessage =
+          authProvider.errorMessage ?? loc.translate('biometric_login_failed');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),

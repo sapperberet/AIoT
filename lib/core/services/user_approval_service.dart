@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/access_level.dart';
 import '../models/user_model.dart';
+import 'email_service.dart';
 
 /// Model for pending user approval request
 class PendingUserRequest {
@@ -106,7 +107,9 @@ class UserApprovalService {
             .toList());
   }
 
-  /// Generate and store OTP for a pending user, notify admins
+  /// Generate and store OTP for a pending user
+  /// Sends OTP to the USER's own email for 2FA self-verification
+  /// Also notifies the admin notification email
   Future<String?> generateApprovalOtp(String pendingUserId) async {
     try {
       final otp = _generateOtp();
@@ -126,10 +129,34 @@ class UserApprovalService {
       final pendingUserEmail = userData?['email'] ?? 'Unknown';
       final pendingUserName = userData?['displayName'] ?? 'New User';
 
-      // Get all admin users
-      final admins = await getAdminUsers();
+      // === 2FA: Send OTP to the USER's own email ===
+      if (pendingUserEmail != 'Unknown') {
+        final emailSent = await EmailService.sendOtpEmail(
+          recipientEmail: pendingUserEmail,
+          recipientName: pendingUserName,
+          otp: otp,
+        );
+        if (emailSent) {
+          debugPrint('📧 OTP email sent to user: $pendingUserEmail');
+        } else {
+          debugPrint('⚠️ SMTP not configured - user won\'t receive OTP email');
+        }
+      }
 
-      // Create approval request notification for each admin
+      // === Send notification to admin email (no account required) ===
+      final adminEmailSent = await EmailService.sendAdminNotificationEmail(
+        adminEmail: adminNotificationEmail,
+        adminName: 'Administrator',
+        pendingUserEmail: pendingUserEmail,
+        pendingUserName: pendingUserName,
+        otp: otp,
+      );
+      if (adminEmailSent) {
+        debugPrint('📧 Admin notification sent to: $adminNotificationEmail');
+      }
+
+      // Also notify any registered admin users via in-app notification
+      final admins = await getAdminUsers();
       for (final admin in admins) {
         await _firestore.collection('approval_requests').add({
           'pendingUserId': pendingUserId,
@@ -159,7 +186,7 @@ class UserApprovalService {
         });
       }
 
-      debugPrint('✅ OTP generated and sent to ${admins.length} admins');
+      debugPrint('✅ OTP generated and notifications sent');
       return otp;
     } catch (e) {
       debugPrint('❌ Error generating approval OTP: $e');
@@ -253,6 +280,71 @@ class UserApprovalService {
     } catch (e) {
       debugPrint('❌ Error approving user: $e');
       return false;
+    }
+  }
+
+  /// Self-verify OTP by pending user (when admin shares OTP with them)
+  /// Returns: 'success', 'invalid_otp', 'expired', 'error'
+  Future<String> selfVerifyOtp(String otp) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return 'error';
+
+      // Get pending user document
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        debugPrint('❌ User document not found');
+        return 'error';
+      }
+
+      final userData = userDoc.data()!;
+      final storedOtp = userData['pendingApprovalOtp'];
+      final otpGeneratedAt =
+          (userData['otpGeneratedAt'] as Timestamp?)?.toDate();
+
+      // Verify OTP
+      if (storedOtp != otp) {
+        debugPrint('❌ Invalid OTP entered');
+        return 'invalid_otp';
+      }
+
+      // Check if OTP is expired (30 minutes)
+      if (otpGeneratedAt == null ||
+          DateTime.now().difference(otpGeneratedAt).inMinutes > 30) {
+        debugPrint('❌ OTP expired');
+        return 'expired';
+      }
+
+      // Approve the user with default low access level
+      await _firestore.collection('users').doc(user.uid).update({
+        'accessLevel': 'low',
+        'isApproved': true,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': 'self_verified',
+        'pendingApprovalOtp': FieldValue.delete(),
+        'otpGeneratedAt': FieldValue.delete(),
+        'otpVerified': true,
+      });
+
+      // Update approval request status
+      final approvalRequests = await _firestore
+          .collection('approval_requests')
+          .where('pendingUserId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      for (final doc in approvalRequests.docs) {
+        await doc.reference.update({
+          'status': 'self_approved',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      debugPrint('✅ User self-verified with OTP: ${user.uid}');
+      return 'success';
+    } catch (e) {
+      debugPrint('❌ Error self-verifying OTP: $e');
+      return 'error';
     }
   }
 
@@ -424,9 +516,14 @@ class UserApprovalService {
     }
   }
 
-  /// List of designated admin emails that should be auto-approved as admins
+  /// Admin notification email - receives OTP codes when users register
+  /// This is NOT a user account, just an email recipient for notifications
+  static const String adminNotificationEmail = 'ahmedamromran2003@gmail.com';
+
+  /// List of designated admin emails (for backwards compatibility)
+  /// These emails, if registered as users, become admins automatically
   static const List<String> designatedAdminEmails = [
-    'ahmedamromran2003@gmail.com',
+    // Add user emails here if you want them to become admins when they register
   ];
 
   /// Check if the email is a designated admin
@@ -446,17 +543,20 @@ class UserApprovalService {
 
       debugPrint('🔐 Bootstrapping designated admin: $email');
 
-      // Update user to be an approved admin
-      await _firestore.collection('users').doc(userId).update({
+      // Use set with merge to handle both new and existing documents
+      await _firestore.collection('users').doc(userId).set({
+        'uid': userId,
+        'email': email,
+        'displayName': 'System Administrator',
         'accessLevel': 'high',
         'isApproved': true,
         'approvedAt': FieldValue.serverTimestamp(),
         'approvedBy': 'system_bootstrap',
         'isDesignatedAdmin': true,
-        'pendingApprovalOtp': FieldValue.delete(),
-        'otpGeneratedAt': FieldValue.delete(),
         'otpVerified': true,
-      });
+        'createdAt': FieldValue.serverTimestamp(),
+        'preferences': {'theme': 'system', 'notifications': true},
+      }, SetOptions(merge: true));
 
       debugPrint('✅ Designated admin bootstrapped: $email');
       return true;

@@ -8,6 +8,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/services/biometric_service.dart';
+import '../../../core/services/email_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,11 +23,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isBiometricAvailable = false;
   String _biometricTypeName = 'Biometric';
 
+  // Email/SMTP configuration
+  bool _isEmailConfigured = false;
+  String? _configuredEmail;
+
   @override
   void initState() {
     super.initState();
     _loadSessionDuration();
     _checkBiometricAvailability();
+    _loadEmailConfig();
+  }
+
+  Future<void> _loadEmailConfig() async {
+    final isConfigured = await EmailService.isConfigured();
+    final email = await EmailService.getConfiguredEmail();
+    setState(() {
+      _isEmailConfigured = isConfigured;
+      _configuredEmail = email;
+    });
   }
 
   Future<void> _loadSessionDuration() async {
@@ -93,6 +108,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // User Management Section (Admin Only)
               _buildUserManagementSection(context),
+              const SizedBox(height: 24),
+
+              // Email Configuration Section (Admin Only)
+              _buildEmailConfigSection(context),
               const SizedBox(height: 24),
 
               // Connection Mode Section
@@ -517,6 +536,242 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => Navigator.pushNamed(context, '/user-approval'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmailConfigSection(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
+    // Only show for admin users
+    if (authProvider.currentUser == null || !authProvider.isAdmin) {
+      return const SizedBox.shrink();
+    }
+
+    return FadeInUp(
+      delay: const Duration(milliseconds: 185),
+      child: _buildSection(
+        'Email Configuration',
+        [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _isEmailConfigured
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.orange.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: _isEmailConfigured
+                    ? Colors.green.withOpacity(0.3)
+                    : Colors.orange.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isEmailConfigured ? Iconsax.tick_circle : Iconsax.warning_2,
+                  color: _isEmailConfigured ? Colors.green : Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _isEmailConfigured
+                        ? 'Email configured: $_configuredEmail\nOTP codes will be sent via email.'
+                        : 'Email not configured. OTP codes will only be shown in the admin panel.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.lightText.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Iconsax.sms,
+                color: Colors.blue,
+                size: 20,
+              ),
+            ),
+            title: Text(_isEmailConfigured
+                ? 'Update Email Settings'
+                : 'Configure Email'),
+            subtitle: const Text('Set up Gmail SMTP for OTP delivery'),
+            trailing: const Icon(Iconsax.arrow_right_3),
+            onTap: () => _showEmailConfigDialog(context),
+          ),
+          if (_isEmailConfigured)
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Iconsax.trash,
+                  color: Colors.red,
+                  size: 20,
+                ),
+              ),
+              title: const Text('Remove Email Configuration'),
+              subtitle: const Text('Stop sending OTP via email'),
+              trailing: const Icon(Iconsax.arrow_right_3),
+              onTap: () async {
+                await EmailService.clearConfiguration();
+                await _loadEmailConfig();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email configuration removed'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEmailConfigDialog(BuildContext context) async {
+    final emailController = TextEditingController(text: _configuredEmail ?? '');
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Configure Gmail SMTP'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '📧 Gmail App Password Required',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '1. Go to myaccount.google.com\n'
+                        '2. Security → 2-Step Verification\n'
+                        '3. App passwords → Generate\n'
+                        '4. Copy the 16-character password',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Gmail Address',
+                    hintText: 'your.email@gmail.com',
+                    prefixIcon: Icon(Iconsax.sms),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'App Password',
+                    hintText: '16-character app password',
+                    prefixIcon: Icon(Iconsax.key),
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (emailController.text.isEmpty ||
+                          passwordController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill in all fields'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      final success = await EmailService.configure(
+                        email: emailController.text.trim(),
+                        appPassword: passwordController.text.trim(),
+                      );
+
+                      setDialogState(() => isLoading = false);
+
+                      if (success) {
+                        await _loadEmailConfig();
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  '✅ Email configured successfully! Test email sent.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  '❌ Configuration failed. Check your credentials.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Configure'),
+            ),
+          ],
+        ),
       ),
     );
   }
