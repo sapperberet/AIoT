@@ -44,9 +44,12 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
     final isAvailable = await _biometricService.isBiometricAvailable();
     if (mounted) {
       final settingsProvider = context.read<SettingsProvider>();
+      final authProvider = context.read<AuthProvider>();
       setState(() {
         _isBiometricAvailable = isAvailable;
-        _isBiometricEnabled = settingsProvider.enableBiometricLogin;
+        // Enable biometric button if settings allow OR if app is locked (soft sign out)
+        _isBiometricEnabled = settingsProvider.enableBiometricLogin ||
+            (authProvider.isAppLocked && authProvider.currentUser != null);
       });
     }
   }

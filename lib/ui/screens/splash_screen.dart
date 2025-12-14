@@ -43,9 +43,17 @@ class _SplashScreenState extends State<SplashScreen> {
     final authProvider = context.read<AuthProvider>();
     final settingsProvider = context.read<SettingsProvider>();
 
-    // If user is already authenticated (has active Firebase session), go to home
-    // SECURITY: Also verify the Firebase user is still valid
+    // If user is already authenticated (has active Firebase session)
+    // Check if app is locked (soft sign out with biometric)
     if (authProvider.isAuthenticated) {
+      // If app is locked, go to login for biometric unlock
+      if (authProvider.isAppLocked) {
+        debugPrint('🔒 App is locked, showing login for biometric unlock');
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/modern-login');
+        return;
+      }
+
       debugPrint('✅ User already authenticated, verifying session...');
 
       // Verify user still exists in Firebase Auth before allowing access
@@ -61,14 +69,13 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // Check if user has previously enabled biometric AND has a stored session
-    // Only attempt biometric if they've logged in before
-    if (settingsProvider.enableBiometricLogin &&
-        authProvider.currentUser != null) {
+    // Check if biometric is enabled and session exists (for returning users)
+    // This handles the case where user did soft sign out
+    if (authProvider.currentUser != null) {
       final isBiometricAvailable =
           await _biometricService.isBiometricAvailable();
 
-      if (isBiometricAvailable) {
+      if (isBiometricAvailable && settingsProvider.enableBiometricLogin) {
         debugPrint(
             '🔐 Attempting biometric authentication for returning user...');
 

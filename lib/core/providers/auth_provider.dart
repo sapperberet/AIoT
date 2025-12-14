@@ -326,11 +326,43 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> signOut() async {
+  // Flag to track if app is in "locked" state (signed out but biometric can unlock)
+  bool _isAppLocked = false;
+  bool get isAppLocked => _isAppLocked;
+
+  /// Sign out - if biometric is enabled, only "locks" the app instead of full sign out
+  /// This allows biometric to unlock without re-entering credentials
+  Future<void> signOut({bool forceFullSignOut = false}) async {
+    // Check if biometric is enabled - if so, do a "soft" sign out (lock)
+    final hasBiometricCredentials =
+        await _biometricAuthService?.hasBiometricCredentials() ?? false;
+
+    if (hasBiometricCredentials && !forceFullSignOut) {
+      // Soft sign out - keep Firebase session, just "lock" the app
+      debugPrint('🔒 Soft sign out - biometric enabled, keeping session');
+      _isAppLocked = true;
+      notifyListeners();
+      return;
+    }
+
+    // Full sign out - clear everything including biometric
     await _authService.signOut();
+    await _biometricAuthService?.disableBiometric();
     _currentUser = null;
     _userModel = null;
     _isPendingApproval = false;
+    _isAppLocked = false;
+    notifyListeners();
+  }
+
+  /// Force full sign out (clears biometric settings too)
+  Future<void> forceSignOut() async {
+    await signOut(forceFullSignOut: true);
+  }
+
+  /// Unlock the app after biometric verification (for soft sign out)
+  void unlockApp() {
+    _isAppLocked = false;
     notifyListeners();
   }
 
@@ -395,6 +427,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Authenticate using biometric (fingerprint, face ID)
   /// SECURITY: Verifies Firebase Auth user still exists before allowing access
+  /// Also handles "app locked" state when user did soft sign out with biometric enabled
   Future<bool> authenticateWithBiometric() async {
     if (_biometricAuthService == null) {
       _errorMessage = 'Biometric authentication not available';
@@ -406,14 +439,23 @@ class AuthProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // SECURITY: First verify the Firebase Auth user still exists
-      // This prevents "ghost users" who were deleted from Firebase Auth
-      // but still have biometric enabled locally
+      // Check if biometric credentials are stored
+      final hasBiometricCredentials =
+          await _biometricAuthService!.hasBiometricCredentials();
+      if (!hasBiometricCredentials) {
+        _errorMessage =
+            'Biometric login not set up. Please log in with your credentials first.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // SECURITY: Verify the Firebase Auth user still exists
       final firebaseUser = FirebaseAuth.instance.currentUser;
       if (firebaseUser == null) {
-        _errorMessage = 'No authenticated session. Please log in again.';
+        // No session - this means full sign out happened or session expired
+        _errorMessage = 'Session expired. Please log in again.';
         _isLoading = false;
-        // Clear biometric settings since no valid session
         await _biometricAuthService!.disableBiometric();
         notifyListeners();
         return false;
@@ -430,7 +472,7 @@ class AuthProvider with ChangeNotifier {
               'Your account has been removed. Please contact an administrator.';
           _isLoading = false;
           await _biometricAuthService!.disableBiometric();
-          await signOut();
+          await signOut(forceFullSignOut: true);
           notifyListeners();
           return false;
         }
@@ -446,7 +488,7 @@ class AuthProvider with ChangeNotifier {
               'Your account is no longer valid. Please log in again.';
           _isLoading = false;
           await _biometricAuthService!.disableBiometric();
-          await signOut();
+          await signOut(forceFullSignOut: true);
           notifyListeners();
           return false;
         }
@@ -461,6 +503,9 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (authenticated) {
+        // Unlock the app if it was locked
+        _isAppLocked = false;
+
         // Reload user data to ensure we have latest info
         await _loadUserData();
 
@@ -471,6 +516,8 @@ class AuthProvider with ChangeNotifier {
           notifyListeners();
           return false;
         }
+
+        debugPrint('✅ Biometric authentication successful');
       }
 
       _isLoading = false;
@@ -500,10 +547,15 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (authenticated) {
-        await _biometricAuthService!.enableBiometric(_currentUser!.uid);
+        // Store both user ID and email for biometric login after sign out
+        await _biometricAuthService!.enableBiometric(
+          _currentUser!.uid,
+          userEmail: _currentUser!.email,
+        );
         _isBiometricEnabled = true;
         notifyListeners();
-        debugPrint('✅ Biometric authentication enabled');
+        debugPrint(
+            '✅ Biometric authentication enabled for ${_currentUser!.email}');
         return true;
       } else {
         _errorMessage = 'Biometric authentication failed';

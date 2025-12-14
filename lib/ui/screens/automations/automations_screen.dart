@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
@@ -120,42 +122,126 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header with status badge
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: automation.isEnabled
-                      ? AppTheme.primaryGradient
-                      : LinearGradient(
-                          colors: [
-                            textColor.withOpacity(0.3),
-                            textColor.withOpacity(0.1),
+              // Icon with execution count badge
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: automation.isEnabled
+                          ? AppTheme.primaryGradient
+                          : LinearGradient(
+                              colors: [
+                                textColor.withOpacity(0.3),
+                                textColor.withOpacity(0.1),
+                              ],
+                            ),
+                      borderRadius: AppTheme.smallRadius,
+                    ),
+                    child: Icon(
+                      _getAutomationIcon(automation),
+                      size: 24,
+                      color: automation.isEnabled
+                          ? Colors.white
+                          : textColor.withOpacity(0.5),
+                    ),
+                  ),
+                  // Execution count badge
+                  if (automation.executionCount > 0)
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentColor,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.accentColor.withOpacity(0.4),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
-                  borderRadius: AppTheme.smallRadius,
-                ),
-                child: Icon(
-                  Iconsax.timer,
-                  size: 24,
-                  color: automation.isEnabled
-                      ? Colors.white
-                      : textColor.withOpacity(0.5),
-                ),
+                        child: Text(
+                          automation.executionCount > 99
+                              ? '99+'
+                              : '${automation.executionCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      automation.name,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            automation.name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                        // Status chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: automation.isEnabled
+                                ? AppTheme.successColor.withOpacity(0.15)
+                                : textColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: automation.isEnabled
+                                      ? AppTheme.successColor
+                                      : textColor.withOpacity(0.4),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                automation.isEnabled ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: automation.isEnabled
+                                      ? AppTheme.successColor
+                                      : textColor.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -164,6 +250,8 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                         fontSize: 14,
                         color: textColor.withOpacity(0.6),
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -321,7 +409,26 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              // JSON View Button
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.accentColor.withOpacity(0.1),
+                  borderRadius: AppTheme.smallRadius,
+                  border: Border.all(
+                    color: AppTheme.accentColor.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: IconButton(
+                  onPressed: () => _showJsonDialog(context, automation),
+                  icon: const Icon(Iconsax.document_code),
+                  color: AppTheme.accentColor,
+                  iconSize: 20,
+                  tooltip: 'View MQTT JSON',
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
                   color: AppTheme.errorColor.withOpacity(0.1),
@@ -343,6 +450,50 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
         ],
       ),
     );
+  }
+
+  /// Get an appropriate icon based on automation triggers/actions
+  IconData _getAutomationIcon(Automation automation) {
+    // Check triggers first
+    for (final trigger in automation.triggers) {
+      switch (trigger.type) {
+        case TriggerType.time:
+        case TriggerType.schedule:
+          return Iconsax.clock;
+        case TriggerType.temperature:
+          return Iconsax.sun_1;
+        case TriggerType.humidity:
+          return Iconsax.drop;
+        case TriggerType.motion:
+          return Iconsax.activity;
+        case TriggerType.sunrise:
+          return Iconsax.sun;
+        case TriggerType.sunset:
+          return Iconsax.moon;
+        case TriggerType.energy:
+          return Iconsax.flash_1;
+        default:
+          continue;
+      }
+    }
+
+    // Check actions for device-specific icons
+    for (final action in automation.actions) {
+      switch (action.type) {
+        case ActionType.turnOn:
+        case ActionType.turnOff:
+        case ActionType.toggle:
+          return Iconsax.lamp_on;
+        case ActionType.setTemperature:
+          return Iconsax.cpu_setting;
+        case ActionType.sendNotification:
+          return Iconsax.notification;
+        default:
+          continue;
+      }
+    }
+
+    return Iconsax.timer; // Default icon
   }
 
   Widget _buildInfoSection(String title, IconData icon, List<String> items) {
@@ -535,6 +686,166 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
         backgroundColor: AppTheme.successColor,
       ),
     );
+  }
+
+  /// Show the automation JSON in a dialog for MQTT integration
+  void _showJsonDialog(BuildContext context, Automation automation) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
+    // Generate MQTT-friendly JSON
+    final mqttJson = _generateMqttJson(automation);
+    final prettyJson = const JsonEncoder.withIndent('  ').convert(mqttJson);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightSurface,
+        title: Row(
+          children: [
+            Icon(Iconsax.document_code, color: AppTheme.accentColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'MQTT JSON - ${automation.name}',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Copy this JSON to sync with your MQTT broker:',
+                style: TextStyle(
+                  color: textColor.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.grey.withOpacity(0.1),
+                    borderRadius: AppTheme.smallRadius,
+                    border: Border.all(
+                      color: textColor.withOpacity(0.2),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      prettyJson,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: isDark
+                            ? Colors.greenAccent.shade200
+                            : Colors.green.shade800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'MQTT Topic: automation/${automation.id}',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: prettyJson));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('JSON copied to clipboard!'),
+                  backgroundColor: AppTheme.successColor,
+                ),
+              );
+            },
+            icon: const Icon(Iconsax.copy),
+            label: const Text('Copy JSON'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.accentColor,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              final mqttTopic = 'automation/${automation.id}';
+              Clipboard.setData(ClipboardData(text: mqttTopic));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('MQTT topic copied to clipboard!'),
+                  backgroundColor: AppTheme.successColor,
+                ),
+              );
+            },
+            icon: const Icon(Iconsax.link),
+            label: const Text('Copy Topic'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: textColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Generate MQTT-friendly JSON for the automation
+  Map<String, dynamic> _generateMqttJson(Automation automation) {
+    return {
+      'id': automation.id,
+      'name': automation.name,
+      'description': automation.description,
+      'enabled': automation.isEnabled,
+      'triggers': automation.triggers
+          .map((t) => {
+                'type': t.type.name,
+                'config': t.config,
+              })
+          .toList(),
+      'conditions': automation.conditions
+          .map((c) => {
+                'type': c.type.name,
+                'config': c.config,
+              })
+          .toList(),
+      'actions': automation.actions
+          .map((a) => {
+                'type': a.type.name,
+                'deviceId': a.deviceId,
+                'config': a.config,
+              })
+          .toList(),
+      'metadata': {
+        'executionCount': automation.executionCount,
+        'lastTriggered': automation.lastTriggered?.toIso8601String(),
+        'createdAt': automation.createdAt.toIso8601String(),
+      },
+    };
   }
 
   void _deleteAutomation(BuildContext context, Automation automation) {

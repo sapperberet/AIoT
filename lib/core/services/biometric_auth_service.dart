@@ -9,6 +9,7 @@ class BiometricAuthService {
 
   static const String _biometricEnabledKey = 'biometric_enabled';
   static const String _lastBiometricUserKey = 'last_biometric_user';
+  static const String _biometricUserEmailKey = 'biometric_user_email';
 
   /// Check if biometric authentication is available on the device
   Future<bool> canCheckBiometrics() async {
@@ -109,12 +110,16 @@ class BiometricAuthService {
   }
 
   /// Enable biometric authentication for the user
-  Future<void> enableBiometric(String userId) async {
+  Future<void> enableBiometric(String userId, {String? userEmail}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_biometricEnabledKey, true);
       await prefs.setString(_lastBiometricUserKey, userId);
-      debugPrint('✅ Biometric authentication enabled for user: $userId');
+      if (userEmail != null) {
+        await prefs.setString(_biometricUserEmailKey, userEmail);
+      }
+      debugPrint(
+          '✅ Biometric authentication enabled for user: $userId (email: $userEmail)');
     } catch (e) {
       debugPrint('❌ Error enabling biometric: $e');
       rethrow;
@@ -127,6 +132,7 @@ class BiometricAuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_biometricEnabledKey, false);
       await prefs.remove(_lastBiometricUserKey);
+      await prefs.remove(_biometricUserEmailKey);
       debugPrint('✅ Biometric authentication disabled');
     } catch (e) {
       debugPrint('❌ Error disabling biometric: $e');
@@ -142,6 +148,29 @@ class BiometricAuthService {
     } catch (e) {
       debugPrint('❌ Error getting last biometric user: $e');
       return null;
+    }
+  }
+
+  /// Get the email of the user who enabled biometric authentication
+  Future<String?> getBiometricUserEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_biometricUserEmailKey);
+    } catch (e) {
+      debugPrint('❌ Error getting biometric user email: $e');
+      return null;
+    }
+  }
+
+  /// Check if biometric credentials are stored for auto-login
+  Future<bool> hasBiometricCredentials() async {
+    try {
+      final isEnabled = await isBiometricEnabled();
+      final email = await getBiometricUserEmail();
+      return isEnabled && email != null && email.isNotEmpty;
+    } catch (e) {
+      debugPrint('❌ Error checking biometric credentials: $e');
+      return false;
     }
   }
 

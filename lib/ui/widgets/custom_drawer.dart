@@ -436,7 +436,7 @@ class CustomDrawer extends StatelessWidget {
         onPressed: () async {
           await authProvider.signOut();
           if (context.mounted) {
-            Navigator.of(context).pushReplacementNamed('/login');
+            Navigator.of(context).pushReplacementNamed('/modern-login');
           }
         },
         style: ElevatedButton.styleFrom(
