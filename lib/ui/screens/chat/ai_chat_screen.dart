@@ -37,7 +37,6 @@ class _AIChatScreenState extends State<AIChatScreen>
   bool _showScrollToBottom = false;
   bool _isRecordingVoice = false;
   String _liveTranscription = '';
-  int _recordingDuration = 0;
   bool _isScreenActive = true;
 
   @override
@@ -67,6 +66,13 @@ class _AIChatScreenState extends State<AIChatScreen>
 
       // Set up callback for AI response notifications
       chatProvider.onAIResponseReceived = _onAIResponseReceived;
+
+      // 🔥 Update AI chat endpoint if beacon is already discovered
+      if (authProvider.discoveredBeacon != null) {
+        final beaconIp = authProvider.discoveredBeacon!.ip;
+        debugPrint('🌐 AI Chat: Using beacon IP: $beaconIp');
+        chatProvider.updateBrokerEndpoint(beaconIp);
+      }
     });
   }
 
@@ -921,9 +927,8 @@ class _AIChatScreenState extends State<AIChatScreen>
         onCancel: _cancelVoiceRecording,
         onSend: (_) => _stopVoiceRecording(),
         onDurationUpdate: (duration) {
-          setState(() {
-            _recordingDuration = duration;
-          });
+          // Duration tracking removed as _recordingDuration was unused
+          setState(() {});
         },
       );
     }

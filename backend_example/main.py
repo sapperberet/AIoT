@@ -407,11 +407,57 @@ async def root():
         }
     }
 
+# Beacon Broadcasting for Network Discovery
+import socket
+import json
+import threading
+import time
+
+def get_local_ip():
+    """Get the local IP address of this machine"""
+    try:
+        # Create a socket to find the local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception:
+        return "127.0.0.1"
+
+def broadcast_beacon():
+    """Broadcast UDP beacon every 5 seconds for app discovery"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    
+    local_ip = get_local_ip()
+    beacon_data = json.dumps({
+        "name": "face-broker",
+        "ip": local_ip,
+        "port": 1883  # MQTT port
+    }).encode('utf-8')
+    
+    logger.info(f"🔔 Broadcasting beacon on UDP port 18830")
+    logger.info(f"📡 Beacon IP: {local_ip}")
+    
+    while True:
+        try:
+            sock.sendto(beacon_data, ('<broadcast>', 18830))
+            time.sleep(5)  # Broadcast every 5 seconds
+        except Exception as e:
+            logger.error(f"Beacon broadcast error: {e}")
+            time.sleep(5)
+
 # Run server
 if __name__ == "__main__":
     logger.info("Starting Smart Home AI Chat Agent...")
     logger.info("Server will be available at http://0.0.0.0:8000")
     logger.info("API Documentation at http://0.0.0.0:8000/docs")
+    
+    # Start beacon broadcasting in background thread
+    beacon_thread = threading.Thread(target=broadcast_beacon, daemon=True)
+    beacon_thread.start()
+    logger.info("✅ Beacon broadcasting started")
     
     uvicorn.run(
         app,

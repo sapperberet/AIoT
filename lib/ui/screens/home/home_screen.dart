@@ -5,6 +5,7 @@ import 'package:animate_do/animate_do.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/device_provider.dart';
+import '../../../core/providers/ai_chat_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/floating_chat_button.dart';
@@ -44,7 +45,35 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // User is authenticated, initialize devices
+    // 🔥 CRITICAL: Try beacon discovery BEFORE connecting MQTT
+    // This ensures we have the correct backend IP
+    if (authProvider.discoveredBeacon == null) {
+      debugPrint('🔍 Home: Attempting beacon discovery for MQTT...');
+      final beaconFound = await authProvider.discoverFaceAuthBeacon();
+      if (beaconFound && authProvider.discoveredBeacon != null) {
+        debugPrint(
+            '✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
+      } else {
+        debugPrint('⚠️ Home: Beacon not found, using settings IP');
+      }
+    }
+
+    // 🔥 CRITICAL: Sync beacon IP to ALL services BEFORE initializing devices
+    if (authProvider.discoveredBeacon != null) {
+      final beaconIp = authProvider.discoveredBeacon!.ip;
+      debugPrint('🌐 Home: Syncing beacon IP ($beaconIp) to all services');
+
+      // Update AI Chat and Voice services
+      try {
+        final chatProvider = context.read<AIChatProvider>();
+        chatProvider.updateBrokerEndpoint(beaconIp);
+        debugPrint('✅ Home: AI Chat and Voice services updated to $beaconIp');
+      } catch (e) {
+        debugPrint('⚠️ Home: Could not update chat provider: $e');
+      }
+    }
+
+    // User is authenticated, initialize devices (this connects MQTT)
     final deviceProvider = context.read<DeviceProvider>();
     await deviceProvider.initialize(authProvider.currentUser!.uid);
   }

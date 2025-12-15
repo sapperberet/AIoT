@@ -34,7 +34,10 @@ class BackendVoiceService {
 
   /// Update broker address (convenience method)
   void updateBrokerAddress(String address) {
+    // Update MqttConfig for other services to use
+    MqttConfig.localBrokerAddress = address;
     setBaseUrl('http://$address');
+    _logger.i('🔄 Backend voice service updated to use: $address');
   }
 
   /// Check if TTS service is available

@@ -7,6 +7,7 @@ import 'dart:async';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/home_visualization_provider.dart';
+import '../../../core/config/mqtt_config.dart';
 import '../../../core/theme/app_theme.dart';
 
 class CameraFeedScreen extends StatefulWidget {
@@ -41,28 +42,30 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
     final authProvider = context.read<AuthProvider>();
     _connectionAttempts = 0;
 
-    // Check if beacon is discovered
-    if (authProvider.discoveredBeacon == null) {
-      setState(() {
-        _errorMessage =
-            'Please connect to face recognition system first.\n\nGo back and tap "Login with Face Recognition" to discover the system.';
-        _isLoading = false;
-      });
-      return;
+    // Get stream URL - works with or without beacon discovery
+    // High-level users (Admin/Manager) can access camera without face auth
+    String? streamUrl = authProvider.getRtspStreamUrl();
+    String? beaconIp;
+
+    if (authProvider.discoveredBeacon != null) {
+      beaconIp = authProvider.discoveredBeacon!.ip;
+      debugPrint('🌐 Camera Feed: Using discovered beacon IP: $beaconIp');
+    } else {
+      // Fallback to configured MQTT broker address for high-level users
+      beaconIp = MqttConfig.localBrokerAddress;
+      debugPrint('🌐 Camera Feed: Using configured broker IP: $beaconIp');
+      // Build stream URL manually if no beacon
+      streamUrl ??= 'rtsp://$beaconIp:8554/cam';
     }
 
-    final streamUrl = authProvider.getRtspStreamUrl(); // Use RTSP
-
+    // Final fallback if still null
     if (streamUrl == null) {
-      setState(() {
-        _errorMessage =
-            'Camera stream not available. Please connect to face recognition system.';
-        _isLoading = false;
-      });
-      return;
+      streamUrl = 'rtsp://${MqttConfig.localBrokerAddress}:8554/cam';
+      debugPrint('🌐 Camera Feed: Using final fallback stream URL: $streamUrl');
     }
 
-    debugPrint('📹 Camera RTSP stream URL: $streamUrl');
+    debugPrint(
+        '📹 Camera RTSP stream URL: $streamUrl (from beacon IP: $beaconIp)');
     debugPrint('⏱️ Starting camera stream initialization...');
     _lastStreamStart = DateTime.now();
 

@@ -291,7 +291,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     onPressed: () async {
                       await authProvider.signOut();
                       if (mounted) {
-                        Navigator.of(context).pushReplacementNamed('/login');
+                        Navigator.of(context)
+                            .pushReplacementNamed('/modern-login');
                       }
                     },
                     child: Row(

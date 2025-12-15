@@ -7,8 +7,14 @@
 /// - Improved face detection with RTSP stream consumption
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
-  static const String localBrokerAddress =
-      '192.168.1.17'; // Your computer's IP address (FIXED: was 192.168.1.7)
+  // NOTE: This is a fallback default. The actual IP should be discovered via beacon.
+  static String _localBrokerAddress = '192.168.1.17'; // Fallback default
+
+  // Getter and setter for dynamic IP address from beacon discovery
+  static String get localBrokerAddress => _localBrokerAddress;
+  static set localBrokerAddress(String address) =>
+      _localBrokerAddress = address;
+
   static const int localBrokerPort = 1883;
   static const String localClientId = 'smart_home_app';
 

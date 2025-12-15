@@ -564,8 +564,11 @@ class UserApprovalService {
 
   /// List of designated admin emails (for backwards compatibility)
   /// These emails, if registered as users, become admins automatically
+  /// NOTE: Add emails here to auto-approve them as admins
   static const List<String> designatedAdminEmails = [
     // Add user emails here if you want them to become admins when they register
+    'ahmedamromran2003@gmail.com', // Primary admin
+    'tegaraenglish69@gmail.com', // Test user
   ];
 
   /// Check if the email is a designated admin

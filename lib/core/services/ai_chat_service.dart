@@ -666,10 +666,14 @@ class AIChatService {
 
   /// Update broker endpoint (for MQTT and n8n services)
   void updateBrokerEndpoint(String newAddress, {int? port}) {
+    // Update MqttConfig for other services to use
+    MqttConfig.localBrokerAddress = newAddress;
+
     _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/agent';
     _voiceChatUrl =
         'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/voice';
-    _logger.i('Broker endpoint updated: $newAddress');
+    _logger.i(
+        '🔄 Broker endpoint updated to: $newAddress (all services will use this IP)');
   }
 
   /// Get current broker address

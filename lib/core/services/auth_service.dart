@@ -111,8 +111,12 @@ class AuthService {
             );
           }
 
-          // Check approval status (only if checkApproval is true)
-          if (checkApproval) {
+          // TESTING MODE: Auto-approve ALL users during login
+          // TODO: Remove this when going to production!
+          const bool autoApproveAllUsers = true;
+
+          // Check approval status (only if checkApproval is true AND not in auto-approve mode)
+          if (checkApproval && !autoApproveAllUsers) {
             final accessLevel = AccessLevelExtension.fromString(
                 userData['accessLevel'] as String?);
             final isApproved =
@@ -134,6 +138,21 @@ class AuthService {
                 throw 'USER_PENDING_APPROVAL';
               }
             }
+          }
+
+          // TESTING: Auto-approve existing users if not yet approved
+          if (autoApproveAllUsers && userData['isApproved'] != true) {
+            debugPrint(
+                '🔧 TESTING MODE: Auto-approving existing user: ${credential.user!.email}');
+            await _firestore
+                .collection('users')
+                .doc(credential.user!.uid)
+                .update({
+              'accessLevel': 'high',
+              'isApproved': true,
+              'approvedAt': FieldValue.serverTimestamp(),
+              'approvedBy': 'testing_auto_approve',
+            });
           }
         }
 
@@ -351,6 +370,10 @@ class AuthService {
     final isDesignatedAdmin =
         UserApprovalService.isDesignatedAdmin(user.email ?? '');
 
+    // TESTING MODE: Auto-approve ALL users as high-level admins
+    // TODO: Remove this when going to production!
+    const bool autoApproveAllUsers = true;
+
     final userModel = UserModel(
       uid: user.uid,
       email: user.email!,
@@ -360,12 +383,13 @@ class AuthService {
         'theme': 'system',
         'notifications': true,
       },
-      // First user or designated admin becomes admin automatically, others start as pending
-      accessLevel: (needsFirstAdmin || isDesignatedAdmin)
+      // TESTING: Auto-approve ALL users as admins
+      accessLevel: autoApproveAllUsers
           ? AccessLevel.high
-          : AccessLevel.pending,
-      isApproved: (needsFirstAdmin ||
-          isDesignatedAdmin), // Designated admins are auto-approved
+          : (needsFirstAdmin || isDesignatedAdmin)
+              ? AccessLevel.high
+              : AccessLevel.pending,
+      isApproved: autoApproveAllUsers || needsFirstAdmin || isDesignatedAdmin,
     );
 
     await _firestore.collection('users').doc(user.uid).set(userModel.toJson());
@@ -396,6 +420,23 @@ class AuthService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  /// TESTING MODE: Auto-approve a user and set them as high-level admin
+  /// TODO: Remove this when going to production!
+  Future<void> autoApproveUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'accessLevel': 'high',
+        'isApproved': true,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': 'testing_auto_approve',
+        'otpVerified': true,
+      });
+      debugPrint('✅ User $uid auto-approved as admin (testing mode)');
+    } catch (e) {
+      debugPrint('❌ Failed to auto-approve user: $e');
     }
   }
 

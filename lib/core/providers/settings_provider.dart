@@ -153,8 +153,12 @@ class SettingsProvider with ChangeNotifier {
   }) {
     if (brokerAddress != null) {
       _mqttBrokerAddress = brokerAddress;
+      // Update global MqttConfig to propagate IP to all services
+      MqttConfig.localBrokerAddress = brokerAddress;
       // Also update AI server URL to use the new broker address
       _aiServerUrl = 'http://$brokerAddress:${MqttConfig.n8nPort}/api/agent';
+      debugPrint(
+          '🌐 Settings: Updated broker address to $brokerAddress (global: ${MqttConfig.localBrokerAddress})');
     }
     if (brokerPort != null) _mqttBrokerPort = brokerPort;
     if (username != null) _mqttUsername = username;
@@ -279,6 +283,13 @@ class SettingsProvider with ChangeNotifier {
     saveSettings(); // Auto-save
   }
 
+  // Update MQTT broker address from beacon discovery
+  void updateBrokerAddressFromBeacon(String ipAddress) {
+    _mqttBrokerAddress = ipAddress;
+    notifyListeners();
+    saveSettings(); // Auto-save
+  }
+
   // Load settings from storage
   Future<void> loadSettings() async {
     // First, try to load from Firestore if user is logged in
@@ -313,6 +324,11 @@ class SettingsProvider with ChangeNotifier {
           _mqttBrokerPort = userSettings['mqttBrokerPort'] as int? ?? 1883;
           _mqttUsername = userSettings['mqttUsername'] as String? ?? '';
           _mqttPassword = userSettings['mqttPassword'] as String? ?? '';
+
+          // Update global MqttConfig with loaded broker address
+          MqttConfig.localBrokerAddress = _mqttBrokerAddress;
+          debugPrint(
+              '🌐 Settings loaded: Updated global broker address to $_mqttBrokerAddress');
 
           // Authentication settings
           _enableEmailPasswordAuth =
@@ -438,6 +454,11 @@ class SettingsProvider with ChangeNotifier {
       _mqttBrokerPort = prefs.getInt('mqttBrokerPort') ?? 1883;
       _mqttUsername = prefs.getString('mqttUsername') ?? '';
       _mqttPassword = prefs.getString('mqttPassword') ?? '';
+
+      // Update global MqttConfig with loaded broker address
+      MqttConfig.localBrokerAddress = _mqttBrokerAddress;
+      debugPrint(
+          '🌐 Local settings loaded: Updated global broker address to $_mqttBrokerAddress');
 
       _enableEmailPasswordAuth =
           prefs.getBool('enableEmailPasswordAuth') ?? false;

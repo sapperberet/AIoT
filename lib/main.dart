@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -56,28 +57,76 @@ import 'firebase_options.dart';
 // ⚠️ DEBUG MODE - Set to true to bypass authentication and go directly to home
 const bool DEBUG_MODE = false;
 
+/// Check if a message should be filtered (animation spam, etc.)
+bool _shouldFilterMessage(String message) {
+  final lowerMsg = message.toLowerCase().trim();
+
+  // Filter animation spam from animate_do package
+  if (lowerMsg == 'animate: true' ||
+      lowerMsg == 'animate: false' ||
+      lowerMsg == 'animate' ||
+      lowerMsg == 'true' ||
+      lowerMsg == 'false' ||
+      lowerMsg.contains('animate:') && lowerMsg.length < 20) {
+    return true;
+  }
+
+  // Filter gralloc system messages (Android GPU memory allocator)
+  if (lowerMsg.contains('gralloc') ||
+      lowerMsg.contains('@set_metadata') ||
+      lowerMsg.contains('dataspace')) {
+    return true;
+  }
+
+  // Filter ViewRootImplStubImpl animation updates (keyboard animations)
+  if (lowerMsg.contains('onanimationupdate') ||
+      lowerMsg.contains('onanimationstart') ||
+      lowerMsg.contains('onanimationend') ||
+      lowerMsg.contains('viewrootimpl')) {
+    return true;
+  }
+
+  // Filter InsetsController messages
+  if (lowerMsg.contains('insetscontroller') ||
+      lowerMsg.contains('cancelanimation')) {
+    return true;
+  }
+
+  // Filter MIUI Input messages
+  if (lowerMsg.contains('motionevent') ||
+      lowerMsg.contains('keyevent') ||
+      lowerMsg.contains('miuiinput')) {
+    return true;
+  }
+
+  // Filter IME (Input Method Editor) tracker messages
+  if (lowerMsg.contains('imetracker') ||
+      lowerMsg.contains('inputmethodmanager') ||
+      lowerMsg.contains('inputconnectionadaptor') ||
+      lowerMsg.contains('handwritingstub')) {
+    return true;
+  }
+
+  // Filter frame/render messages
+  if (lowerMsg.contains('frameevents') ||
+      lowerMsg.contains('renderinspector') ||
+      lowerMsg.contains('queuebuffer')) {
+    return true;
+  }
+
+  // Filter empty messages
+  if (lowerMsg.isEmpty) return true;
+
+  return false;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Filter out spam debug messages from animation packages and system logs
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message == null || message.isEmpty) return;
-    // Suppress animation spam and gralloc messages
-    final lowerMsg = message.toLowerCase();
-    // Filter animation spam
-    if (lowerMsg.contains('animate:') ||
-        lowerMsg.contains('animate =') ||
-        lowerMsg == 'animate' ||
-        lowerMsg == 'animate: true' ||
-        lowerMsg == 'true' ||
-        lowerMsg == 'false') return;
-    // Filter gralloc system messages (Android GPU memory allocator)
-    if (lowerMsg.contains('gralloc') ||
-        lowerMsg.contains('i/gralloc') ||
-        lowerMsg.contains('@set_metadata') ||
-        lowerMsg.contains('dataspace')) return;
-    // Filter empty or whitespace-only messages
-    if (message.trim().isEmpty) return;
+    if (_shouldFilterMessage(message)) return;
     // Print other messages normally using default implementation
     // ignore: avoid_print
     print(message);
@@ -102,7 +151,17 @@ void main() async {
     debugPrint('🔴 DEBUG MODE ENABLED - Authentication bypassed!');
   }
 
-  runApp(const SmartHomeApp());
+  // Run app in a custom zone that filters spam print messages
+  runZoned(
+    () => runApp(const SmartHomeApp()),
+    zoneSpecification: ZoneSpecification(
+      print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+        if (!_shouldFilterMessage(line)) {
+          parent.print(zone, line);
+        }
+      },
+    ),
+  );
 }
 
 class SmartHomeApp extends StatelessWidget {

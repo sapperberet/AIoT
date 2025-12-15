@@ -240,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: _buildSection(
         'Authentication',
         [
-          // Info text about 2FA
+          // Info text about 2FA vs New User Approval
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -265,6 +265,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       color: textColor.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Clarification about New User Approval
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: Colors.orange.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.info_circle,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Note: New User Approval (first-time registration OTP) is DIFFERENT from 2FA. New users must be approved by an admin or enter the OTP sent during registration.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textColor.withOpacity(0.7),
                     ),
                   ),
                 ),
@@ -323,6 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               loc.translate('enable_biometric_login'),
               settingsProvider.enableBiometricLogin,
               (value) async {
+                final authProvider = context.read<AuthProvider>();
                 if (value) {
                   // Verify biometric before enabling
                   final authenticated = await _biometricService.authenticate(
@@ -330,18 +363,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         loc.translate('biometric_verify_to_enable'),
                   );
                   if (authenticated) {
-                    settingsProvider.toggleBiometricLogin(true);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text(loc.translate('biometric_enabled_success')),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                    // Enable biometric in auth provider (stores credentials)
+                    final success = await authProvider.enableBiometric();
+                    if (success) {
+                      settingsProvider.toggleBiometricLogin(true);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                loc.translate('biometric_enabled_success')),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(authProvider.errorMessage ??
+                                'Failed to enable biometric'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
                     }
                   }
                 } else {
+                  // Disable biometric in auth provider (clears credentials)
+                  await authProvider.disableBiometric();
                   settingsProvider.toggleBiometricLogin(false);
                 }
               },
@@ -754,12 +803,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildConnectionModeSection(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final settingsProvider = context.watch<SettingsProvider>();
+    final theme = Theme.of(context);
 
     return FadeInUp(
       delay: const Duration(milliseconds: 200),
       child: _buildSection(
         loc.t('connection_mode'),
         [
+          // Info about server IP
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: AppTheme.smallRadius,
+              border: Border.all(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.global,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Backend Server IP: ${settingsProvider.mqttBrokerAddress}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This IP is used for MQTT, Camera, AI Chat, and Voice services. Change it below if your backend is on a different network.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           _buildSegmentedControl(
             settingsProvider.connectionMode,
             (mode) => settingsProvider.setConnectionMode(mode),

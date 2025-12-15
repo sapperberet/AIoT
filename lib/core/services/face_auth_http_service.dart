@@ -520,11 +520,13 @@ class FaceAuthHttpService {
   /// Get direct RTSP stream URL (Version 2)
   /// This is the MediaMTX RTSP stream endpoint
   /// Returns URL optimized for low-latency streaming
-  /// IMPORTANT: Always use MqttConfig.localBrokerAddress because MediaMTX runs on the MQTT broker
+  /// Uses discovered beacon IP dynamically (updated via beacon discovery)
   String getRtspStreamUrl() {
-    // ⚠️ CRITICAL: Always use the MQTT broker address (where MediaMTX is running)
-    // Do NOT use _discoveredBeacon?.ip as it may point to wrong device
-    final ip = MqttConfig.localBrokerAddress;
+    // Use the discovered beacon IP (dynamically updated from beacon discovery)
+    // MqttConfig.localBrokerAddress is updated when beacon is discovered
+    final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
+    _logger.d(
+        '📹 RTSP URL using IP: $ip (beacon: ${_discoveredBeacon?.ip}, fallback: ${MqttConfig.localBrokerAddress})');
     // RTSP stream with port 8554 (direct, lowest latency)
     return 'rtsp://$ip:8554/cam';
   }
@@ -532,22 +534,26 @@ class FaceAuthHttpService {
   /// Get HLS stream URL (Version 2)
   /// For web-based playback
   /// HLS has higher latency than RTSP but better compatibility
-  /// IMPORTANT: Always use MqttConfig.localBrokerAddress because MediaMTX runs on the MQTT broker
+  /// Uses discovered beacon IP dynamically (updated via beacon discovery)
   String getHlsStreamUrl() {
-    // ⚠️ CRITICAL: Always use the MQTT broker address (where MediaMTX is running)
-    // Do NOT use _discoveredBeacon?.ip as it may point to wrong device
-    final ip = MqttConfig.localBrokerAddress;
+    // Use the discovered beacon IP (dynamically updated from beacon discovery)
+    // MqttConfig.localBrokerAddress is updated when beacon is discovered
+    final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
+    _logger.d(
+        '📹 HLS URL using IP: $ip (beacon: ${_discoveredBeacon?.ip}, fallback: ${MqttConfig.localBrokerAddress})');
     // HLS stream with lower latency settings
     return 'http://$ip:8888/cam/index.m3u8';
   }
 
   /// Get WebRTC stream URL for ultra-low latency
   /// Best option for real-time applications
-  /// IMPORTANT: Always use MqttConfig.localBrokerAddress because MediaMTX runs on the MQTT broker
+  /// Uses discovered beacon IP dynamically (updated via beacon discovery)
   String getWebRtcStreamUrl() {
-    // ⚠️ CRITICAL: Always use the MQTT broker address (where MediaMTX is running)
-    // Do NOT use _discoveredBeacon?.ip as it may point to wrong device
-    final ip = MqttConfig.localBrokerAddress;
+    // Use the discovered beacon IP (dynamically updated from beacon discovery)
+    // MqttConfig.localBrokerAddress is updated when beacon is discovered
+    final ip = _discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress;
+    _logger.d(
+        '📹 WebRTC URL using IP: $ip (beacon: ${_discoveredBeacon?.ip}, fallback: ${MqttConfig.localBrokerAddress})');
     return 'http://$ip:8889/cam';
   }
 

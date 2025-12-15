@@ -130,7 +130,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
   Future<void> _signOut() async {
     await context.read<AuthProvider>().signOut();
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.of(context).pushReplacementNamed('/modern-login');
     }
   }
 
