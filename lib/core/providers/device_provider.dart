@@ -453,8 +453,9 @@ class DeviceProvider with ChangeNotifier {
   Future<void> connectToMqtt() async {
     try {
       debugPrint('🔗 DeviceProvider: Connecting to MQTT broker...');
-      debugPrint('📍 Broker: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}');
-      
+      debugPrint(
+          '📍 Broker: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}');
+
       final success = await _mqttService.connect(
         brokerAddress: MqttConfig.localBrokerAddress,
         port: MqttConfig.localBrokerPort,
@@ -476,7 +477,7 @@ class DeviceProvider with ChangeNotifier {
   /// Subscribe to all relevant MQTT topics
   void _subscribeToTopics() {
     debugPrint('📬 DeviceProvider: Subscribing to MQTT topics...');
-    
+
     // Subscribe to all alarm topics
     _mqttService.subscribe(MqttConfig.fireAlarmTopic);
     _mqttService.subscribe(MqttConfig.motionAlarmTopic);
@@ -511,7 +512,7 @@ class DeviceProvider with ChangeNotifier {
     // Subscribe to n8n agent response topics
     _mqttService.subscribe(MqttConfig.agentResponseTopic);
     _mqttService.subscribe(MqttConfig.agentStatusTopic);
-    
+
     // Subscribe to n8n door status
     _mqttService.subscribe(MqttConfig.n8nDoorStatusTopic);
 
@@ -519,8 +520,9 @@ class DeviceProvider with ChangeNotifier {
     for (var device in _devices) {
       _mqttService.subscribe(MqttConfig.deviceStatusTopic(device.id));
     }
-    
-    debugPrint('✅ DeviceProvider: Subscribed to ${_mqttService.getConnectionInfo()['subscribedTopics']?.length ?? 0} topics');
+
+    debugPrint(
+        '✅ DeviceProvider: Subscribed to ${_mqttService.getConnectionInfo()['subscribedTopics']?.length ?? 0} topics');
   }
 
   void _handleMqttMessage(AppMqttMessage message) {
@@ -1110,8 +1112,10 @@ class DeviceProvider with ChangeNotifier {
     if (_isConnectedToMqtt && !_useCloudMode) {
       _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
       // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/garage/command', command);
-      debugPrint('🚗 MQTT: Garage command sent - ${newState ? "OPEN" : "CLOSE"}');
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/garage/command', command);
+      debugPrint(
+          '🚗 MQTT: Garage command sent - ${newState ? "OPEN" : "CLOSE"}');
     }
 
     // Optimistic update
@@ -1176,8 +1180,10 @@ class DeviceProvider with ChangeNotifier {
       final topic = MqttConfig.windowCommandTopic.replaceFirst('+', windowId);
       _mqttService.publishJson(topic, command);
       // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/window/command', command);
-      debugPrint('🪟 MQTT: Window command sent - $windowId ${newState ? "OPEN" : "CLOSE"}');
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/window/command', command);
+      debugPrint(
+          '🪟 MQTT: Window command sent - $windowId ${newState ? "OPEN" : "CLOSE"}');
     }
 
     // Optimistic update
@@ -1257,7 +1263,8 @@ class DeviceProvider with ChangeNotifier {
     if (_isConnectedToMqtt && !_useCloudMode) {
       _mqttService.publishJson(MqttConfig.buzzerCommandTopic, command);
       // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/buzzer/command', command);
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/buzzer/command', command);
       debugPrint('🔔 MQTT: Buzzer command sent - ${newState ? "ON" : "OFF"}');
     }
 
@@ -1323,8 +1330,10 @@ class DeviceProvider with ChangeNotifier {
       final topic = MqttConfig.roomLightCommandTopic(lightId);
       _mqttService.publishJson(topic, command);
       // Also publish to generic n8n light topic
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/light/command', command);
-      debugPrint('💡 MQTT: Light command sent - $lightId ${newState ? "ON" : "OFF"}');
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/light/command', command);
+      debugPrint(
+          '💡 MQTT: Light command sent - $lightId ${newState ? "ON" : "OFF"}');
     }
 
     // Optimistic update
@@ -1503,8 +1512,10 @@ class DeviceProvider with ChangeNotifier {
       final topic = MqttConfig.roomFanCommandTopic(fanId);
       _mqttService.publishJson(topic, command);
       // Also publish to generic n8n fan topic
-      _mqttService.publishJson('${MqttConfig.topicPrefix}/fan/command', command);
-      debugPrint('🌀 MQTT: Fan command sent - $fanId speed ${speedLabels[clampedSpeed]}');
+      _mqttService.publishJson(
+          '${MqttConfig.topicPrefix}/fan/command', command);
+      debugPrint(
+          '🌀 MQTT: Fan command sent - $fanId speed ${speedLabels[clampedSpeed]}');
     }
 
     // Optimistic update

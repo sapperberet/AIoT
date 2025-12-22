@@ -138,7 +138,8 @@ class MqttService {
         return false;
       }
 
-      debugPrint('✅ MQTT: Connected successfully to $targetAddress:$targetPort');
+      debugPrint(
+          '✅ MQTT: Connected successfully to $targetAddress:$targetPort');
       _updateStatus(ConnectionStatus.connected);
       _wasConnected = true;
       _reconnectAttempts = 0;
@@ -219,7 +220,8 @@ class MqttService {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_currentStatus == ConnectionStatus.connected && _client != null) {
         // The MQTT client handles ping internally, but we can log connection status
-        debugPrint('💓 MQTT: Connection alive - ${_client!.connectionStatus?.state}');
+        debugPrint(
+            '💓 MQTT: Connection alive - ${_client!.connectionStatus?.state}');
       }
     });
   }
@@ -236,7 +238,8 @@ class MqttService {
     _reconnectTimer?.cancel();
     _messageSubscription?.cancel();
 
-    if (_client != null && _client!.connectionStatus?.state == MqttConnectionState.connected) {
+    if (_client != null &&
+        _client!.connectionStatus?.state == MqttConnectionState.connected) {
       try {
         publish('home/app/status', 'offline', retain: true);
         _client!.disconnect();
@@ -253,7 +256,8 @@ class MqttService {
     _subscribedTopics.add(topic);
 
     if (_currentStatus != ConnectionStatus.connected) {
-      debugPrint('⚠️ MQTT: Not connected, topic $topic queued for subscription');
+      debugPrint(
+          '⚠️ MQTT: Not connected, topic $topic queued for subscription');
       return;
     }
 
@@ -291,7 +295,8 @@ class MqttService {
   }
 
   /// Publish a message with optional retain flag
-  void publish(String topic, String message, {MqttQos? qos, bool retain = false}) {
+  void publish(String topic, String message,
+      {MqttQos? qos, bool retain = false}) {
     if (_currentStatus != ConnectionStatus.connected || _client == null) {
       debugPrint('⚠️ MQTT: Cannot publish - not connected (topic: $topic)');
       return;
@@ -300,13 +305,14 @@ class MqttService {
     try {
       final builder = MqttClientPayloadBuilder();
       builder.addString(message);
-      
+
       final effectiveQos = qos ??
           (MqttConfig.useHighPerformanceMode
               ? MqttQos.atMostOnce
               : MqttQos.atLeastOnce);
-      
-      _client!.publishMessage(topic, effectiveQos, builder.payload!, retain: retain);
+
+      _client!.publishMessage(topic, effectiveQos, builder.payload!,
+          retain: retain);
       debugPrint('📤 MQTT: Published to $topic: $message');
     } catch (e) {
       debugPrint('❌ MQTT: Failed to publish to $topic - $e');
@@ -314,7 +320,8 @@ class MqttService {
   }
 
   // Publish JSON data
-  void publishJson(String topic, Map<String, dynamic> data, {MqttQos? qos, bool retain = false}) {
+  void publishJson(String topic, Map<String, dynamic> data,
+      {MqttQos? qos, bool retain = false}) {
     publish(topic, jsonEncode(data), qos: qos, retain: retain);
   }
 
@@ -328,7 +335,7 @@ class MqttService {
 
   void _onDisconnected() {
     debugPrint('🔌 MQTT: onDisconnected callback triggered');
-    
+
     // Only update to disconnected if we're not auto-reconnecting
     if (!_isReconnecting) {
       _updateStatus(ConnectionStatus.disconnected);
@@ -359,7 +366,7 @@ class MqttService {
     _isReconnecting = false;
     _updateStatus(ConnectionStatus.connected);
     _reconnectAttempts = 0;
-    
+
     // Re-setup message listener after auto-reconnect
     _setupMessageListener();
   }
@@ -372,7 +379,8 @@ class MqttService {
     }
 
     if (_reconnectAttempts >= _maxReconnectAttempts) {
-      debugPrint('❌ MQTT: Max reconnection attempts ($_maxReconnectAttempts) reached');
+      debugPrint(
+          '❌ MQTT: Max reconnection attempts ($_maxReconnectAttempts) reached');
       _reconnectAttempts = 0;
       _updateStatus(ConnectionStatus.error);
       return;
@@ -385,8 +393,7 @@ class MqttService {
     final delay = Duration(
       milliseconds: (_initialReconnectDelay.inMilliseconds *
               (1 << _reconnectAttempts.clamp(0, 5)))
-          .clamp(
-              _initialReconnectDelay.inMilliseconds,
+          .clamp(_initialReconnectDelay.inMilliseconds,
               _maxReconnectDelay.inMilliseconds),
     );
 
@@ -395,14 +402,15 @@ class MqttService {
 
     _reconnectTimer = Timer(delay, () async {
       _reconnectAttempts++;
-      debugPrint('🔄 MQTT: Attempting reconnect ${_reconnectAttempts}/$_maxReconnectAttempts...');
-      
+      debugPrint(
+          '🔄 MQTT: Attempting reconnect ${_reconnectAttempts}/$_maxReconnectAttempts...');
+
       _isReconnecting = false; // Reset before attempting
       final success = await connect(
         brokerAddress: _currentBrokerAddress,
         port: _currentBrokerPort,
       );
-      
+
       if (!success && _reconnectAttempts < _maxReconnectAttempts) {
         _scheduleReconnect();
       }

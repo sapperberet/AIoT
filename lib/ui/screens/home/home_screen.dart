@@ -76,12 +76,13 @@ class _HomeScreenState extends State<HomeScreen> {
     // User is authenticated, initialize devices (this connects MQTT)
     final deviceProvider = context.read<DeviceProvider>();
     await deviceProvider.initialize(authProvider.currentUser!.uid);
-    
+
     // 🔥 VERIFY MQTT CONNECTION STATUS
     if (deviceProvider.isConnectedToMqtt) {
       debugPrint('✅ Home: MQTT is connected and ready');
     } else {
-      debugPrint('⚠️ Home: MQTT not connected, attempting explicit connection...');
+      debugPrint(
+          '⚠️ Home: MQTT not connected, attempting explicit connection...');
       await deviceProvider.connectToMqtt();
     }
   }
