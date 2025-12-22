@@ -343,7 +343,7 @@ class FaceAuthService {
   }
 
   /// Handle incoming MQTT messages
-  void _handleMqttMessage(MqttMessage message) {
+  void _handleMqttMessage(AppMqttMessage message) {
     try {
       // Handle face auth response
       if (message.topic == MqttConfig.faceAuthResponseTopic) {

@@ -152,16 +152,29 @@ class AIChatActionsService {
 
   /// Control door (main_door, garage_door)
   Future<Map<String, dynamic>> _controlDoor(String doorId, bool open) async {
-    final topic = '${MqttConfig.topicPrefix}/${doorId}/command';
+    // Use both legacy and n8n-expected topics for compatibility
+    final legacyTopic = '${MqttConfig.topicPrefix}/${doorId}/command';
+    final n8nTopic = MqttConfig.n8nDoorCommandTopic;
     final command = open ? 'OPEN' : 'CLOSE';
+    final jsonCommand = {
+      'action': open ? 'open' : 'close',
+      'state': open ? 'open' : 'closed',
+      'deviceId': doorId,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
 
-    _mqttService.publish(topic, command);
+    // Publish to legacy topic
+    _mqttService.publish(legacyTopic, command);
+    // Publish JSON to n8n topic for workflow integration
+    _mqttService.publishJson(n8nTopic, jsonCommand);
+
+    _logger.i('🚪 Door command sent via MQTT: $doorId -> $command');
 
     return {
       'success': true,
       'device': doorId,
       'action': open ? 'opened' : 'closed',
-      'topic': topic,
+      'topic': n8nTopic,
     };
   }
 

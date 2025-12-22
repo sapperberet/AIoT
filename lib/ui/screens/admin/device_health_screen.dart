@@ -71,7 +71,7 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
   ConnectionStatus _brokerStatus = ConnectionStatus.disconnected;
   String? _brokerError;
   StreamSubscription<ConnectionStatus>? _statusSubscription;
-  StreamSubscription<MqttMessage>? _messageSubscription;
+  StreamSubscription<AppMqttMessage>? _messageSubscription;
   Timer? _checkTimer;
 
   // Define device types to check
@@ -252,7 +252,7 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
     });
   }
 
-  void _handleDeviceMessage(MqttMessage message) {
+  void _handleDeviceMessage(AppMqttMessage message) {
     final index = _devices.indexWhere((d) => d.topic == message.topic);
     if (index != -1 && mounted) {
       setState(() {

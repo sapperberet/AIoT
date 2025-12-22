@@ -18,6 +18,8 @@ dist/
 .vscode/
 *.iml
 
+*.txt
+
 # Markdown files (except README.md)
 *.md
 !README.md

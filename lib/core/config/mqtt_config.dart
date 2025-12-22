@@ -12,8 +12,11 @@ class MqttConfig {
 
   // Getter and setter for dynamic IP address from beacon discovery
   static String get localBrokerAddress => _localBrokerAddress;
-  static set localBrokerAddress(String address) =>
-      _localBrokerAddress = address;
+  static set localBrokerAddress(String address) {
+    _localBrokerAddress = address;
+    // Log the IP change for debugging
+    print('🌐 MqttConfig: Broker address updated to $address');
+  }
 
   static const int localBrokerPort = 1883;
   static const String localClientId = 'smart_home_app';
@@ -24,7 +27,7 @@ class MqttConfig {
   static const int cloudBrokerPort = 8883; // SSL/TLS port
   static const bool useCloudBroker = false;
 
-  // Authentication (if required)
+  // Authentication (if required) - Mosquitto is configured with allow_anonymous true
   static const String username = ''; // Leave empty if no auth required
   static const String password = '';
 
@@ -148,6 +151,37 @@ class MqttConfig {
 
   // Performance: QoS and stream settings
   static const bool useHighPerformanceMode =
-      true; // Use QoS 0 (AtMostOnce) for real-time updates
+      false; // Use QoS 1 (AtLeastOnce) for reliable delivery
   static const int streamDebounceMs = 100; // Debounce stream updates
+
+  // ============================================================
+  // n8n Workflow Integration Topics
+  // These topics are used by n8n to trigger workflows and receive events
+  // ============================================================
+
+  // n8n Agent Topics (for AI chat via MQTT instead of HTTP)
+  static const String agentRequestTopic = '$topicPrefix/agent/request';
+  static const String agentResponseTopic = '$topicPrefix/agent/response';
+  static const String agentStatusTopic = '$topicPrefix/agent/status';
+
+  // n8n Door Control Topics (matches n8n workflow expectations)
+  static const String n8nDoorCommandTopic = '$topicPrefix/door/command';
+  static const String n8nDoorStatusTopic = '$topicPrefix/door/status';
+
+  // App Status Topics (for n8n to know when app is connected)
+  static const String appStatusTopic = '$topicPrefix/app/status';
+  static const String appHeartbeatTopic = '$topicPrefix/app/heartbeat';
+
+  // Wildcard topic for all home events (for n8n to listen to everything)
+  static const String allHomeEventsTopic = '$topicPrefix/#';
+
+  // Helper: Build n8n webhook URL
+  static String get n8nAgentUrl =>
+      'http://$localBrokerAddress:$n8nPort/api/agent';
+  static String get n8nVoiceUrl =>
+      'http://$localBrokerAddress:$n8nPort/api/voice';
+  static String get n8nDoorUrl =>
+      'http://$localBrokerAddress:$n8nPort/api/door';
+  static String get n8nCameraFeedUrl =>
+      'http://$localBrokerAddress:$n8nPort/api/camera-feed';
 }

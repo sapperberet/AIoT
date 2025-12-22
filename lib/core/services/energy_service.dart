@@ -95,7 +95,7 @@ class EnergyService with ChangeNotifier {
   // Current readings
   EnergyReading? _currentReading;
   final List<EnergyReading> _readingHistory = [];
-  StreamSubscription<MqttMessage>? _messageSubscription;
+  StreamSubscription<AppMqttMessage>? _messageSubscription;
 
   // Connection status
   bool _isConnected = false;
@@ -141,7 +141,7 @@ class EnergyService with ChangeNotifier {
     _mqttService.subscribe(_energyTopic);
   }
 
-  void _handleMessage(MqttMessage message) {
+  void _handleMessage(AppMqttMessage message) {
     try {
       if (message.topic == _voltageTopic ||
           message.topic == _currentTopic ||
