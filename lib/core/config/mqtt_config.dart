@@ -1,10 +1,24 @@
 /// MQTT Configuration for local and cloud brokers
 ///
-/// Version 2 Integration (grad_project_backend-main(Version 2)):
-/// - MediaMTX streaming server (RTSP/RTMP/HLS/WebRTC)
-/// - n8n automation workflows
-/// - Separate camera publisher service
-/// - Improved face detection with RTSP stream consumption
+/// ESP32 Actuator Topics (ESP receives these):
+/// - Fan: home/actuators/fan -> in/out/on/off
+/// - Lights Floor1: home/actuators/lights/floor1 -> on/off
+/// - Lights Floor2: home/actuators/lights/floor2 -> on/off
+/// - Lights Landscape: home/actuators/lights/landscape -> on/off
+/// - Lights RGB: home/actuators/lights/rgb -> b <brightness> / c <color>
+/// - Buzzer: home/actuators/buzzer -> on/off
+/// - Garage Motor: home/actuators/motors/garage -> open/close
+/// - Front Window: home/actuators/motors/frontwindow -> open/close
+/// - Side Window: home/actuators/motors/sidewindow -> open/close
+/// - Door Motor: home/actuators/motors/door -> open/close
+///
+/// ESP32 Sensor Topics (ESP sends these):
+/// - Gas: home/sensors/gas
+/// - LDR: home/sensors/ldr
+/// - Rain: home/sensors/rain
+/// - Voltage: home/sensors/voltage
+/// - Current: home/sensors/current
+/// - Humidity: home/sensors/humidity
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
   // NOTE: This is a fallback default. The actual IP should be discovered via beacon.
@@ -34,84 +48,113 @@ class MqttConfig {
   // Topic structure
   static const String topicPrefix = 'home';
 
-  // Device topics
-  static String deviceStatusTopic(String deviceId) =>
-      '$topicPrefix/$deviceId/status';
-  static String deviceCommandTopic(String deviceId) =>
-      '$topicPrefix/$deviceId/command';
+  // ============================================================
+  // ESP32 ACTUATOR TOPICS (ESP subscribes to these)
+  // Messages are simple strings, NOT JSON
+  // ============================================================
 
-  // Room-specific topics
-  static String roomLightStatusTopic(String room) =>
-      '$topicPrefix/$room/light/status';
-  static String roomLightCommandTopic(String room) =>
-      '$topicPrefix/$room/light/set';
+  // Fan: in / out / on / off
+  static const String fanCommandTopic = '$topicPrefix/actuators/fan';
 
-  // Alarm topics
+  // Lights: on / off
+  static const String lightFloor1Topic = '$topicPrefix/actuators/lights/floor1';
+  static const String lightFloor2Topic = '$topicPrefix/actuators/lights/floor2';
+  static const String lightLandscapeTopic =
+      '$topicPrefix/actuators/lights/landscape';
+
+  // RGB Light: b <brightness> / c <color_string>
+  static const String lightRgbTopic = '$topicPrefix/actuators/lights/rgb';
+
+  // Buzzer: on / off
+  static const String buzzerCommandTopic = '$topicPrefix/actuators/buzzer';
+
+  // Motors: open / close
+  static const String garageMotorTopic = '$topicPrefix/actuators/motors/garage';
+  static const String frontWindowMotorTopic =
+      '$topicPrefix/actuators/motors/frontwindow';
+  static const String sideWindowMotorTopic =
+      '$topicPrefix/actuators/motors/sidewindow';
+  static const String doorMotorTopic = '$topicPrefix/actuators/motors/door';
+  // Gate is same as door
+  static const String gateMotorTopic = doorMotorTopic;
+
+  // ============================================================
+  // ESP32 SENSOR TOPICS (ESP publishes to these)
+  // ============================================================
+
+  static const String gasSensorTopic = '$topicPrefix/sensors/gas';
+  static const String ldrSensorTopic = '$topicPrefix/sensors/ldr';
+  static const String rainSensorTopic = '$topicPrefix/sensors/rain';
+  static const String voltageSensorTopic = '$topicPrefix/sensors/voltage';
+  static const String currentSensorTopic = '$topicPrefix/sensors/current';
+  static const String humiditySensorTopic = '$topicPrefix/sensors/humidity';
+
+  // ============================================================
+  // LEGACY ALIASES (for backward compatibility with app code)
+  // ============================================================
+
+  // Door/Gate aliases
+  static const String doorCommandTopic = doorMotorTopic;
+  static const String mainDoorCommandTopic = doorMotorTopic;
+
+  // Garage aliases
+  static const String garageCommandTopic = garageMotorTopic;
+  static const String garageDoorCommandTopic = garageMotorTopic;
+
+  // Window aliases
+  static String windowCommandTopic(String windowId) {
+    if (windowId == 'front' || windowId == 'front_window') {
+      return frontWindowMotorTopic;
+    } else if (windowId == 'side' || windowId == 'side_window') {
+      return sideWindowMotorTopic;
+    }
+    return '$topicPrefix/actuators/motors/$windowId';
+  }
+
+  // Light topic helper
+  static String lightCommandTopic(String lightId) {
+    switch (lightId) {
+      case 'floor_1':
+      case 'floor1':
+        return lightFloor1Topic;
+      case 'floor_2':
+      case 'floor2':
+        return lightFloor2Topic;
+      case 'landscape':
+        return lightLandscapeTopic;
+      case 'rgb':
+        return lightRgbTopic;
+      default:
+        return '$topicPrefix/actuators/lights/$lightId';
+    }
+  }
+
+  // Alarm topics (for app-side notifications)
   static String alarmTopic(String location) => '$topicPrefix/$location/alarm';
   static const String fireAlarmTopic = 'home/+/fire_alarm';
   static const String motionAlarmTopic = 'home/+/motion';
   static const String doorAlarmTopic = 'home/+/door';
 
-  // Door Topics (main_door, garage_door)
-  static const String mainDoorStatusTopic = '$topicPrefix/main_door/status';
-  static const String mainDoorCommandTopic = '$topicPrefix/main_door/command';
-  static const String garageDoorStatusTopic = '$topicPrefix/garage_door/status';
-  static const String garageDoorCommandTopic =
-      '$topicPrefix/garage_door/command';
+  // All sensors wildcard
+  static const String allSensorsTopic = '$topicPrefix/sensors/#';
 
-  // Window Topics (front_window, side_window)
-  static const String windowStatusTopic = '$topicPrefix/+/window/status';
-  static const String windowCommandTopic = '$topicPrefix/+/window/command';
-  static String windowStatus(String windowId) =>
-      '$topicPrefix/$windowId/status';
-  static String windowCommand(String windowId) =>
-      '$topicPrefix/$windowId/command';
+  // ============================================================
+  // STATUS TOPICS (for receiving device state updates)
+  // ============================================================
 
-  // Buzzer Topic
-  static const String buzzerStatusTopic = '$topicPrefix/buzzer/status';
-  static const String buzzerCommandTopic = '$topicPrefix/buzzer/command';
+  // Device status topics
+  static const String doorStatusTopic = '$topicPrefix/actuators/motors/door/status';
+  static const String windowStatusTopic = '$topicPrefix/actuators/motors/+/status';
+  static const String garageStatusTopic = '$topicPrefix/actuators/motors/garage/status';
+  static const String buzzerStatusTopic = '$topicPrefix/actuators/buzzer/status';
+  static const String allLightsStatusTopic = '$topicPrefix/actuators/lights/+/status';
+  static const String deviceSyncTopic = '$topicPrefix/device/sync';
 
-  // Legacy aliases for compatibility
-  static const String doorStatusTopic = mainDoorStatusTopic;
-  static const String doorCommandTopic = mainDoorCommandTopic;
-  static const String garageStatusTopic = garageDoorStatusTopic;
-  static const String garageCommandTopic = garageDoorCommandTopic;
-
-  // Fan Topics (room-based with speed control: 0=off, 1=low, 2=medium, 3=high)
-  static const String fanStatusTopic = '$topicPrefix/+/fan/status';
-  static const String fanCommandTopic = '$topicPrefix/+/fan/command';
-  static String roomFanStatusTopic(String room) =>
-      '$topicPrefix/$room/fan/status';
-  static String roomFanCommandTopic(String room) =>
-      '$topicPrefix/$room/fan/command';
-
-  // Light topics (room-based)
-  static const String allLightsStatusTopic = '$topicPrefix/+/light/status';
-  static const String allLightsCommandTopic = '$topicPrefix/+/light/command';
-
-  // Device sync topics (for 3D visualization sync)
-  static const String deviceSyncTopic = '$topicPrefix/sync/devices';
-  static const String visualizationSyncTopic =
-      '$topicPrefix/sync/visualization';
-
-  // Face Recognition Authentication Topics
-  static const String faceAuthRequestTopic = '$topicPrefix/auth/face/request';
-  static const String faceAuthResponseTopic = '$topicPrefix/auth/face/response';
-  static const String faceAuthStatusTopic = '$topicPrefix/auth/face/status';
-  static const String faceAuthBeaconTopic = '$topicPrefix/auth/beacon';
-
-  // Version 2: n8n workflow triggers
-  static const String faceDetectTriggerTopic = 'face/trigger/cmd';
-  static const String faceRecognizedTopic = '$topicPrefix/app/face-recognized';
-  static const String faceUnrecognizedTopic =
-      '$topicPrefix/app/face-unrecognized';
-
-  // Sensor Topics (ESP32/IoT device data)
-  static const String sensorDataTopic = '$topicPrefix/sensors/+/data';
+  // Sensor topics (for subscribing)
   static const String temperatureTopic = '$topicPrefix/sensors/temperature';
-  static const String humidityTopic = '$topicPrefix/sensors/humidity';
-  static const String gasTopic = '$topicPrefix/sensors/gas';
-  static const String ldrTopic = '$topicPrefix/sensors/ldr';
+  static const String humidityTopic = humiditySensorTopic;
+  static const String gasTopic = gasSensorTopic;
+  static const String ldrTopic = ldrSensorTopic;
   static const String energyTopic = '$topicPrefix/sensors/energy';
   static const String motionSensorTopic = '$topicPrefix/sensors/motion';
   static const String smokeTopic = '$topicPrefix/sensors/smoke';
@@ -120,8 +163,30 @@ class MqttConfig {
   static const String pressureTopic = '$topicPrefix/sensors/pressure';
   static const String airQualityTopic = '$topicPrefix/sensors/air_quality';
 
-  // Generic sensor data topic (wildcard for all sensors)
-  static const String allSensorsTopic = '$topicPrefix/sensors/#';
+  // n8n Door topics
+  static const String n8nDoorStatusTopic = '$topicPrefix/door/status';
+  static const String n8nDoorCommandTopic = '$topicPrefix/door/command';
+
+  // Device status/command topic helpers
+  static String deviceStatusTopic(String deviceId) =>
+      '$topicPrefix/$deviceId/status';
+  static String deviceCommandTopic(String deviceId) {
+    // Map device IDs to actual ESP32 topics
+    if (deviceId.contains('door') || deviceId == 'main_door') {
+      return doorMotorTopic;
+    } else if (deviceId.contains('garage')) {
+      return garageMotorTopic;
+    } else if (deviceId.contains('window')) {
+      return windowCommandTopic(deviceId);
+    } else if (deviceId.contains('light')) {
+      return lightCommandTopic(deviceId.replaceAll('light_', ''));
+    } else if (deviceId == 'fan') {
+      return fanCommandTopic;
+    } else if (deviceId == 'buzzer') {
+      return buzzerCommandTopic;
+    }
+    return '$topicPrefix/actuators/$deviceId';
+  }
 
   // Beacon discovery settings
   static const int beaconPort = 18830;
@@ -156,17 +221,24 @@ class MqttConfig {
 
   // ============================================================
   // n8n Workflow Integration Topics
-  // These topics are used by n8n to trigger workflows and receive events
   // ============================================================
+
+  // Face Recognition Authentication Topics
+  static const String faceAuthRequestTopic = '$topicPrefix/auth/face/request';
+  static const String faceAuthResponseTopic = '$topicPrefix/auth/face/response';
+  static const String faceAuthStatusTopic = '$topicPrefix/auth/face/status';
+  static const String faceAuthBeaconTopic = '$topicPrefix/auth/beacon';
+
+  // Version 2: n8n workflow triggers
+  static const String faceDetectTriggerTopic = 'face/trigger/cmd';
+  static const String faceRecognizedTopic = '$topicPrefix/app/face-recognized';
+  static const String faceUnrecognizedTopic =
+      '$topicPrefix/app/face-unrecognized';
 
   // n8n Agent Topics (for AI chat via MQTT instead of HTTP)
   static const String agentRequestTopic = '$topicPrefix/agent/request';
   static const String agentResponseTopic = '$topicPrefix/agent/response';
   static const String agentStatusTopic = '$topicPrefix/agent/status';
-
-  // n8n Door Control Topics (matches n8n workflow expectations)
-  static const String n8nDoorCommandTopic = '$topicPrefix/door/command';
-  static const String n8nDoorStatusTopic = '$topicPrefix/door/status';
 
   // App Status Topics (for n8n to know when app is connected)
   static const String appStatusTopic = '$topicPrefix/app/status';

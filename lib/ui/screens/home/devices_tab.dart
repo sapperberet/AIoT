@@ -743,7 +743,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.door_front_door,
             name: 'Main Door',
             deviceId: 'main_door',
-            mqttTopic: 'home/main_door/command',
+            mqttTopic: 'home/actuators/motors/door',
             isActive: deviceProvider.isDoorOpen,
             activeColor: Colors.orange,
             inactiveColor: Colors.green,
@@ -762,7 +762,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.garage,
             name: 'Garage Door',
             deviceId: 'garage_door',
-            mqttTopic: 'home/garage_door/command',
+            mqttTopic: 'home/actuators/motors/garage',
             isActive: deviceProvider.isGarageOpen,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
@@ -781,7 +781,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.fence_rounded,
             name: 'Gate Door',
             deviceId: 'gate',
-            mqttTopic: 'home/gate/window/command',
+            mqttTopic: 'home/actuators/motors/door',
             isActive: deviceProvider.windowStates['gate'] ?? false,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
@@ -800,7 +800,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.notifications_active,
             name: 'Alert Buzzer',
             deviceId: 'buzzer',
-            mqttTopic: 'home/buzzer/command',
+            mqttTopic: 'home/actuators/buzzer',
             isActive: deviceProvider.isBuzzerActive,
             activeColor: Colors.red,
             inactiveColor: Colors.grey,
@@ -822,6 +822,11 @@ class _QuickControlsSection extends StatelessWidget {
               .where((entry) => entry.key != 'gate')
               .map((entry) {
             final windowName = _formatName(entry.key);
+            // Map window IDs to actual ESP32 topics
+            final windowTopic =
+                entry.key == 'front' || entry.key == 'front_window'
+                    ? 'home/actuators/motors/frontwindow'
+                    : 'home/actuators/motors/sidewindow';
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildDeviceListItem(
@@ -829,7 +834,7 @@ class _QuickControlsSection extends StatelessWidget {
                 icon: Icons.window,
                 name: windowName,
                 deviceId: 'window_${entry.key}',
-                mqttTopic: 'home/${entry.key}/window/command',
+                mqttTopic: windowTopic,
                 isActive: entry.value,
                 activeColor: Colors.blue,
                 inactiveColor: Colors.grey,
@@ -857,6 +862,14 @@ class _QuickControlsSection extends StatelessWidget {
             final hasNoBrightnessControl =
                 simpleOnOffLights.contains(entry.key);
             final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
+            // Map light IDs to actual ESP32 topics
+            final lightTopic = isRgb
+                ? 'home/actuators/lights/rgb'
+                : entry.key == 'floor_1' || entry.key == 'floor1'
+                    ? 'home/actuators/lights/floor1'
+                    : entry.key == 'floor_2' || entry.key == 'floor2'
+                        ? 'home/actuators/lights/floor2'
+                        : 'home/actuators/lights/landscape';
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildLightListItem(
@@ -865,7 +878,7 @@ class _QuickControlsSection extends StatelessWidget {
                 name: '$lightName Light',
                 deviceId: 'light_${entry.key}',
                 lightId: entry.key,
-                mqttTopic: 'home/${entry.key}/light/set',
+                mqttTopic: lightTopic,
                 isActive: entry.value,
                 brightness: brightness,
                 activeColor: isRgb
@@ -902,12 +915,12 @@ class _QuickControlsSection extends StatelessWidget {
           ...deviceProvider.fanStates.entries.map((entry) {
             final fanName = _formatName(entry.key);
             final speed = entry.value;
-            final speedLabels = ['OFF', 'LOW', 'MED', 'HIGH'];
+            // ESP32 fan modes: off, in, out
+            final speedLabels = ['OFF', 'IN', 'OUT'];
             final speedColors = [
               Colors.grey,
               Colors.green,
               Colors.blue,
-              Colors.orange
             ];
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -915,10 +928,10 @@ class _QuickControlsSection extends StatelessWidget {
                 context,
                 name: '$fanName Fan',
                 deviceId: 'fan_${entry.key}',
-                mqttTopic: 'home/${entry.key}/fan/command',
+                mqttTopic: 'home/actuators/fan',
                 speed: speed,
-                speedLabel: speedLabels[speed],
-                speedColor: speedColors[speed],
+                speedLabel: speedLabels[speed.clamp(0, 2)],
+                speedColor: speedColors[speed.clamp(0, 2)],
                 onTap: () {
                   HapticFeedback.mediumImpact();
                   deviceProvider.toggleFan(entry.key);
@@ -952,21 +965,20 @@ class _QuickControlsSection extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$fanName Fan Speed',
+              '$fanName Fan Mode',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                // ESP32 fan modes: off, in, out
                 _buildSpeedButton(context, provider, fanId, 0, 'Off',
                     Icons.power_settings_new, Colors.grey),
-                _buildSpeedButton(context, provider, fanId, 1, 'Low', Icons.air,
-                    Colors.green),
-                _buildSpeedButton(
-                    context, provider, fanId, 2, 'Med', Icons.air, Colors.blue),
-                _buildSpeedButton(context, provider, fanId, 3, 'High',
-                    Icons.air, Colors.orange),
+                _buildSpeedButton(context, provider, fanId, 1, 'In',
+                    Icons.arrow_downward, Colors.green),
+                _buildSpeedButton(context, provider, fanId, 2, 'Out',
+                    Icons.arrow_upward, Colors.blue),
               ],
             ),
             const SizedBox(height: 16),

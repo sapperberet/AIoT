@@ -7,7 +7,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/providers/home_visualization_provider.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -504,47 +503,11 @@ class _VisualizationTabState extends State<VisualizationTab> {
   }
 
   void _showRoomControls(String objectName, String objectType) {
-    // Skip showing controls for interactive elements - they have their own panel in 3D
-    if (objectType == 'door' ||
-        objectType == 'garage' ||
-        objectType == 'window') {
-      debugPrint(
-          '📍 Selected $objectType: $objectName - controls shown in 3D panel');
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              objectName,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.lightbulb),
-              title: Text(AppLocalizations.of(context).t('control_lights')),
-              trailing: Switch(
-                value: false,
-                onChanged: (value) {
-                  // TODO: Control room lights
-                },
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.thermostat),
-              title: Text(AppLocalizations.of(context).t('temperature')),
-              subtitle: const Text('22°C'),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Don't show any control menu for non-interactive elements
+    // Interactive elements (door, garage, window) have their own panel in the 3D view
+    // Other elements (roof, yard, walls, etc.) don't need controls
+    debugPrint('📍 Selected: $objectName (type: $objectType)');
+    return;
   }
 
   @override

@@ -189,9 +189,9 @@ const char* mqtt_server = "192.168.1.100"; // Your broker IP
 const int mqtt_port = 1883;
 const char* mqtt_client_id = "esp32-device-01";
 
-// Topics
-const char* status_topic = "home/living_room/light/status";
-const char* command_topic = "home/living_room/light/set";
+// Topics - Using actual ESP32 topic structure
+const char* status_topic = "home/sensors/light";  // ESP32 publishes sensor data
+const char* command_topic = "home/actuators/lights/floor1";  // ESP32 subscribes for commands
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -295,17 +295,28 @@ void triggerFireAlarm() {
 
 ### MQTT Topic Structure
 
-The app uses the following topic convention:
+The ESP32 uses the following topic convention:
 
 ```
-home/{room}/{device_type}/{action}
+Actuator Commands (App → ESP32):
+  home/actuators/{device_type}
+  home/actuators/{category}/{device}
+
+Sensor Data (ESP32 → App):
+  home/sensors/{sensor_type}
 
 Examples:
-- home/living_room/light/status      (ESP32 publishes)
-- home/living_room/light/set          (App publishes, ESP32 subscribes)
-- home/garage/fire_alarm              (ESP32 publishes alarms)
-- home/bedroom/motion                 (ESP32 publishes motion detection)
-- home/front_door/door                (ESP32 publishes door status)
+- home/actuators/fan                  (App publishes: on/off/in/out)
+- home/actuators/lights/floor1        (App publishes: on/off)
+- home/actuators/lights/rgb           (App publishes: on/off/b <0-255>/c <hex>)
+- home/actuators/motors/door          (App publishes: open/close)
+- home/actuators/motors/garage        (App publishes: open/close)
+- home/actuators/motors/frontwindow   (App publishes: open/close)
+- home/actuators/motors/sidewindow    (App publishes: open/close)
+- home/actuators/buzzer               (App publishes: on/off)
+- home/sensors/gas                    (ESP32 publishes sensor data)
+- home/sensors/humidity               (ESP32 publishes sensor data)
+- home/sensors/voltage                (ESP32 publishes sensor data)
 ```
 
 ## 🎨 3D Visualization Setup

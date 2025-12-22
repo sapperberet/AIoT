@@ -924,6 +924,11 @@
             gap: 8px;
         }
         
+        .selection-icon-svg {
+            color: #FFD700;
+            flex-shrink: 0;
+        }
+        
         .selection-close {
             width: 28px;
             height: 28px;
@@ -991,7 +996,16 @@
         }
         
         .selection-btn .btn-icon {
-            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .selection-btn .btn-icon svg {
+            width: 18px;
+            height: 18px;
         }
         
         .selection-status {
@@ -1854,10 +1868,10 @@
     <div id="selection-panel">
         <div class="selection-header">
             <div class="selection-title">
-                <span id="selection-icon">🚪</span>
+                <svg id="selection-icon" class="selection-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                 <span id="selection-name">Door</span>
             </div>
-            <button class="selection-close" id="selection-close">✕</button>
+            <button class="selection-close" id="selection-close">&times;</button>
         </div>
         <div class="selection-actions" id="selection-actions">
             <!-- Actions dynamically populated -->
@@ -2537,6 +2551,18 @@
             }
         }
         
+        // SVG Icons for professional look (no emojis)
+        const icons = {
+            door: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V5a2 2 0 012-2h9a2 2 0 012 2v16"/><path d="M16 21H3"/><path d="M21 21V10a1 1 0 00-1-1h-4"/><circle cx="12" cy="12" r="1"/></svg>',
+            garage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="14" rx="1"/><path d="M2 8L12 2l10 6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="15" x2="18" y2="15"/><line x1="6" y1="18" x2="18" y2="18"/></svg>',
+            window: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+            lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+            unlock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>',
+            arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+            arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+            windowAll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>'
+        };
+        
         // Show selection panel for interactive elements
         function showSelectionPanel(mesh, elementType) {
             const panel = document.getElementById('selection-panel');
@@ -2562,46 +2588,58 @@
             
             switch (elementType) {
                 case 'door':
-                    iconEl.textContent = '🚪';
+                    iconEl.innerHTML = icons.door;
                     isOpen = doorOpen;
                     statusText = isOpen ? 'Status: Open' : 'Status: Closed';
                     
                     // Add open/close button
                     const doorBtn = document.createElement('button');
                     doorBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
-                    doorBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '🔒' : '🔓') + '</span>' + (isOpen ? 'Close Door' : 'Open Door');
+                    doorBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? icons.lock : icons.unlock) + '</span>' + (isOpen ? 'Close Door' : 'Open Door');
                     doorBtn.onclick = () => {
+                        // Immediately update the UI with the target state before animation completes
+                        const targetState = !doorOpen;
                         toggleDoor();
-                        setTimeout(() => showSelectionPanel(mesh, elementType), 100);
+                        // Update panel immediately with target state
+                        statusEl.textContent = targetState ? 'Status: Open' : 'Status: Closed';
+                        statusEl.className = 'selection-status ' + (targetState ? 'open' : 'closed');
+                        doorBtn.className = 'selection-btn ' + (targetState ? 'danger' : 'primary');
+                        doorBtn.innerHTML = '<span class="btn-icon">' + (targetState ? icons.lock : icons.unlock) + '</span>' + (targetState ? 'Close Door' : 'Open Door');
                     };
                     actionsEl.appendChild(doorBtn);
                     break;
                     
                 case 'garage':
-                    iconEl.textContent = '🚗';
+                    iconEl.innerHTML = icons.garage;
                     isOpen = garageOpen;
                     statusText = isOpen ? 'Status: Open' : 'Status: Closed';
                     
                     // Add open/close button
                     const garageBtn = document.createElement('button');
                     garageBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
-                    garageBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '⬇️' : '⬆️') + '</span>' + (isOpen ? 'Close Garage' : 'Open Garage');
+                    garageBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? icons.arrowDown : icons.arrowUp) + '</span>' + (isOpen ? 'Close Garage' : 'Open Garage');
                     garageBtn.onclick = () => {
+                        // Immediately update the UI with the target state before animation completes
+                        const targetState = !garageOpen;
                         toggleGarage();
-                        setTimeout(() => showSelectionPanel(mesh, elementType), 100);
+                        // Update panel immediately with target state
+                        statusEl.textContent = targetState ? 'Status: Open' : 'Status: Closed';
+                        statusEl.className = 'selection-status ' + (targetState ? 'open' : 'closed');
+                        garageBtn.className = 'selection-btn ' + (targetState ? 'danger' : 'primary');
+                        garageBtn.innerHTML = '<span class="btn-icon">' + (targetState ? icons.arrowDown : icons.arrowUp) + '</span>' + (targetState ? 'Close Garage' : 'Open Garage');
                     };
                     actionsEl.appendChild(garageBtn);
                     break;
                     
                 case 'window':
-                    iconEl.textContent = '🪟';
+                    iconEl.innerHTML = icons.window;
                     isOpen = mesh.userData.isOpen || false;
                     statusText = isOpen ? 'Status: Open' : 'Status: Closed';
                     
                     // Add open/close button for this window
                     const windowBtn = document.createElement('button');
                     windowBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
-                    windowBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? '🔒' : '🔓') + '</span>' + (isOpen ? 'Close Window' : 'Open Window');
+                    windowBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? icons.lock : icons.unlock) + '</span>' + (isOpen ? 'Close Window' : 'Open Window');
                     windowBtn.onclick = () => {
                         toggleWindow(mesh);
                         setTimeout(() => showSelectionPanel(mesh, elementType), 600);
@@ -2611,7 +2649,7 @@
                     // Add toggle all windows button
                     const allWindowsBtn = document.createElement('button');
                     allWindowsBtn.className = 'selection-btn';
-                    allWindowsBtn.innerHTML = '<span class="btn-icon">🪟</span>' + (windowsOpen ? 'Close All Windows' : 'Open All Windows');
+                    allWindowsBtn.innerHTML = '<span class="btn-icon">' + icons.windowAll + '</span>' + (windowsOpen ? 'Close All Windows' : 'Open All Windows');
                     allWindowsBtn.onclick = () => {
                         toggleAllWindows();
                         setTimeout(() => showSelectionPanel(mesh, elementType), 600);

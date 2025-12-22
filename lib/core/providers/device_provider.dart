@@ -1038,18 +1038,13 @@ class DeviceProvider with ChangeNotifier {
   /// Toggle door open/closed
   Future<void> toggleDoor() async {
     final newState = !_isMainDoorOpen;
-    final command = {
-      'action': 'toggle',
-      'state': newState ? 'open' : 'closed',
-      'deviceId': 'main_door',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 expects simple string: "open" or "close"
+    final message = newState ? 'open' : 'close';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      // Publish to both legacy topic and n8n-expected topic
-      _mqttService.publishJson(MqttConfig.doorCommandTopic, command);
-      _mqttService.publishJson(MqttConfig.n8nDoorCommandTopic, command);
-      debugPrint('🚪 MQTT: Door command sent - ${newState ? "OPEN" : "CLOSE"}');
+      // Publish simple string to ESP32 actuator topic
+      _mqttService.publish(MqttConfig.doorMotorTopic, message);
+      debugPrint('🚪 MQTT: Door command sent - $message');
     }
 
     // Optimistic update
@@ -1081,13 +1076,12 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set door state explicitly
   Future<void> setDoorState(bool isOpen) async {
-    final command = {
-      'action': 'set',
-      'state': isOpen ? 'open' : 'closed',
-    };
+    // ESP32 expects simple string: "open" or "close"
+    final message = isOpen ? 'open' : 'close';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(MqttConfig.doorCommandTopic, command);
+      _mqttService.publish(MqttConfig.doorMotorTopic, message);
+      debugPrint('🚪 MQTT: Door state set - $message');
     }
 
     _isMainDoorOpen = isOpen;
@@ -1102,20 +1096,12 @@ class DeviceProvider with ChangeNotifier {
   /// Toggle garage open/closed
   Future<void> toggleGarage() async {
     final newState = !_isGarageDoorOpen;
-    final command = {
-      'action': 'toggle',
-      'state': newState ? 'open' : 'closed',
-      'deviceId': 'garage',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 expects simple string: "open" or "close"
+    final message = newState ? 'open' : 'close';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
-      // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/garage/command', command);
-      debugPrint(
-          '🚗 MQTT: Garage command sent - ${newState ? "OPEN" : "CLOSE"}');
+      _mqttService.publish(MqttConfig.garageMotorTopic, message);
+      debugPrint('🚗 MQTT: Garage command sent - $message');
     }
 
     // Optimistic update
@@ -1145,13 +1131,12 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set garage state explicitly
   Future<void> setGarageState(bool isOpen) async {
-    final command = {
-      'action': 'set',
-      'state': isOpen ? 'open' : 'closed',
-    };
+    // ESP32 expects simple string: "open" or "close"
+    final message = isOpen ? 'open' : 'close';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(MqttConfig.garageCommandTopic, command);
+      _mqttService.publish(MqttConfig.garageMotorTopic, message);
+      debugPrint('🚗 MQTT: Garage state set - $message');
     }
 
     _isGarageDoorOpen = isOpen;
@@ -1168,22 +1153,14 @@ class DeviceProvider with ChangeNotifier {
     final isOpen = _windowStates[windowId] ?? false;
     final newState = !isOpen;
     final windowName = _formatWindowName(windowId);
-    final command = {
-      'action': 'toggle',
-      'state': newState ? 'open' : 'closed',
-      'windowId': windowId,
-      'deviceId': 'window_$windowId',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 expects simple string: "open" or "close"
+    final message = newState ? 'open' : 'close';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.windowCommandTopic.replaceFirst('+', windowId);
-      _mqttService.publishJson(topic, command);
-      // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/window/command', command);
-      debugPrint(
-          '🪟 MQTT: Window command sent - $windowId ${newState ? "OPEN" : "CLOSE"}');
+      // Get the correct topic for this window
+      final topic = MqttConfig.windowCommandTopic(windowId);
+      _mqttService.publish(topic, message);
+      debugPrint('🪟 MQTT: Window command sent - $windowId $message');
     }
 
     // Optimistic update
@@ -1227,19 +1204,17 @@ class DeviceProvider with ChangeNotifier {
   Future<void> toggleAllWindows() async {
     final anyOpen = _windowStates.values.any((isOpen) => isOpen);
     final newState = !anyOpen;
+    // ESP32 expects simple string: "open" or "close"
+    final message = newState ? 'open' : 'close';
 
     for (var windowId in _windowStates.keys) {
       _windowStates[windowId] = newState;
     }
 
-    final command = {
-      'action': 'setAll',
-      'state': newState ? 'open' : 'closed',
-    };
-
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/windows/command', command);
+      // Send to each window individually
+      _mqttService.publish(MqttConfig.frontWindowMotorTopic, message);
+      _mqttService.publish(MqttConfig.sideWindowMotorTopic, message);
     }
 
     _syncToVisualization('windows', {'allOpen': newState});
@@ -1253,19 +1228,12 @@ class DeviceProvider with ChangeNotifier {
   /// Toggle buzzer on/off
   Future<void> toggleBuzzer() async {
     final newState = !_isBuzzerActive;
-    final command = {
-      'action': 'toggle',
-      'active': newState,
-      'deviceId': 'buzzer',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 expects simple string: "on" or "off"
+    final message = newState ? 'on' : 'off';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(MqttConfig.buzzerCommandTopic, command);
-      // Also publish to n8n topic for workflow integration
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/buzzer/command', command);
-      debugPrint('🔔 MQTT: Buzzer command sent - ${newState ? "ON" : "OFF"}');
+      _mqttService.publish(MqttConfig.buzzerCommandTopic, message);
+      debugPrint('🔔 MQTT: Buzzer command sent - $message');
     }
 
     // Optimistic update
@@ -1294,14 +1262,11 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set buzzer state explicitly
   Future<void> setBuzzerState(bool isActive, {String? reason}) async {
-    final command = {
-      'action': 'set',
-      'active': isActive,
-      if (reason != null) 'reason': reason,
-    };
+    // ESP32 expects simple string: "on" or "off"
+    final message = isActive ? 'on' : 'off';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(MqttConfig.buzzerCommandTopic, command);
+      _mqttService.publish(MqttConfig.buzzerCommandTopic, message);
     }
 
     _isBuzzerActive = isActive;
@@ -1318,22 +1283,13 @@ class DeviceProvider with ChangeNotifier {
     final isOn = _lightStates[lightId] ?? false;
     final newState = !isOn;
     final lightName = _formatWindowName(lightId); // Reuse name formatter
-    final command = {
-      'action': 'toggle',
-      'state': newState ? 'on' : 'off',
-      'lightId': lightId,
-      'deviceId': 'light_$lightId',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 expects simple string: "on" or "off"
+    final message = newState ? 'on' : 'off';
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.roomLightCommandTopic(lightId);
-      _mqttService.publishJson(topic, command);
-      // Also publish to generic n8n light topic
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/light/command', command);
-      debugPrint(
-          '💡 MQTT: Light command sent - $lightId ${newState ? "ON" : "OFF"}');
+      final topic = MqttConfig.lightCommandTopic(lightId);
+      _mqttService.publish(topic, message);
+      debugPrint('💡 MQTT: Light command sent - $lightId $message');
     }
 
     // Optimistic update
@@ -1365,19 +1321,18 @@ class DeviceProvider with ChangeNotifier {
   Future<void> toggleAllLights() async {
     final anyOn = _lightStates.values.any((isOn) => isOn);
     final newState = !anyOn;
+    // ESP32 expects simple string: "on" or "off"
+    final message = newState ? 'on' : 'off';
 
     for (var lightId in _lightStates.keys) {
       _lightStates[lightId] = newState;
     }
 
-    final command = {
-      'action': 'setAll',
-      'state': newState ? 'on' : 'off',
-    };
-
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/lights/command', command);
+      // Send to each light individually
+      _mqttService.publish(MqttConfig.lightFloor1Topic, message);
+      _mqttService.publish(MqttConfig.lightFloor2Topic, message);
+      _mqttService.publish(MqttConfig.lightLandscapeTopic, message);
     }
 
     _syncToVisualization('lights', {'allOn': newState});
@@ -1393,20 +1348,14 @@ class DeviceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set light brightness
+  /// Set light brightness (only works for RGB light)
   Future<void> setLightBrightness(String lightId, int brightness) async {
     final clampedBrightness = brightness.clamp(0, 100);
     _lightBrightness[lightId] = clampedBrightness;
 
-    final command = {
-      'action': 'setBrightness',
-      'brightness': clampedBrightness,
-      'lightId': lightId,
-    };
-
-    if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.roomLightCommandTopic(lightId);
-      _mqttService.publishJson(topic, command);
+    // Only RGB light supports brightness: "b <brightness>"
+    if (lightId == 'rgb' && _isConnectedToMqtt && !_useCloudMode) {
+      _mqttService.publish(MqttConfig.lightRgbTopic, 'b $clampedBrightness');
     }
 
     // Save to Firebase for global sync
@@ -1424,24 +1373,11 @@ class DeviceProvider with ChangeNotifier {
   Future<void> setRgbLightColor(int color) async {
     _rgbLightColor = color & 0xFFFFFF; // Ensure it's 24-bit RGB
 
-    // Extract RGB components
-    final r = (color >> 16) & 0xFF;
-    final g = (color >> 8) & 0xFF;
-    final b = color & 0xFF;
-
-    final command = {
-      'action': 'setColor',
-      'color': _rgbLightColor,
-      'r': r,
-      'g': g,
-      'b': b,
-      'hex':
-          '#${_rgbLightColor.toRadixString(16).padLeft(6, '0').toUpperCase()}',
-    };
+    // ESP32 expects: "c <color_string>" (hex format)
+    final colorHex = _rgbLightColor.toRadixString(16).padLeft(6, '0');
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.roomLightCommandTopic('rgb');
-      _mqttService.publishJson(topic, command);
+      _mqttService.publish(MqttConfig.lightRgbTopic, 'c $colorHex');
     }
 
     // Sync RGB to visualization with color and brightness
@@ -1462,15 +1398,9 @@ class DeviceProvider with ChangeNotifier {
   Future<void> setRgbBrightness(int brightness) async {
     _rgbBrightness = brightness.clamp(0, 100);
 
-    final command = {
-      'action': 'setBrightness',
-      'brightness': _rgbBrightness,
-      'color': _rgbLightColor,
-    };
-
+    // ESP32 expects: "b <brightness>"
     if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.roomLightCommandTopic('rgb');
-      _mqttService.publishJson(topic, command);
+      _mqttService.publish(MqttConfig.lightRgbTopic, 'b $_rgbBrightness');
     }
 
     // Sync RGB to visualization with brightness
@@ -1486,36 +1416,26 @@ class DeviceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggle a specific fan (cycles through off -> low -> medium -> high -> off)
+  /// Toggle fan (cycles through off -> in -> out -> off)
   Future<void> toggleFan(String fanId) async {
     final currentSpeed = _fanStates[fanId] ?? 0;
-    final newSpeed = (currentSpeed + 1) % 4; // Cycle 0 -> 1 -> 2 -> 3 -> 0
+    // Cycle: 0 (off) -> 1 (in) -> 2 (out) -> 0 (off)
+    final newSpeed = (currentSpeed + 1) % 3;
     await setFanSpeed(fanId, newSpeed);
   }
 
-  /// Set fan speed (0=off, 1=low, 2=medium, 3=high)
+  /// Set fan speed/mode (0=off, 1=in, 2=out)
+  /// ESP32 expects: "off" / "in" / "out" / "on"
   Future<void> setFanSpeed(String fanId, int speed) async {
-    final clampedSpeed = speed.clamp(0, 3);
+    final clampedSpeed = speed.clamp(0, 2);
     final fanName = _formatWindowName(fanId);
-    final speedLabels = ['off', 'low', 'medium', 'high'];
-
-    final command = {
-      'action': 'setSpeed',
-      'speed': clampedSpeed,
-      'speedLabel': speedLabels[clampedSpeed],
-      'fanId': fanId,
-      'deviceId': 'fan_$fanId',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // ESP32 fan modes: off, in, out
+    final speedLabels = ['off', 'in', 'out'];
+    final message = speedLabels[clampedSpeed];
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      final topic = MqttConfig.roomFanCommandTopic(fanId);
-      _mqttService.publishJson(topic, command);
-      // Also publish to generic n8n fan topic
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/fan/command', command);
-      debugPrint(
-          '🌀 MQTT: Fan command sent - $fanId speed ${speedLabels[clampedSpeed]}');
+      _mqttService.publish(MqttConfig.fanCommandTopic, message);
+      debugPrint('🌀 MQTT: Fan command sent - $message');
     }
 
     // Optimistic update
@@ -1538,23 +1458,19 @@ class DeviceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggle all fans (turn all off if any is on, otherwise turn all to low)
+  /// Toggle all fans (turn all off if any is on, otherwise turn to "in")
   Future<void> toggleAllFans() async {
     final anyOn = _fanStates.values.any((speed) => speed > 0);
-    final newSpeed = anyOn ? 0 : 1; // All off or all low
+    final newSpeed = anyOn ? 0 : 1; // All off or all "in"
+    // ESP32 expects: "off" / "in" / "out"
+    final message = newSpeed == 0 ? 'off' : 'in';
 
     for (var fanId in _fanStates.keys) {
       _fanStates[fanId] = newSpeed;
     }
 
-    final command = {
-      'action': 'setAll',
-      'speed': newSpeed,
-    };
-
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publishJson(
-          '${MqttConfig.topicPrefix}/fans/command', command);
+      _mqttService.publish(MqttConfig.fanCommandTopic, message);
     }
 
     _syncToVisualization('fans', {'allSpeed': newSpeed});

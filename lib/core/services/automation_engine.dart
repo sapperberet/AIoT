@@ -535,19 +535,55 @@ class AutomationEngine {
 
     if (state == null) return false;
 
-    // Create simple JSON message for MQTT
-    final message = {
-      'action': state == 'toggle' ? 'toggle' : 'set',
-      'state': state,
-      'deviceId': action.deviceId,
-      'timestamp': DateTime.now().toIso8601String(),
-      'source': 'automation',
-    };
+    // Determine correct ESP32 topic based on device type
+    String topic;
+    String payload;
 
-    final topic = 'home/${action.deviceId}/command';
-    _mqttService.publish(topic, jsonEncode(message));
+    // Map device IDs to actual ESP32 topics
+    if (action.deviceId == 'fan') {
+      topic = 'home/actuators/fan';
+      payload = state == 'on'
+          ? 'on'
+          : state == 'off'
+              ? 'off'
+              : state;
+    } else if (action.deviceId?.contains('light') == true) {
+      // Map light IDs to topics
+      final lightId = action.deviceId!.replaceAll('light_', '');
+      if (lightId == 'rgb') {
+        topic = 'home/actuators/lights/rgb';
+      } else if (lightId == 'floor_1' || lightId == 'floor1') {
+        topic = 'home/actuators/lights/floor1';
+      } else if (lightId == 'floor_2' || lightId == 'floor2') {
+        topic = 'home/actuators/lights/floor2';
+      } else {
+        topic = 'home/actuators/lights/landscape';
+      }
+      payload = state == 'on' ? 'on' : 'off';
+    } else if (action.deviceId == 'door' || action.deviceId == 'main_door') {
+      topic = 'home/actuators/motors/door';
+      payload = state == 'open' ? 'open' : 'close';
+    } else if (action.deviceId == 'garage' ||
+        action.deviceId == 'garage_door') {
+      topic = 'home/actuators/motors/garage';
+      payload = state == 'open' ? 'open' : 'close';
+    } else if (action.deviceId?.contains('window') == true) {
+      final windowType =
+          action.deviceId!.contains('front') ? 'frontwindow' : 'sidewindow';
+      topic = 'home/actuators/motors/$windowType';
+      payload = state == 'open' ? 'open' : 'close';
+    } else if (action.deviceId == 'buzzer') {
+      topic = 'home/actuators/buzzer';
+      payload = state == 'on' ? 'on' : 'off';
+    } else {
+      // Default fallback
+      topic = 'home/actuators/${action.deviceId}';
+      payload = state;
+    }
 
-    debugPrint('📤 Sent device control: $topic -> $message');
+    _mqttService.publish(topic, payload);
+
+    debugPrint('📤 Sent device control: $topic -> $payload');
     return true;
   }
 
@@ -557,16 +593,11 @@ class AutomationEngine {
 
     final brightness = action.parameters['brightness'] as int? ?? 100;
 
-    final message = {
-      'action': 'set_brightness',
-      'brightness': brightness,
-      'deviceId': action.deviceId,
-      'timestamp': DateTime.now().toIso8601String(),
-      'source': 'automation',
-    };
+    // RGB light uses "b <brightness>" format
+    final topic = 'home/actuators/lights/rgb';
+    final payload = 'b $brightness';
 
-    final topic = 'home/${action.deviceId}/command';
-    _mqttService.publish(topic, jsonEncode(message));
+    _mqttService.publish(topic, payload);
 
     return true;
   }
@@ -577,16 +608,12 @@ class AutomationEngine {
 
     final temperature = action.parameters['temperature'] as double? ?? 22.0;
 
-    final message = {
-      'action': 'set_temperature',
-      'temperature': temperature,
-      'deviceId': action.deviceId,
-      'timestamp': DateTime.now().toIso8601String(),
-      'source': 'automation',
-    };
+    // Note: Temperature control may need custom topic - using fan for HVAC-like behavior
+    // This could be extended based on actual hardware support
+    final topic = 'home/actuators/thermostat';
+    final payload = temperature.toString();
 
-    final topic = 'home/${action.deviceId}/command';
-    _mqttService.publish(topic, jsonEncode(message));
+    _mqttService.publish(topic, payload);
 
     return true;
   }
@@ -627,34 +654,16 @@ class AutomationEngine {
 
   /// Execute trigger alarm action
   Future<bool> _executeTriggerAlarm(AutomationAction action) async {
-    final alarmType = action.parameters['alarmType'] as String? ?? 'general';
-
-    final message = {
-      'action': 'trigger_alarm',
-      'alarmType': alarmType,
-      'timestamp': DateTime.now().toIso8601String(),
-      'source': 'automation',
-    };
-
-    _mqttService.publish('home/alarm/command', jsonEncode(message));
+    // Alarms trigger the buzzer
+    _mqttService.publish('home/actuators/buzzer', 'on');
 
     return true;
   }
 
   /// Execute play sound action
   Future<bool> _executePlaySound(AutomationAction action) async {
-    final duration = action.parameters['duration'] as int? ?? 1000;
-    final pattern = action.parameters['pattern'] as String? ?? 'single';
-
-    final message = {
-      'action': 'play_sound',
-      'duration': duration,
-      'pattern': pattern,
-      'timestamp': DateTime.now().toIso8601String(),
-      'source': 'automation',
-    };
-
-    _mqttService.publish('home/buzzer/command', jsonEncode(message));
+    // Buzzer just takes on/off commands
+    _mqttService.publish('home/actuators/buzzer', 'on');
 
     return true;
   }
