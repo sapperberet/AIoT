@@ -143,11 +143,16 @@ class MqttConfig {
   // ============================================================
 
   // Device status topics
-  static const String doorStatusTopic = '$topicPrefix/actuators/motors/door/status';
-  static const String windowStatusTopic = '$topicPrefix/actuators/motors/+/status';
-  static const String garageStatusTopic = '$topicPrefix/actuators/motors/garage/status';
-  static const String buzzerStatusTopic = '$topicPrefix/actuators/buzzer/status';
-  static const String allLightsStatusTopic = '$topicPrefix/actuators/lights/+/status';
+  static const String doorStatusTopic =
+      '$topicPrefix/actuators/motors/door/status';
+  static const String windowStatusTopic =
+      '$topicPrefix/actuators/motors/+/status';
+  static const String garageStatusTopic =
+      '$topicPrefix/actuators/motors/garage/status';
+  static const String buzzerStatusTopic =
+      '$topicPrefix/actuators/buzzer/status';
+  static const String allLightsStatusTopic =
+      '$topicPrefix/actuators/lights/+/status';
   static const String deviceSyncTopic = '$topicPrefix/device/sync';
 
   // Sensor topics (for subscribing)
