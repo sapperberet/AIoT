@@ -5,7 +5,6 @@ import 'package:animate_do/animate_do.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/device_provider.dart';
-import '../../../core/providers/ai_chat_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/floating_chat_button.dart';
@@ -51,39 +50,22 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('🔍 Home: Attempting beacon discovery for MQTT...');
       final beaconFound = await authProvider.discoverFaceAuthBeacon();
       if (beaconFound && authProvider.discoveredBeacon != null) {
-        debugPrint(
-            '✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
+        debugPrint('✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
       } else {
         debugPrint('⚠️ Home: Beacon not found, using settings IP');
       }
     }
 
-    // 🔥 CRITICAL: Sync beacon IP to ALL services BEFORE initializing devices
-    if (authProvider.discoveredBeacon != null) {
-      final beaconIp = authProvider.discoveredBeacon!.ip;
-      debugPrint('🌐 Home: Syncing beacon IP ($beaconIp) to all services');
-
-      // Update AI Chat and Voice services
-      try {
-        final chatProvider = context.read<AIChatProvider>();
-        chatProvider.updateBrokerEndpoint(beaconIp);
-        debugPrint('✅ Home: AI Chat and Voice services updated to $beaconIp');
-      } catch (e) {
-        debugPrint('⚠️ Home: Could not update chat provider: $e');
-      }
-    }
-
-    // User is authenticated, initialize devices (this connects MQTT)
+    // User is authenticated, initialize devices
     final deviceProvider = context.read<DeviceProvider>();
     await deviceProvider.initialize(authProvider.currentUser!.uid);
 
-    // 🔥 VERIFY MQTT CONNECTION STATUS
-    if (deviceProvider.isConnectedToMqtt) {
-      debugPrint('✅ Home: MQTT is connected and ready');
-    } else {
-      debugPrint(
-          '⚠️ Home: MQTT not connected, attempting explicit connection...');
-      await deviceProvider.connectToMqtt();
+    // 🔥 CRITICAL: Sync beacon IP to all services if already discovered
+    if (authProvider.discoveredBeacon != null) {
+      final beaconIp = authProvider.discoveredBeacon!.ip;
+      debugPrint('🌐 Home: Syncing beacon IP ($beaconIp) to all services');
+      // The MqttConfig.localBrokerAddress is already updated by AuthProvider
+      // Services will use this IP automatically
     }
   }
 
