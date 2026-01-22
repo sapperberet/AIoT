@@ -50,7 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('🔍 Home: Attempting beacon discovery for MQTT...');
       final beaconFound = await authProvider.discoverFaceAuthBeacon();
       if (beaconFound && authProvider.discoveredBeacon != null) {
-        debugPrint('✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
+        debugPrint(
+            '✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
       } else {
         debugPrint('⚠️ Home: Beacon not found, using settings IP');
       }
