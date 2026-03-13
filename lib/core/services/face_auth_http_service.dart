@@ -125,7 +125,7 @@ class FaceAuthHttpService {
                 }
               } else {
                 _logger.w(
-                  '⚠️ Received beacon with wrong name: ${beaconData['name']}');
+                    '⚠️ Received beacon with wrong name: ${beaconData['name']}');
               }
             } catch (e) {
               _logger.e('❌ Error parsing beacon message: $e');

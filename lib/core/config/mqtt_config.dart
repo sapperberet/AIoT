@@ -31,7 +31,8 @@ class MqttConfig {
   static const String previousDefaultLocalBrokerAddress = '192.168.1.17';
   static const String legacyDefaultLocalBrokerAddress = '192.168.1.100';
 
-  static String _localBrokerAddress = defaultLocalBrokerAddress; // Fallback default
+  static String _localBrokerAddress =
+      defaultLocalBrokerAddress; // Fallback default
   static const bool useDebugAdbReverseOverride =
       bool.fromEnvironment('USE_ADB_REVERSE', defaultValue: false);
 
@@ -47,6 +48,7 @@ class MqttConfig {
     }
     return _localBrokerAddress;
   }
+
   static set localBrokerAddress(String address) {
     _localBrokerAddress = address;
     // Log the IP change for debugging

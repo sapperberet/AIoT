@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/mqtt_config.dart';
@@ -46,13 +47,18 @@ class ScenarioService {
 
   Future<String> createScenario(Scenario scenario) async {
     try {
-      final body = jsonEncode(scenario.toJson());
+      _validateScenarioForWrite(scenario);
+      final requestMap = _normalizeScenarioJson(scenario.toJson());
+      final body = jsonEncode(requestMap);
       debugPrint('📋 ScenarioService CREATE body: $body');
 
       final response = await _client
           .post(
             Uri.parse('$_baseUrl/create'),
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
             body: body,
           )
           .timeout(const Duration(seconds: 30));
@@ -61,10 +67,28 @@ class ScenarioService {
           '📋 ScenarioService CREATE ${response.statusCode}: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final id = data['id'] as String?;
-        if (id != null) return id;
-        throw ScenarioApiException('No id returned from create', 200);
+        final raw = response.body.trim();
+
+        if (raw.isNotEmpty) {
+          final dynamic data = jsonDecode(raw);
+          if (data is Map<String, dynamic>) {
+            final id = data['id'] as String?;
+            if (id != null && id.isNotEmpty) return id;
+          }
+          if (data is String && data.isNotEmpty) {
+            return data;
+          }
+        }
+
+        // Some n8n flows return HTTP 200 with an empty body. Verify persistence
+        // via GET and recover the created id when possible.
+        final recoveredId = await _recoverCreatedScenarioId(requestMap);
+        if (recoveredId != null) return recoveredId;
+
+        throw ScenarioApiException(
+          'Create endpoint returned an empty/invalid response and no scenario was persisted',
+          200,
+        );
       }
       throw ScenarioApiException(
         _parseError(response.body) ?? 'Failed to create scenario',
@@ -77,11 +101,33 @@ class ScenarioService {
     }
   }
 
+  Future<String?> _recoverCreatedScenarioId(
+      Map<String, dynamic> expectedScenarioJson) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final scenarios = await getScenarios();
+      final match = scenarios.where((s) {
+        final actual = _normalizeScenarioJson(s.toJson());
+        return _sameScenarioPayload(actual, expectedScenarioJson);
+      }).toList();
+
+      if (match.isNotEmpty) {
+        final id = match.last.id;
+        if (id != null && id.isNotEmpty) return id;
+      }
+
+      if (attempt < 2) {
+        await Future.delayed(const Duration(milliseconds: 600));
+      }
+    }
+    return null;
+  }
+
   // ── UPDATE scenario ───────────────────────────────────────
 
   Future<void> updateScenario(String id, Scenario scenario) async {
     try {
-      final body = jsonEncode(scenario.toJson());
+      _validateScenarioForWrite(scenario);
+      final body = jsonEncode(_normalizeScenarioJson(scenario.toJson()));
       debugPrint('📋 ScenarioService UPDATE id=$id body: $body');
 
       final response = await _client
@@ -165,6 +211,61 @@ class ScenarioService {
       return data['error'] as String? ?? data['message'] as String?;
     } catch (_) {
       return null;
+    }
+  }
+
+  Map<String, dynamic> _normalizeScenarioJson(Map<String, dynamic> input) {
+    return _removeNulls(input) as Map<String, dynamic>;
+  }
+
+  dynamic _removeNulls(dynamic value) {
+    if (value is Map) {
+      final result = <String, dynamic>{};
+      value.forEach((key, dynamic item) {
+        final cleaned = _removeNulls(item);
+        if (cleaned != null) {
+          result[key.toString()] = cleaned;
+        }
+      });
+      return result;
+    }
+    if (value is List) {
+      return value
+          .map(_removeNulls)
+          .where((item) => item != null)
+          .toList(growable: false);
+    }
+    return value;
+  }
+
+  bool _sameScenarioPayload(
+      Map<String, dynamic> left, Map<String, dynamic> right) {
+    final leftWithoutId = Map<String, dynamic>.from(left)..remove('id');
+    final rightWithoutId = Map<String, dynamic>.from(right)..remove('id');
+    return jsonEncode(leftWithoutId) == jsonEncode(rightWithoutId);
+  }
+
+  void _validateScenarioForWrite(Scenario scenario) {
+    final name = scenario.name.trim();
+    if (name.isEmpty) {
+      throw ScenarioApiException('Scenario name is required', 400);
+    }
+    if (scenario.actions.isEmpty) {
+      throw ScenarioApiException('At least one action is required', 400);
+    }
+
+    final trigger = scenario.trigger;
+    if (trigger.type == ScenarioTriggerType.sensor) {
+      if (trigger.sensor == null || trigger.sensor!.isEmpty) {
+        throw ScenarioApiException('Sensor trigger requires sensor name', 400);
+      }
+      if (trigger.condition == null || trigger.condition!.isEmpty) {
+        throw ScenarioApiException('Sensor trigger requires condition', 400);
+      }
+      if (trigger.condition != 'changes' && trigger.value == null) {
+        throw ScenarioApiException(
+            'Sensor trigger value is required for this condition', 400);
+      }
     }
   }
 

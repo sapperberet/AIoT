@@ -40,8 +40,8 @@ class ScenarioProvider with ChangeNotifier {
   Future<bool> createScenario(Scenario scenario) async {
     try {
       _error = null;
-      final id = await _service.createScenario(scenario);
-      _scenarios.add(scenario.copyWith(id: id));
+      await _service.createScenario(scenario);
+      _scenarios = await _service.getScenarios();
       notifyListeners();
       return true;
     } catch (e) {
