@@ -85,6 +85,13 @@ class AppLocalizations {
       'run': 'Run',
       'delete': 'Delete',
 
+      // Scenarios (n8n)
+      'scenarios': 'Scenarios',
+      'create_scenario': 'New Scenario',
+      'no_scenarios': 'No scenarios yet',
+      'no_scenarios_desc':
+          'Create your first n8n scenario to automate your smart home.',
+
       // Energy Monitor
       'total_consumption': 'Total Consumption',
       'consumption_chart': 'Consumption Chart',
@@ -434,6 +441,12 @@ class AppLocalizations {
       'security': 'Sicherheit',
       'info': 'Info',
 
+      // Scenarios (n8n)
+      'scenarios': 'Szenarien',
+      'create_scenario': 'Neues Szenario',
+      'no_scenarios': 'Noch keine Szenarien',
+      'no_scenarios_desc': 'Erstellen Sie Ihr erstes n8n-Szenario.',
+
       // Automations
       'create_automation': 'Automatisierung erstellen',
       'no_automations': 'Noch keine Automatisierungen',
@@ -778,6 +791,12 @@ class AppLocalizations {
       'automation': 'الأتمتة',
       'security': 'الأمان',
       'info': 'معلومات',
+
+      // Scenarios (n8n)
+      'scenarios': 'السيناريوهات',
+      'create_scenario': 'سيناريو جديد',
+      'no_scenarios': 'لا توجد سيناريوهات',
+      'no_scenarios_desc': 'أنشئ أول سيناريو n8n لأتمتة منزلك.',
 
       // Automations
       'create_automation': 'إنشاء أتمتة',

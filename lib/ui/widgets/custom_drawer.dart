@@ -257,6 +257,18 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
+                          delay: const Duration(milliseconds: 545),
+                          child: _buildMenuItem(
+                            context,
+                            icon: Iconsax.cpu_setting,
+                            title: loc.t('scenarios'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/scenarios');
+                            },
+                          ),
+                        ),
+                        FadeInLeft(
                           delay: const Duration(milliseconds: 600),
                           child: _buildMenuItem(
                             context,

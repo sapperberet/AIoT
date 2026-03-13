@@ -20,6 +20,7 @@ import 'core/services/automation_service.dart';
 import 'core/services/automation_engine.dart';
 import 'core/services/energy_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/scenario_service.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/device_provider.dart';
 import 'core/providers/home_visualization_provider.dart';
@@ -28,6 +29,7 @@ import 'core/providers/automation_provider.dart';
 import 'core/providers/ai_chat_provider.dart';
 import 'core/providers/chat_theme_provider.dart';
 import 'core/providers/energy_provider.dart';
+import 'core/providers/scenario_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/splash_screen.dart';
@@ -44,6 +46,7 @@ import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
 import 'ui/screens/automations/automations_screen.dart';
 import 'ui/screens/automations/automation_management_screen.dart';
+import 'ui/screens/scenarios/scenarios_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
 import 'ui/screens/sensors/sensor_monitor_screen.dart';
 import 'ui/screens/chat/ai_chat_screen.dart';
@@ -285,6 +288,17 @@ class SmartHomeApp extends StatelessWidget {
         ChangeNotifierProvider<AutomationProvider>(
           create: (_) => AutomationProvider(),
         ),
+        // Scenarios (n8n) service and provider
+        Provider<ScenarioService>(
+          create: (_) => ScenarioService(),
+        ),
+        ChangeNotifierProxyProvider<ScenarioService, ScenarioProvider>(
+          create: (context) => ScenarioProvider(
+            service: context.read<ScenarioService>(),
+          ),
+          update: (context, service, provider) =>
+              provider ?? ScenarioProvider(service: service),
+        ),
         ChangeNotifierProxyProvider2<MqttService, EnergyService,
             EnergyProvider>(
           create: (context) => EnergyProvider(
@@ -385,6 +399,7 @@ class SmartHomeApp extends StatelessWidget {
               '/automations': (context) => const AutomationsScreen(),
               '/automation-management': (context) =>
                   const AutomationManagementScreen(),
+              '/scenarios': (context) => const ScenariosScreen(),
               '/energy': (context) => const EnergyMonitorScreen(),
               '/sensors': (context) => const SensorMonitorScreen(),
               '/ai-chat': (context) => const AIChatScreen(),
