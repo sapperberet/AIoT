@@ -125,8 +125,8 @@ class FaceAuthService {
               _logger.i('📨 Message content: $message');
               final beaconData = jsonDecode(message) as Map<String, dynamic>;
 
-              // Check if this is our face-broker beacon
-              if (beaconData['name'] == MqttConfig.beaconServiceName) {
+              // Check if this is our beacon
+              if (MqttConfig.isBeaconName(beaconData['name'] as String?)) {
                 final beacon = FaceAuthBeacon.fromJson(beaconData);
                 _logger.i('✅ Beacon discovered: ${beacon.ip}:${beacon.port}');
 
@@ -160,38 +160,19 @@ class FaceAuthService {
 
       final result = await completer.future;
 
-      // If discovery failed, try fallback to local broker address
+      // If discovery failed, leave the configured address unchanged.
       if (result == null) {
         _logger.w(
-            'Beacon discovery failed, trying fallback to ${MqttConfig.localBrokerAddress}');
-        final fallbackBeacon = FaceAuthBeacon(
-          name: MqttConfig.beaconServiceName,
-          ip: MqttConfig.localBrokerAddress,
-          port: MqttConfig.localBrokerPort,
-          discoveredAt: DateTime.now(),
-        );
-        _discoveredBeacon = fallbackBeacon;
-        _beaconController.add(fallbackBeacon);
-        _logger.i(
-            '✅ Using fallback beacon: ${fallbackBeacon.ip}:${fallbackBeacon.port}');
-        return fallbackBeacon;
+            'Beacon discovery failed, keeping configured server IP: ${MqttConfig.localBrokerAddress}');
+        return null;
       }
 
       return result;
     } catch (e) {
       _logger.e('Beacon discovery error: $e');
-
-      // Try fallback even on exception
-      _logger.w('Attempting fallback to ${MqttConfig.localBrokerAddress}');
-      final fallbackBeacon = FaceAuthBeacon(
-        name: MqttConfig.beaconServiceName,
-        ip: MqttConfig.localBrokerAddress,
-        port: MqttConfig.localBrokerPort,
-        discoveredAt: DateTime.now(),
-      );
-      _discoveredBeacon = fallbackBeacon;
-      _beaconController.add(fallbackBeacon);
-      return fallbackBeacon;
+      _logger.w(
+          'Beacon discovery error, keeping configured server IP: ${MqttConfig.localBrokerAddress}');
+      return null;
     }
   }
 

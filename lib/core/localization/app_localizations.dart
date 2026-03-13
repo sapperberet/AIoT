@@ -21,7 +21,7 @@ class AppLocalizations {
       'logs': 'Logs',
       'settings': 'Settings',
       'notifications': 'Notifications',
-      'automations': 'Automations',
+    'automations': 'Local Automations',
       'energy_monitor': 'Energy Monitor',
       'sensor_monitor': 'Sensor Monitor',
       'device_health': 'Device Health',
@@ -86,7 +86,7 @@ class AppLocalizations {
       'delete': 'Delete',
 
       // Scenarios (n8n)
-      'scenarios': 'Scenarios',
+    'scenarios': 'Automation Scenarios',
       'create_scenario': 'New Scenario',
       'no_scenarios': 'No scenarios yet',
       'no_scenarios_desc':
@@ -391,7 +391,7 @@ class AppLocalizations {
       'logs': 'Protokolle',
       'settings': 'Einstellungen',
       'notifications': 'Benachrichtigungen',
-      'automations': 'Automatisierungen',
+    'automations': 'Lokale Automatisierungen',
       'energy_monitor': 'Energiemonitor',
       'sensor_monitor': 'Sensormonitor',
       'device_health': 'Gerätezustand',
@@ -442,7 +442,7 @@ class AppLocalizations {
       'info': 'Info',
 
       // Scenarios (n8n)
-      'scenarios': 'Szenarien',
+    'scenarios': 'Automatisierungs-Szenarien',
       'create_scenario': 'Neues Szenario',
       'no_scenarios': 'Noch keine Szenarien',
       'no_scenarios_desc': 'Erstellen Sie Ihr erstes n8n-Szenario.',
@@ -743,7 +743,7 @@ class AppLocalizations {
       'logs': 'السجلات',
       'settings': 'الإعدادات',
       'notifications': 'الإشعارات',
-      'automations': 'الأتمتة',
+    'automations': 'الأتمتة المحلية',
       'energy_monitor': 'مراقب الطاقة',
       'sensor_monitor': 'مراقب الحساسات',
       'device_health': 'صحة الأجهزة',
@@ -793,7 +793,7 @@ class AppLocalizations {
       'info': 'معلومات',
 
       // Scenarios (n8n)
-      'scenarios': 'السيناريوهات',
+    'scenarios': 'سيناريوهات الأتمتة',
       'create_scenario': 'سيناريو جديد',
       'no_scenarios': 'لا توجد سيناريوهات',
       'no_scenarios_desc': 'أنشئ أول سيناريو n8n لأتمتة منزلك.',

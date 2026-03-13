@@ -1,3 +1,7 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+
 /// MQTT Configuration for local and cloud brokers
 ///
 /// ESP32 Actuator Topics (ESP receives these):
@@ -22,10 +26,27 @@
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
   // NOTE: This is a fallback default. The actual IP should be discovered via beacon.
-  static String _localBrokerAddress = '192.168.1.17'; // Fallback default
+  static const String defaultLocalBrokerAddress =
+      String.fromEnvironment('BACKEND_HOST', defaultValue: '192.168.1.2');
+  static const String previousDefaultLocalBrokerAddress = '192.168.1.17';
+  static const String legacyDefaultLocalBrokerAddress = '192.168.1.100';
+
+  static String _localBrokerAddress = defaultLocalBrokerAddress; // Fallback default
+  static const bool useDebugAdbReverseOverride =
+      bool.fromEnvironment('USE_ADB_REVERSE', defaultValue: false);
 
   // Getter and setter for dynamic IP address from beacon discovery
-  static String get localBrokerAddress => _localBrokerAddress;
+  static String get localBrokerAddress {
+    // In Android debug sessions with USB, adb reverse can map device localhost
+    // to backend ports on the development machine.
+    if (useDebugAdbReverseOverride &&
+        kDebugMode &&
+        !kIsWeb &&
+        Platform.isAndroid) {
+      return '127.0.0.1';
+    }
+    return _localBrokerAddress;
+  }
   static set localBrokerAddress(String address) {
     _localBrokerAddress = address;
     // Log the IP change for debugging
@@ -195,7 +216,14 @@ class MqttConfig {
 
   // Beacon discovery settings
   static const int beaconPort = 18830;
-  static const String beaconServiceName = 'face-broker';
+  static const String beaconServiceName = 'server-beacon';
+  static const List<String> beaconServiceNames = [
+    'server-beacon',
+    'face-broker',
+  ];
+
+  static bool isBeaconName(String? name) =>
+      name != null && beaconServiceNames.contains(name);
 
   // Version 2: Service ports
   static const int n8nPort = 5678; // n8n automation

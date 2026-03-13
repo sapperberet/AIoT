@@ -715,7 +715,8 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _faceAuthMessage = 'Face recognition system not found';
+        _faceAuthMessage =
+            'Face recognition system not found. Using configured server IP.';
         notifyListeners();
         return false;
       }

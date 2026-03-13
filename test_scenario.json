@@ -1,0 +1,1 @@
+{"name":"Test Gas Alert","trigger":{"type":"sensor","sensor":"gas","condition":"greater_than","value":400},"actions":[{"device":"buzzer","action":"on"},{"device":"lights_rgb","action":"c #FF0000"},{"device":"fan","action":"out"}]}

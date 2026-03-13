@@ -315,7 +315,6 @@ class _ScenarioCreateScreenState extends State<ScenarioCreateScreen> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
               labelText: 'Threshold Value',
-              prefixIcon: const Icon(Iconsax.hashnode),
               border: OutlineInputBorder(borderRadius: AppTheme.mediumRadius),
             ),
             validator: (v) => (v == null || v.isEmpty) ? 'Enter a value' : null,
@@ -773,7 +772,7 @@ class _ScenarioCreateScreenState extends State<ScenarioCreateScreen> {
 
                   setState(() {
                     if (isEdit) {
-                      _actions[editIndex!] = action;
+                      _actions[editIndex] = action;
                     } else {
                       _actions.add(action);
                     }

@@ -41,7 +41,7 @@ class SettingsProvider with ChangeNotifier {
   void _resetToDefaults() {
     _themeMode = ThemeMode.dark;
     _connectionMode = ConnectionMode.cloud;
-    _mqttBrokerAddress = '192.168.1.100';
+    _mqttBrokerAddress = MqttConfig.defaultLocalBrokerAddress;
     _mqttBrokerPort = 1883;
     _mqttUsername = '';
     _mqttPassword = '';
@@ -72,7 +72,7 @@ class SettingsProvider with ChangeNotifier {
   ConnectionMode get connectionMode => _connectionMode;
 
   // MQTT settings for local mode
-  String _mqttBrokerAddress = '192.168.1.100';
+  String _mqttBrokerAddress = MqttConfig.defaultLocalBrokerAddress;
   int _mqttBrokerPort = 1883;
   String _mqttUsername = '';
   String _mqttPassword = '';
@@ -152,13 +152,14 @@ class SettingsProvider with ChangeNotifier {
     String? password,
   }) {
     if (brokerAddress != null) {
-      _mqttBrokerAddress = brokerAddress;
+      _mqttBrokerAddress = _normalizeBrokerAddress(brokerAddress);
       // Update global MqttConfig to propagate IP to all services
-      MqttConfig.localBrokerAddress = brokerAddress;
+      MqttConfig.localBrokerAddress = _mqttBrokerAddress;
       // Also update AI server URL to use the new broker address
-      _aiServerUrl = 'http://$brokerAddress:${MqttConfig.n8nPort}/api/agent';
+      _aiServerUrl =
+          'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
       debugPrint(
-          '🌐 Settings: Updated broker address to $brokerAddress (global: ${MqttConfig.localBrokerAddress})');
+          '🌐 Settings: Updated broker address to $_mqttBrokerAddress (global: ${MqttConfig.localBrokerAddress})');
     }
     if (brokerPort != null) _mqttBrokerPort = brokerPort;
     if (username != null) _mqttUsername = username;
@@ -180,6 +181,16 @@ class SettingsProvider with ChangeNotifier {
     _aiServerUrl = url;
     notifyListeners();
     saveSettings();
+  }
+
+  String _normalizeBrokerAddress(String? address) {
+    final trimmed = address?.trim() ?? '';
+    if (trimmed.isEmpty ||
+        trimmed == MqttConfig.previousDefaultLocalBrokerAddress ||
+        trimmed == MqttConfig.legacyDefaultLocalBrokerAddress) {
+      return MqttConfig.defaultLocalBrokerAddress;
+    }
+    return trimmed;
   }
 
   // Toggle notification settings
@@ -319,8 +330,9 @@ class SettingsProvider with ChangeNotifier {
               userSettings['dataRefreshInterval'] as int? ?? 5;
 
           // MQTT settings
-          _mqttBrokerAddress =
-              userSettings['mqttBrokerAddress'] as String? ?? '192.168.1.100';
+          _mqttBrokerAddress = _normalizeBrokerAddress(
+            userSettings['mqttBrokerAddress'] as String?,
+          );
           _mqttBrokerPort = userSettings['mqttBrokerPort'] as int? ?? 1883;
           _mqttUsername = userSettings['mqttUsername'] as String? ?? '';
           _mqttPassword = userSettings['mqttPassword'] as String? ?? '';
@@ -449,8 +461,9 @@ class SettingsProvider with ChangeNotifier {
       _offlineMode = prefs.getBool('offlineMode') ?? false;
       _dataRefreshInterval = prefs.getInt('dataRefreshInterval') ?? 5;
 
-      _mqttBrokerAddress =
-          prefs.getString('mqttBrokerAddress') ?? '192.168.1.100';
+      _mqttBrokerAddress = _normalizeBrokerAddress(
+        prefs.getString('mqttBrokerAddress'),
+      );
       _mqttBrokerPort = prefs.getInt('mqttBrokerPort') ?? 1883;
       _mqttUsername = prefs.getString('mqttUsername') ?? '';
       _mqttPassword = prefs.getString('mqttPassword') ?? '';

@@ -44,24 +44,15 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // 🔥 CRITICAL: Try beacon discovery BEFORE connecting MQTT
-    // This ensures we have the correct backend IP
-    if (authProvider.discoveredBeacon == null) {
-      debugPrint('🔍 Home: Attempting beacon discovery for MQTT...');
-      final beaconFound = await authProvider.discoverFaceAuthBeacon();
-      if (beaconFound && authProvider.discoveredBeacon != null) {
-        debugPrint(
-            '✅ Home: Beacon discovered at ${authProvider.discoveredBeacon!.ip}');
-      } else {
-        debugPrint('⚠️ Home: Beacon not found, using settings IP');
-      }
-    }
+    // Keep startup resilient: initialize using configured IP first.
+    // Beacon discovery remains available via face-auth flows.
+    debugPrint('ℹ️ Home: Skipping blocking beacon discovery at startup');
 
     // User is authenticated, initialize devices
     final deviceProvider = context.read<DeviceProvider>();
     await deviceProvider.initialize(authProvider.currentUser!.uid);
 
-    // 🔥 CRITICAL: Sync beacon IP to all services if already discovered
+    // Sync beacon IP to all services if it was already discovered elsewhere.
     if (authProvider.discoveredBeacon != null) {
       final beaconIp = authProvider.discoveredBeacon!.ip;
       debugPrint('🌐 Home: Syncing beacon IP ($beaconIp) to all services');
@@ -70,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

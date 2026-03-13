@@ -123,40 +123,41 @@ bool _shouldFilterMessage(String message) {
   return false;
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  // Filter out spam debug messages from animation packages and system logs
-  debugPrint = (String? message, {int? wrapWidth}) {
-    if (message == null || message.isEmpty) return;
-    if (_shouldFilterMessage(message)) return;
-    // Print other messages normally using default implementation
-    // ignore: avoid_print
-    print(message);
-  };
+      // Filter out spam debug messages from animation packages and system logs.
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message == null || message.isEmpty) return;
+        if (_shouldFilterMessage(message)) return;
+        // ignore: avoid_print
+        print(message);
+      };
 
-  // Initialize Firebase (only if not already initialized)
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    if (e.toString().contains('duplicate-app')) {
-      // Firebase already initialized, continue
-      debugPrint('Firebase already initialized');
-    } else {
-      // Re-throw other errors
-      rethrow;
-    }
-  }
+      // Initialize Firebase (only if not already initialized).
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } catch (e) {
+        if (e.toString().contains('duplicate-app')) {
+          debugPrint('Firebase already initialized');
+        } else {
+          rethrow;
+        }
+      }
 
-  if (DEBUG_MODE) {
-    debugPrint('🔴 DEBUG MODE ENABLED - Authentication bypassed!');
-  }
+      if (DEBUG_MODE) {
+        debugPrint('🔴 DEBUG MODE ENABLED - Authentication bypassed!');
+      }
 
-  // Run app in a custom zone that filters spam print messages
-  runZoned(
-    () => runApp(const SmartHomeApp()),
+      runApp(const SmartHomeApp());
+    },
+    (error, stack) {
+      debugPrint('Unhandled zone error: $error');
+    },
     zoneSpecification: ZoneSpecification(
       print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
         if (!_shouldFilterMessage(line)) {
