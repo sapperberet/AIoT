@@ -5,16 +5,15 @@ import 'package:flutter/foundation.dart';
 /// MQTT Configuration for local and cloud brokers
 ///
 /// ESP32 Actuator Topics (ESP receives these):
-/// - Fan: home/actuators/fan -> in/out/on/off
+/// - Fan: home/actuators/fan -> in/out/off
 /// - Lights Floor1: home/actuators/lights/floor1 -> on/off
 /// - Lights Floor2: home/actuators/lights/floor2 -> on/off
-/// - Lights Landscape: home/actuators/lights/landscape -> on/off
 /// - Lights RGB: home/actuators/lights/rgb -> b <brightness> / c <color>
 /// - Buzzer: home/actuators/buzzer -> on/off
 /// - Garage Motor: home/actuators/motors/garage -> open/close
 /// - Front Window: home/actuators/motors/frontwindow -> open/close
-/// - Side Window: home/actuators/motors/sidewindow -> open/close
 /// - Door Motor: home/actuators/motors/door -> open/close
+/// - Gate Motor: home/actuators/motors/gate -> open/close
 ///
 /// ESP32 Sensor Topics (ESP sends these):
 /// - Gas: home/sensors/gas
@@ -82,8 +81,6 @@ class MqttConfig {
   // Lights: on / off
   static const String lightFloor1Topic = '$topicPrefix/actuators/lights/floor1';
   static const String lightFloor2Topic = '$topicPrefix/actuators/lights/floor2';
-  static const String lightLandscapeTopic =
-      '$topicPrefix/actuators/lights/landscape';
 
   // RGB Light: b <brightness> / c <color_string>
   static const String lightRgbTopic = '$topicPrefix/actuators/lights/rgb';
@@ -95,11 +92,8 @@ class MqttConfig {
   static const String garageMotorTopic = '$topicPrefix/actuators/motors/garage';
   static const String frontWindowMotorTopic =
       '$topicPrefix/actuators/motors/frontwindow';
-  static const String sideWindowMotorTopic =
-      '$topicPrefix/actuators/motors/sidewindow';
   static const String doorMotorTopic = '$topicPrefix/actuators/motors/door';
-  // Gate is same as door
-  static const String gateMotorTopic = doorMotorTopic;
+  static const String gateMotorTopic = '$topicPrefix/actuators/motors/gate';
 
   // ============================================================
   // ESP32 SENSOR TOPICS (ESP publishes to these)
@@ -111,6 +105,8 @@ class MqttConfig {
   static const String voltageSensorTopic = '$topicPrefix/sensors/voltage';
   static const String currentSensorTopic = '$topicPrefix/sensors/current';
   static const String humiditySensorTopic = '$topicPrefix/sensors/humidity';
+  static const String temperatureSensorTopic = '$topicPrefix/sensors/temp';
+  static const String flameSensorTopic = '$topicPrefix/sensors/flame';
 
   // ============================================================
   // LEGACY ALIASES (for backward compatibility with app code)
@@ -128,8 +124,8 @@ class MqttConfig {
   static String windowCommandTopic(String windowId) {
     if (windowId == 'front' || windowId == 'front_window') {
       return frontWindowMotorTopic;
-    } else if (windowId == 'side' || windowId == 'side_window') {
-      return sideWindowMotorTopic;
+    } else if (windowId == 'gate') {
+      return gateMotorTopic;
     }
     return '$topicPrefix/actuators/motors/$windowId';
   }
@@ -143,8 +139,6 @@ class MqttConfig {
       case 'floor_2':
       case 'floor2':
         return lightFloor2Topic;
-      case 'landscape':
-        return lightLandscapeTopic;
       case 'rgb':
         return lightRgbTopic;
       default:
@@ -179,17 +173,14 @@ class MqttConfig {
   static const String deviceSyncTopic = '$topicPrefix/device/sync';
 
   // Sensor topics (for subscribing)
-  static const String temperatureTopic = '$topicPrefix/sensors/temperature';
+  static const String temperatureTopic = temperatureSensorTopic;
   static const String humidityTopic = humiditySensorTopic;
   static const String gasTopic = gasSensorTopic;
   static const String ldrTopic = ldrSensorTopic;
-  static const String energyTopic = '$topicPrefix/sensors/energy';
-  static const String motionSensorTopic = '$topicPrefix/sensors/motion';
-  static const String smokeTopic = '$topicPrefix/sensors/smoke';
-  static const String waterTopic = '$topicPrefix/sensors/water';
-  static const String soundTopic = '$topicPrefix/sensors/sound';
-  static const String pressureTopic = '$topicPrefix/sensors/pressure';
-  static const String airQualityTopic = '$topicPrefix/sensors/air_quality';
+  static const String voltageTopic = voltageSensorTopic;
+  static const String currentTopic = currentSensorTopic;
+  static const String flameTopic = flameSensorTopic;
+  static const String rainTopic = rainSensorTopic;
 
   // n8n Door topics
   static const String n8nDoorStatusTopic = '$topicPrefix/door/status';

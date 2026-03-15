@@ -781,7 +781,7 @@ class _QuickControlsSection extends StatelessWidget {
             icon: Icons.fence_rounded,
             name: 'Gate Door',
             deviceId: 'gate',
-            mqttTopic: 'home/actuators/motors/door',
+            mqttTopic: 'home/actuators/motors/gate',
             isActive: deviceProvider.windowStates['gate'] ?? false,
             activeColor: Colors.red,
             inactiveColor: Colors.green,
@@ -826,7 +826,7 @@ class _QuickControlsSection extends StatelessWidget {
             final windowTopic =
                 entry.key == 'front' || entry.key == 'front_window'
                     ? 'home/actuators/motors/frontwindow'
-                    : 'home/actuators/motors/sidewindow';
+                    : 'home/actuators/motors/gate';
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildDeviceListItem(
@@ -869,7 +869,7 @@ class _QuickControlsSection extends StatelessWidget {
                     ? 'home/actuators/lights/floor1'
                     : entry.key == 'floor_2' || entry.key == 'floor2'
                         ? 'home/actuators/lights/floor2'
-                        : 'home/actuators/lights/landscape';
+                        : 'home/actuators/lights/floor1';
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _buildLightListItem(

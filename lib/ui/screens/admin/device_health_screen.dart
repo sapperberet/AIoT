@@ -80,7 +80,7 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
       'id': 'temp_sensor',
       'name': 'Temperature Sensor',
       'type': 'sensor',
-      'topic': 'home/sensors/temperature'
+      'topic': 'home/sensors/temp'
     },
     {
       'id': 'humidity_sensor',
@@ -89,64 +89,94 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
       'topic': 'home/sensors/humidity'
     },
     {
-      'id': 'motion_sensor',
-      'name': 'Motion Sensor',
+      'id': 'gas_sensor',
+      'name': 'Gas Sensor',
       'type': 'sensor',
-      'topic': 'home/sensors/motion'
+      'topic': 'home/sensors/gas'
     },
     {
-      'id': 'light_sensor',
-      'name': 'Light Sensor',
+      'id': 'flame_sensor',
+      'name': 'Flame Sensor',
       'type': 'sensor',
-      'topic': 'home/sensors/light'
+      'topic': 'home/sensors/flame'
     },
     {
-      'id': 'door_sensor',
-      'name': 'Door Sensor',
+      'id': 'ldr_sensor',
+      'name': 'LDR Sensor',
       'type': 'sensor',
-      'topic': 'home/sensors/door'
+      'topic': 'home/sensors/ldr'
     },
     {
-      'id': 'voltmeter',
-      'name': 'Voltmeter',
-      'type': 'meter',
-      'topic': 'home/energy/voltage'
-    },
-    {
-      'id': 'ammeter',
-      'name': 'Current Meter',
-      'type': 'meter',
-      'topic': 'home/energy/current'
-    },
-    {
-      'id': 'power_meter',
-      'name': 'Power Meter',
-      'type': 'meter',
-      'topic': 'home/energy/power'
-    },
-    {
-      'id': 'esp32_main',
-      'name': 'ESP32 Main Controller',
-      'type': 'controller',
-      'topic': 'home/esp32/status'
-    },
-    {
-      'id': 'heat_sensor',
-      'name': 'Heat Sensor',
+      'id': 'rain_sensor',
+      'name': 'Rain Sensor',
       'type': 'sensor',
-      'topic': 'home/sensors/heat'
+      'topic': 'home/sensors/rain'
     },
     {
-      'id': 'smoke_detector',
-      'name': 'Smoke Detector',
-      'type': 'safety',
-      'topic': 'home/safety/smoke'
+      'id': 'voltage_sensor',
+      'name': 'Voltage Sensor',
+      'type': 'sensor',
+      'topic': 'home/sensors/voltage'
     },
     {
-      'id': 'gas_detector',
-      'name': 'Gas Detector',
-      'type': 'safety',
-      'topic': 'home/safety/gas'
+      'id': 'current_sensor',
+      'name': 'Current Sensor',
+      'type': 'sensor',
+      'topic': 'home/sensors/current'
+    },
+    {
+      'id': 'fan_actuator',
+      'name': 'Fan',
+      'type': 'actuator',
+      'topic': 'home/actuators/fan'
+    },
+    {
+      'id': 'light_floor1_actuator',
+      'name': 'Light Floor 1',
+      'type': 'actuator',
+      'topic': 'home/actuators/lights/floor1'
+    },
+    {
+      'id': 'light_floor2_actuator',
+      'name': 'Light Floor 2',
+      'type': 'actuator',
+      'topic': 'home/actuators/lights/floor2'
+    },
+    {
+      'id': 'light_rgb_actuator',
+      'name': 'RGB Light',
+      'type': 'actuator',
+      'topic': 'home/actuators/lights/rgb'
+    },
+    {
+      'id': 'buzzer_actuator',
+      'name': 'Buzzer',
+      'type': 'actuator',
+      'topic': 'home/actuators/buzzer'
+    },
+    {
+      'id': 'garage_motor_actuator',
+      'name': 'Garage Motor',
+      'type': 'actuator',
+      'topic': 'home/actuators/motors/garage'
+    },
+    {
+      'id': 'front_window_motor_actuator',
+      'name': 'Front Window Motor',
+      'type': 'actuator',
+      'topic': 'home/actuators/motors/frontwindow'
+    },
+    {
+      'id': 'door_motor_actuator',
+      'name': 'Door Motor',
+      'type': 'actuator',
+      'topic': 'home/actuators/motors/door'
+    },
+    {
+      'id': 'gate_motor_actuator',
+      'name': 'Gate Motor',
+      'type': 'actuator',
+      'topic': 'home/actuators/motors/gate'
     },
   ];
 
@@ -343,17 +373,9 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
             _buildDeviceSection(
                 theme, loc, 'Sensors', 'sensor', Iconsax.cpu_setting),
 
-            // Section: Meters
+            // Section: Actuators
             _buildDeviceSection(
-                theme, loc, 'Energy Meters', 'meter', Iconsax.electricity),
-
-            // Section: Controllers
-            _buildDeviceSection(
-                theme, loc, 'Controllers', 'controller', Iconsax.cpu),
-
-            // Section: Safety
-            _buildDeviceSection(
-                theme, loc, 'Safety Devices', 'safety', Iconsax.shield_tick),
+                theme, loc, 'Actuators', 'actuator', Iconsax.setting_2),
           ],
         ),
       ),

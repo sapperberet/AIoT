@@ -40,9 +40,8 @@ class DeviceProvider with ChangeNotifier {
     'gate': false,
   };
 
-  // Lights: landscape, floor_1, floor_2, rgb (with extra properties)
+  // Lights: floor_1, floor_2, rgb (with extra properties)
   Map<String, bool> _lightStates = {
-    'landscape': false,
     'floor_1': false,
     'floor_2': false,
     'rgb': false,
@@ -50,7 +49,6 @@ class DeviceProvider with ChangeNotifier {
 
   // Light brightness (0-100)
   Map<String, int> _lightBrightness = {
-    'landscape': 100,
     'floor_1': 100,
     'floor_2': 100,
     'rgb': 100,
@@ -72,6 +70,10 @@ class DeviceProvider with ChangeNotifier {
   double _humidity = 0.0;
   double _gasLevel = 0.0;
   double _lightLevel = 0.0; // LDR sensor
+  bool _flameDetected = false;
+  bool _rainDetected = false;
+  double _voltage = 0.0;
+  double _current = 0.0;
   double _energyConsumption = 0.0;
   bool _motionDetected = false;
   double _smokeLevel = 0.0;
@@ -119,6 +121,10 @@ class DeviceProvider with ChangeNotifier {
   double get humidity => _humidity;
   double get gasLevel => _gasLevel;
   double get lightLevel => _lightLevel;
+  bool get flameDetected => _flameDetected;
+  bool get rainDetected => _rainDetected;
+  double get voltage => _voltage;
+  double get current => _current;
   double get energyConsumption => _energyConsumption;
   bool get motionDetected => _motionDetected;
   double get smokeLevel => _smokeLevel;
@@ -501,13 +507,10 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.humidityTopic);
     _mqttService.subscribe(MqttConfig.gasTopic);
     _mqttService.subscribe(MqttConfig.ldrTopic);
-    _mqttService.subscribe(MqttConfig.energyTopic);
-    _mqttService.subscribe(MqttConfig.motionSensorTopic);
-    _mqttService.subscribe(MqttConfig.smokeTopic);
-    _mqttService.subscribe(MqttConfig.waterTopic);
-    _mqttService.subscribe(MqttConfig.soundTopic);
-    _mqttService.subscribe(MqttConfig.pressureTopic);
-    _mqttService.subscribe(MqttConfig.airQualityTopic);
+    _mqttService.subscribe(MqttConfig.flameTopic);
+    _mqttService.subscribe(MqttConfig.rainTopic);
+    _mqttService.subscribe(MqttConfig.voltageTopic);
+    _mqttService.subscribe(MqttConfig.currentTopic);
 
     // Subscribe to n8n agent response topics
     _mqttService.subscribe(MqttConfig.agentResponseTopic);
@@ -527,50 +530,79 @@ class DeviceProvider with ChangeNotifier {
 
   void _handleMqttMessage(AppMqttMessage message) {
     final payload = message.jsonPayload;
-    if (payload == null) return;
 
     // Check for face detection events (Version 2)
     if (message.topic == MqttConfig.faceUnrecognizedTopic) {
+      if (payload == null) return;
       _handleUnrecognizedFace(payload);
       return;
     } else if (message.topic == MqttConfig.faceRecognizedTopic) {
+      if (payload == null) return;
       _handleRecognizedFace(payload);
       return;
     }
 
     // Handle sensor data
     if (message.topic.contains('/sensors/')) {
-      _handleSensorData(message.topic, payload);
+      _handleSensorData(message.topic, message.payload, payload: payload);
       return;
     }
 
     // Handle door, window, garage, buzzer, light, fan status
     if (message.topic.contains('/door/status')) {
-      _handleDoorStatus(payload);
+      _handleDoorStatus(_normalizeStatePayload(message.payload, payload));
       return;
     } else if (message.topic.contains('/window/status')) {
-      _handleWindowStatus(message.topic, payload);
+      _handleWindowStatus(
+          message.topic, _normalizeStatePayload(message.payload, payload));
       return;
     } else if (message.topic.contains('/garage/status')) {
-      _handleGarageStatus(payload);
+      _handleGarageStatus(_normalizeStatePayload(message.payload, payload));
       return;
     } else if (message.topic.contains('/buzzer/status')) {
-      _handleBuzzerStatus(payload);
+      _handleBuzzerStatus(_normalizeStatePayload(message.payload, payload));
       return;
     } else if (message.topic.contains('/light/status')) {
-      _handleLightStatus(message.topic, payload);
+      _handleLightStatus(
+          message.topic, _normalizeStatePayload(message.payload, payload));
       return;
     } else if (message.topic.contains('/fan/status')) {
-      _handleFanStatus(message.topic, payload);
+      _handleFanStatus(
+          message.topic, _normalizeStatePayload(message.payload, payload));
       return;
     }
 
     // Check if it's an alarm
     if (message.topic.contains('alarm')) {
+      if (payload == null) return;
       _handleAlarm(message.topic, payload);
     } else {
-      _handleDeviceUpdate(message.topic, payload);
+      _handleDeviceUpdate(
+        message.topic,
+        payload ?? {'value': message.payload, 'state': message.payload},
+      );
     }
+  }
+
+  Map<String, dynamic> _normalizeStatePayload(
+    String rawPayload,
+    Map<String, dynamic>? parsedPayload,
+  ) {
+    if (parsedPayload != null) {
+      return parsedPayload;
+    }
+
+    final state = rawPayload.trim().toLowerCase();
+    return {
+      'state': state,
+      'active': state == 'on' || state == 'active' || state == '1',
+      'speed': state == 'in'
+          ? 1
+          : state == 'out'
+              ? 2
+              : 0,
+      'value': rawPayload.trim(),
+    };
   }
 
   /// Handle door status from backend
@@ -669,7 +701,7 @@ class DeviceProvider with ChangeNotifier {
 
   /// Handle buzzer status from backend
   void _handleBuzzerStatus(Map<String, dynamic> payload) {
-    final isActive = payload['active'] == true;
+    final isActive = payload['active'] == true || payload['state'] == 'on';
     final previousState = _isBuzzerActive;
     _isBuzzerActive = isActive;
 
@@ -744,7 +776,11 @@ class DeviceProvider with ChangeNotifier {
   }
 
   /// Handle sensor data from MQTT
-  void _handleSensorData(String topic, Map<String, dynamic> payload) {
+  void _handleSensorData(
+    String topic,
+    String rawPayload, {
+    Map<String, dynamic>? payload,
+  }) {
     debugPrint('📊 Sensor data received on $topic: $payload');
 
     // Extract sensor type from topic: home/sensors/{type}
@@ -752,9 +788,7 @@ class DeviceProvider with ChangeNotifier {
     final sensorType = parts.length > 2 ? parts[2] : '';
 
     // Extract value from payload
-    final value = (payload['value'] as num?)?.toDouble() ??
-        (payload['data'] as num?)?.toDouble() ??
-        0.0;
+    final value = _extractSensorValue(rawPayload, payload);
 
     // Store sensor data using sensor service if available
     SensorType? type;
@@ -786,6 +820,28 @@ class DeviceProvider with ChangeNotifier {
         _lightLevel = value;
         type = SensorType.ldr;
         debugPrint('☀️ Light Level: ${value}lux');
+        break;
+      case 'flame':
+        _flameDetected = value > 0;
+        type = SensorType.motion;
+        debugPrint('🔥 Flame: ${_flameDetected ? "DETECTED" : "Clear"}');
+        break;
+      case 'rain':
+        _rainDetected = value > 0;
+        type = SensorType.water;
+        debugPrint('🌧️ Rain: ${_rainDetected ? "DETECTED" : "Dry"}');
+        break;
+      case 'voltage':
+        _voltage = value;
+        _energyConsumption = _voltage * _current;
+        type = SensorType.energy;
+        debugPrint('🔌 Voltage: ${value}V');
+        break;
+      case 'current':
+        _current = value;
+        _energyConsumption = _voltage * _current;
+        type = SensorType.energy;
+        debugPrint('⚡ Current: ${value}A');
         break;
       case 'energy':
       case 'power':
@@ -840,11 +896,33 @@ class DeviceProvider with ChangeNotifier {
         sensorId: sensorType,
         type: type,
         value: value,
-        metadata: {'topic': topic, 'raw_payload': payload},
+        metadata: {
+          'topic': topic,
+          'raw_payload': rawPayload,
+          'json_payload': payload,
+        },
       );
     }
 
     notifyListeners();
+  }
+
+  double _extractSensorValue(
+    String rawPayload,
+    Map<String, dynamic>? payload,
+  ) {
+    if (payload != null) {
+      final jsonValue = payload['value'] ?? payload['data'];
+      if (jsonValue is num) {
+        return jsonValue.toDouble();
+      }
+      if (jsonValue is String) {
+        return double.tryParse(jsonValue.trim()) ?? 0.0;
+      }
+    }
+
+    final normalized = rawPayload.trim();
+    return double.tryParse(normalized) ?? 0.0;
   }
 
   /// Create gas alarm when dangerous levels detected
@@ -1214,7 +1292,7 @@ class DeviceProvider with ChangeNotifier {
     if (_isConnectedToMqtt && !_useCloudMode) {
       // Send to each window individually
       _mqttService.publish(MqttConfig.frontWindowMotorTopic, message);
-      _mqttService.publish(MqttConfig.sideWindowMotorTopic, message);
+      _mqttService.publish(MqttConfig.gateMotorTopic, message);
     }
 
     _syncToVisualization('windows', {'allOpen': newState});
@@ -1332,7 +1410,6 @@ class DeviceProvider with ChangeNotifier {
       // Send to each light individually
       _mqttService.publish(MqttConfig.lightFloor1Topic, message);
       _mqttService.publish(MqttConfig.lightFloor2Topic, message);
-      _mqttService.publish(MqttConfig.lightLandscapeTopic, message);
     }
 
     _syncToVisualization('lights', {'allOn': newState});
@@ -1377,7 +1454,8 @@ class DeviceProvider with ChangeNotifier {
     final colorHex = _rgbLightColor.toRadixString(16).padLeft(6, '0');
 
     if (_isConnectedToMqtt && !_useCloudMode) {
-      _mqttService.publish(MqttConfig.lightRgbTopic, 'c $colorHex');
+      _mqttService.publish(
+          MqttConfig.lightRgbTopic, 'c #${colorHex.toUpperCase()}');
     }
 
     // Sync RGB to visualization with color and brightness

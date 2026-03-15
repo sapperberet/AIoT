@@ -35,7 +35,7 @@ class AutomationProvider with ChangeNotifier {
       triggers: [
         AutomationTrigger(
           type: TriggerType.deviceState,
-          parameters: {'deviceId': 'door_sensor', 'state': 'closed'},
+          parameters: {'deviceId': 'door', 'state': 'closed'},
         ),
       ],
       conditions: [

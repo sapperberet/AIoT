@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'mqtt_service.dart';
+import '../config/mqtt_config.dart';
 
 /// Model for energy readings
 class EnergyReading {
@@ -87,13 +88,15 @@ class EnergyService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // MQTT topics for energy monitoring
-  static const String _voltageTopic = 'home/energy/voltage';
-  static const String _currentTopic = 'home/energy/current';
-  static const String _powerTopic = 'home/energy/power';
-  static const String _energyTopic = 'home/energy/total';
+  static const String _voltageTopic = MqttConfig.voltageTopic;
+  static const String _currentTopic = MqttConfig.currentTopic;
 
   // Current readings
   EnergyReading? _currentReading;
+  double _latestVoltage = 0.0;
+  double _latestCurrent = 0.0;
+  double _estimatedEnergyKwh = 0.0;
+  DateTime? _lastSampleAt;
   final List<EnergyReading> _readingHistory = [];
   StreamSubscription<AppMqttMessage>? _messageSubscription;
 
@@ -137,18 +140,35 @@ class EnergyService with ChangeNotifier {
   void _subscribeToEnergyTopics() {
     _mqttService.subscribe(_voltageTopic);
     _mqttService.subscribe(_currentTopic);
-    _mqttService.subscribe(_powerTopic);
-    _mqttService.subscribe(_energyTopic);
   }
 
   void _handleMessage(AppMqttMessage message) {
     try {
-      if (message.topic == _voltageTopic ||
-          message.topic == _currentTopic ||
-          message.topic == _powerTopic ||
-          message.topic == _energyTopic) {
-        // Parse the reading
-        final reading = EnergyReading.fromMqttPayload(message.payload);
+      if (message.topic == _voltageTopic || message.topic == _currentTopic) {
+        final rawValue = double.tryParse(message.payload.trim()) ?? 0.0;
+
+        if (message.topic == _voltageTopic) {
+          _latestVoltage = rawValue;
+        } else if (message.topic == _currentTopic) {
+          _latestCurrent = rawValue;
+        }
+
+        final now = DateTime.now();
+        final power = _latestVoltage * _latestCurrent;
+        if (_lastSampleAt != null) {
+          final deltaHours =
+              now.difference(_lastSampleAt!).inMilliseconds / 3600000.0;
+          _estimatedEnergyKwh += (power / 1000.0) * deltaHours;
+        }
+        _lastSampleAt = now;
+
+        final reading = EnergyReading(
+          voltage: _latestVoltage,
+          current: _latestCurrent,
+          power: power,
+          energy: _estimatedEnergyKwh,
+          timestamp: now,
+        );
 
         _currentReading = reading;
         _readingHistory.add(reading);

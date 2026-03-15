@@ -543,7 +543,7 @@ class AutomationEngine {
     if (action.deviceId == 'fan') {
       topic = 'home/actuators/fan';
       payload = state == 'on'
-          ? 'on'
+          ? 'in'
           : state == 'off'
               ? 'off'
               : state;
@@ -557,7 +557,7 @@ class AutomationEngine {
       } else if (lightId == 'floor_2' || lightId == 'floor2') {
         topic = 'home/actuators/lights/floor2';
       } else {
-        topic = 'home/actuators/lights/landscape';
+        topic = 'home/actuators/lights/floor1';
       }
       payload = state == 'on' ? 'on' : 'off';
     } else if (action.deviceId == 'door' || action.deviceId == 'main_door') {
@@ -569,7 +569,7 @@ class AutomationEngine {
       payload = state == 'open' ? 'open' : 'close';
     } else if (action.deviceId?.contains('window') == true) {
       final windowType =
-          action.deviceId!.contains('front') ? 'frontwindow' : 'sidewindow';
+          action.deviceId!.contains('front') ? 'frontwindow' : 'gate';
       topic = 'home/actuators/motors/$windowType';
       payload = state == 'open' ? 'open' : 'close';
     } else if (action.deviceId == 'buzzer') {
