@@ -105,11 +105,33 @@ service cloud.firestore {
       // Allow users to read their own activities
       allow read: if request.auth != null && 
                      request.auth.uid == resource.data.userId;
+      // Allow approved users to read activity feed used by admin dashboards
+      allow read: if isApproved();
       // Allow users to update/delete their own activities
       allow update, delete: if request.auth != null && 
                                request.auth.uid == resource.data.userId;
       // Admins can read all activities
       allow read: if isAdmin();
+    }
+
+    // Automation definitions
+    match /automations/{automationId} {
+      // Approved users can read automation state; only managers/admins can mutate
+      allow read: if isApproved();
+      allow create, update, delete: if isManagerOrAdmin();
+    }
+
+    // Automation execution logs
+    match /automation_logs/{logId} {
+      // Logs are visible to approved users; writes are managed by privileged users
+      allow read: if isApproved();
+      allow create, update, delete: if isManagerOrAdmin();
+    }
+
+    // Admin notification checkpoints for activity polling
+    match /admin_notifications/{notificationId} {
+      allow read, write: if request.auth != null &&
+                            (request.auth.uid == notificationId || isAdmin());
     }
     
     // Face mappings - system managed (read for auth, write only for system)
