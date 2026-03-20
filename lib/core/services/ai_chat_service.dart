@@ -343,42 +343,72 @@ class AIChatService {
 
   /// Check if the AI agent server is available
   Future<bool> checkServerHealth() async {
-    try {
-      // Use n8n's built-in health endpoint instead of sending to webhook
-      // This is more reliable as it doesn't depend on workflow processing
-      final n8nBaseUrl =
-          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}';
-      final healthUrl = '$n8nBaseUrl/healthz';
+    final candidates = <String>[];
 
-      _logger.d('Checking n8n health at: $healthUrl');
-
-      final response = await http
-          .get(Uri.parse(healthUrl))
-          .timeout(const Duration(seconds: 10));
-
-      _logger.d('n8n health response: ${response.statusCode}');
-
-      // n8n's /healthz returns 200 when server is running
-      if (response.statusCode == 200) {
-        return true;
+    void addCandidate(String host) {
+      final trimmed = host.trim();
+      if (trimmed.isEmpty) return;
+      if (!candidates.contains(trimmed)) {
+        candidates.add(trimmed);
       }
-
-      // Fallback: try HEAD request to webhook endpoint
-      // Some n8n setups may not have /healthz enabled
-      try {
-        final webhookResponse = await http
-            .head(Uri.parse(_baseUrl))
-            .timeout(const Duration(seconds: 5));
-        // n8n returns 404 for HEAD on webhook, but that means server is up
-        // 200, 404, 405 all indicate server is running
-        return webhookResponse.statusCode < 500;
-      } catch (e) {
-        return false;
-      }
-    } catch (e) {
-      _logger.w('AI agent server health check failed: $e');
-      return false;
     }
+
+    // 1) Current endpoint host (can differ from MqttConfig if user changed URL)
+    try {
+      addCandidate(Uri.parse(_baseUrl).host);
+    } catch (_) {
+      // Ignore malformed URL and continue with config-based candidates.
+    }
+
+    // 2) Config-driven candidates (discovered/stored/default fallbacks)
+    for (final host
+        in MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress)) {
+      addCandidate(host);
+    }
+
+    for (final host in candidates) {
+      try {
+        // Use n8n's built-in health endpoint instead of sending to webhook.
+        // This is more reliable as it doesn't depend on workflow processing.
+        final n8nBaseUrl = 'http://$host:${MqttConfig.n8nPort}';
+        final healthUrl = '$n8nBaseUrl/healthz';
+
+        _logger.d('Checking n8n health at: $healthUrl');
+
+        final response = await http
+            .get(Uri.parse(healthUrl))
+            .timeout(const Duration(seconds: 6));
+
+        _logger.d('n8n health response from $host: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          if (host != MqttConfig.localBrokerAddress) {
+            updateBrokerEndpoint(host, port: MqttConfig.n8nPort);
+          }
+          return true;
+        }
+
+        // Some n8n setups may not expose /healthz.
+        final webhookUrl = 'http://$host:${MqttConfig.n8nPort}/api/agent';
+        final webhookResponse = await http
+            .head(Uri.parse(webhookUrl))
+            .timeout(const Duration(seconds: 4));
+
+        // n8n may return 404/405 for HEAD on webhook; still means server is up.
+        if (webhookResponse.statusCode < 500) {
+          if (host != MqttConfig.localBrokerAddress) {
+            updateBrokerEndpoint(host, port: MqttConfig.n8nPort);
+          }
+          return true;
+        }
+      } catch (e) {
+        _logger.d('Health probe failed for $host: $e');
+        // Try next candidate.
+      }
+    }
+
+    _logger.w('AI agent server health check failed on all broker candidates');
+    return false;
   }
 
   /// Get chat history from the server (if supported)

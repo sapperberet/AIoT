@@ -61,6 +61,16 @@ service cloud.firestore {
       match /settings/{settingId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // User's energy monitoring readings
+      match /energy_readings/{readingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // User-scoped sensor data history
+      match /sensor_data/{readingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Approval requests - only admins can read/write

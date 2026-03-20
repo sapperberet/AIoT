@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/sensor_data_model.dart';
 
 /// Service for managing sensor data collection, storage, and retrieval
 class SensorService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // In-memory cache for latest sensor readings
   final Map<String, SensorData> _latestReadings = {};
@@ -93,10 +95,10 @@ class SensorService {
   /// Store sensor data to Firestore
   Future<void> storeSensorData(SensorData data) async {
     try {
-      await _firestore
-          .collection('sensor_data')
-          .doc(data.id)
-          .set(data.toJson());
+      final collection = _userSensorDataCollection();
+      if (collection == null) return;
+
+      await collection.doc(data.id).set(data.toJson());
       debugPrint('✅ Stored sensor data: ${data.id}');
     } catch (e) {
       debugPrint('❌ Failed to store sensor data: $e');
@@ -111,8 +113,10 @@ class SensorService {
     int? limit,
   }) async {
     try {
-      Query query = _firestore
-          .collection('sensor_data')
+      final collection = _userSensorDataCollection();
+      if (collection == null) return [];
+
+      Query query = collection
           .where('type', isEqualTo: type.name)
           .orderBy('timestamp', descending: true);
 
@@ -242,13 +246,20 @@ class SensorService {
     debugPrint(
         '💾 Flushing ${_writeBuffer.length} sensor readings to Firestore...');
 
+    final buffer = List<SensorData>.from(_writeBuffer);
+    _writeBuffer.clear();
+
     try {
       final batch = _firestore.batch();
-      final buffer = List<SensorData>.from(_writeBuffer);
-      _writeBuffer.clear();
+
+      final collection = _userSensorDataCollection();
+      if (collection == null) {
+        _writeBuffer.addAll(buffer);
+        return;
+      }
 
       for (var data in buffer) {
-        final docRef = _firestore.collection('sensor_data').doc(data.id);
+        final docRef = collection.doc(data.id);
         batch.set(docRef, data.toJson());
       }
 
@@ -256,9 +267,22 @@ class SensorService {
       debugPrint('✅ Successfully stored ${buffer.length} sensor readings');
     } catch (e) {
       debugPrint('❌ Failed to flush sensor data: $e');
-      // Re-add failed writes to buffer
-      _writeBuffer.addAll(_writeBuffer);
+      // Re-add failed writes to buffer.
+      _writeBuffer.addAll(buffer);
     }
+  }
+
+  CollectionReference<Map<String, dynamic>>? _userSensorDataCollection() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      debugPrint('⚠️ SensorService: Skipping Firestore write/query (no user)');
+      return null;
+    }
+
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('sensor_data');
   }
 
   /// Get default unit for sensor type
@@ -293,8 +317,10 @@ class SensorService {
   Future<void> clearOldData({int daysToKeep = 30}) async {
     try {
       final cutoffDate = DateTime.now().subtract(Duration(days: daysToKeep));
-      final snapshot = await _firestore
-          .collection('sensor_data')
+      final collection = _userSensorDataCollection();
+      if (collection == null) return;
+
+      final snapshot = await collection
           .where('timestamp', isLessThan: Timestamp.fromDate(cutoffDate))
           .get();
 

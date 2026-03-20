@@ -242,8 +242,29 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
         _isCheckingBroker = false;
         _subscribeToDeviceTopics(mqttService);
       } else if (_brokerStatus == ConnectionStatus.disconnected) {
-        // Try to connect
-        await mqttService.connect();
+        // Try candidate brokers (discovered + fallback hosts)
+        bool connected = false;
+        final candidates =
+            MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress);
+
+        for (final host in candidates) {
+          connected = await mqttService.connect(
+            brokerAddress: host,
+            port: MqttConfig.localBrokerPort,
+            scheduleReconnectOnFailure: false,
+          );
+          if (connected) {
+            break;
+          }
+        }
+
+        if (!connected && mounted) {
+          setState(() {
+            _isCheckingBroker = false;
+            _brokerStatus = ConnectionStatus.error;
+            _brokerError = 'Failed to connect to broker on known hosts';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

@@ -103,6 +103,10 @@ class EnergyService with ChangeNotifier {
   // Connection status
   bool _isConnected = false;
   String? _lastError;
+  bool _firestoreWritesBlocked = false;
+  DateTime? _lastFirestorePermissionDeniedAt;
+  static const Duration _firestoreRetryAfterPermissionDenied =
+      Duration(minutes: 5);
 
   EnergyReading? get currentReading => _currentReading;
   List<EnergyReading> get readingHistory => List.unmodifiable(_readingHistory);
@@ -190,6 +194,13 @@ class EnergyService with ChangeNotifier {
   }
 
   Future<void> _saveReading(EnergyReading reading) async {
+    if (_firestoreWritesBlocked &&
+        _lastFirestorePermissionDeniedAt != null &&
+        DateTime.now().difference(_lastFirestorePermissionDeniedAt!) <
+            _firestoreRetryAfterPermissionDenied) {
+      return;
+    }
+
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
@@ -199,7 +210,21 @@ class EnergyService with ChangeNotifier {
           .doc(userId)
           .collection('energy_readings')
           .add(reading.toJson());
+
+      // Reset write block after a successful write.
+      _firestoreWritesBlocked = false;
+      _lastFirestorePermissionDeniedAt = null;
     } catch (e) {
+      final message = e.toString().toLowerCase();
+      if (message.contains('permission-denied') ||
+          message.contains('insufficient permissions')) {
+        _firestoreWritesBlocked = true;
+        _lastFirestorePermissionDeniedAt = DateTime.now();
+        debugPrint(
+            '⚠️ EnergyService: Firestore writes temporarily paused due to permissions (retry in ${_firestoreRetryAfterPermissionDenied.inMinutes}m)');
+        return;
+      }
+
       debugPrint('Error saving energy reading: $e');
     }
   }

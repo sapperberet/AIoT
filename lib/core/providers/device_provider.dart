@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
@@ -231,6 +232,21 @@ class DeviceProvider with ChangeNotifier {
       bool windowsChanged = false;
       windowStates.forEach((windowId, value) {
         final isOpen = value as bool? ?? false;
+
+        // Legacy model compatibility: side_window was replaced by fan behavior.
+        if (windowId == 'side_window') {
+          final mappedFanSpeed = isOpen ? 1 : 0;
+          if (_fanStates['kitchen'] != mappedFanSpeed) {
+            debugPrint(
+                '🌀 Firebase: Mapping legacy side_window to kitchen fan speed $mappedFanSpeed');
+            _fanStates['kitchen'] = mappedFanSpeed;
+            _syncToVisualization(
+                'fan', {'fanId': 'kitchen', 'speed': mappedFanSpeed});
+            hasChanges = true;
+          }
+          return;
+        }
+
         if (_windowStates[windowId] != isOpen) {
           debugPrint(
               '🪟 Firebase: Window $windowId changed to ${isOpen ? "OPEN" : "CLOSED"}');
@@ -462,21 +478,74 @@ class DeviceProvider with ChangeNotifier {
       debugPrint(
           '📍 Broker: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}');
 
-      final success = await _mqttService.connect(
-        brokerAddress: MqttConfig.localBrokerAddress,
-        port: MqttConfig.localBrokerPort,
-        useCloud: _useCloudMode,
-      );
+      final brokerCandidates =
+          MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress);
+      final candidatesToTry = brokerCandidates;
+
+      debugPrint(
+          '🔍 DeviceProvider: Candidate brokers: ${candidatesToTry.join(', ')}');
+      final originalBrokerAddress = MqttConfig.localBrokerAddress;
+      bool success = false;
+      String? connectedBroker;
+
+      for (final candidate in candidatesToTry) {
+        debugPrint('🔄 DeviceProvider: Trying broker $candidate:${MqttConfig.localBrokerPort}');
+        success = await _mqttService.connect(
+          brokerAddress: candidate,
+          port: MqttConfig.localBrokerPort,
+          useCloud: _useCloudMode,
+          scheduleReconnectOnFailure: false,
+        );
+
+        if (success) {
+          connectedBroker = candidate;
+          break;
+        }
+      }
 
       if (success) {
+        if (connectedBroker != null &&
+            connectedBroker != MqttConfig.localBrokerAddress) {
+          debugPrint(
+              '🌐 DeviceProvider: Updating broker address from ${MqttConfig.localBrokerAddress} to $connectedBroker');
+          MqttConfig.localBrokerAddress = connectedBroker;
+          if (connectedBroker != '127.0.0.1' && connectedBroker != '10.0.2.2') {
+            unawaited(_persistBrokerAddress(connectedBroker));
+          }
+        }
         debugPrint('✅ DeviceProvider: MQTT connected successfully');
         // Subscribe to all device topics
         _subscribeToTopics();
       } else {
-        debugPrint('❌ DeviceProvider: MQTT connection failed');
+        final retryBroker = originalBrokerAddress;
+
+        if (retryBroker != MqttConfig.localBrokerAddress) {
+          MqttConfig.localBrokerAddress = retryBroker;
+          unawaited(_persistBrokerAddress(retryBroker));
+        }
+
+        // No candidate succeeded; let service manage delayed retries on the
+        // best available host instead of rapidly cycling every neighbor.
+        unawaited(_mqttService.connect(
+          brokerAddress: retryBroker,
+          port: MqttConfig.localBrokerPort,
+          useCloud: _useCloudMode,
+          scheduleReconnectOnFailure: true,
+        ));
+        debugPrint('❌ DeviceProvider: MQTT connection failed (retry broker: $retryBroker)');
       }
     } catch (e) {
       debugPrint('❌ DeviceProvider: MQTT connection error: $e');
+    }
+  }
+
+  Future<void> _persistBrokerAddress(String address) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('mqttBrokerAddress', address);
+      debugPrint('💾 DeviceProvider: Persisted broker address $address');
+    } catch (e) {
+      debugPrint('⚠️ DeviceProvider: Failed to persist broker address: $e');
     }
   }
 
@@ -512,6 +581,18 @@ class DeviceProvider with ChangeNotifier {
     _mqttService.subscribe(MqttConfig.voltageTopic);
     _mqttService.subscribe(MqttConfig.currentTopic);
 
+    // Subscribe to backend actuator command topics (n8n -> app sync)
+    _mqttService.subscribe('${MqttConfig.topicPrefix}/actuators/#');
+    _mqttService.subscribe(MqttConfig.fanCommandTopic);
+    _mqttService.subscribe(MqttConfig.lightFloor1Topic);
+    _mqttService.subscribe(MqttConfig.lightFloor2Topic);
+    _mqttService.subscribe(MqttConfig.lightRgbTopic);
+    _mqttService.subscribe(MqttConfig.buzzerCommandTopic);
+    _mqttService.subscribe(MqttConfig.garageMotorTopic);
+    _mqttService.subscribe(MqttConfig.frontWindowMotorTopic);
+    _mqttService.subscribe(MqttConfig.doorMotorTopic);
+    _mqttService.subscribe(MqttConfig.gateMotorTopic);
+
     // Subscribe to n8n agent response topics
     _mqttService.subscribe(MqttConfig.agentResponseTopic);
     _mqttService.subscribe(MqttConfig.agentStatusTopic);
@@ -530,6 +611,7 @@ class DeviceProvider with ChangeNotifier {
 
   void _handleMqttMessage(AppMqttMessage message) {
     final payload = message.jsonPayload;
+    final rawPayload = message.payload.trim().toLowerCase();
 
     // Check for face detection events (Version 2)
     if (message.topic == MqttConfig.faceUnrecognizedTopic) {
@@ -545,6 +627,12 @@ class DeviceProvider with ChangeNotifier {
     // Handle sensor data
     if (message.topic.contains('/sensors/')) {
       _handleSensorData(message.topic, message.payload, payload: payload);
+      return;
+    }
+
+    // Handle actuator command topics (backend-origin updates)
+    if (message.topic.contains('/actuators/')) {
+      _handleActuatorTopicMessage(message.topic, rawPayload, payload: payload);
       return;
     }
 
@@ -583,6 +671,161 @@ class DeviceProvider with ChangeNotifier {
       );
     }
   }
+
+  void _handleActuatorTopicMessage(
+    String topic,
+    String rawPayload, {
+    Map<String, dynamic>? payload,
+  }) {
+    bool changed = false;
+    final command = _extractActuatorCommand(rawPayload, payload);
+    final normalizedTopic = topic.toLowerCase();
+
+    if (_isFanTopic(normalizedTopic)) {
+      int speed;
+      switch (command) {
+        case 'in':
+          speed = 1;
+          break;
+        case 'out':
+          speed = 2;
+          break;
+        case 'on':
+          speed = 1;
+          break;
+        default:
+          speed = 0;
+      }
+      if (_fanStates['kitchen'] != speed) {
+        _fanStates['kitchen'] = speed;
+        _syncToVisualization('fan', {'fanId': 'kitchen', 'speed': speed});
+        changed = true;
+      }
+    } else if (_isFloor1LightTopic(normalizedTopic)) {
+      final isOn = command == 'on';
+      if (_lightStates['floor_1'] != isOn) {
+        _lightStates['floor_1'] = isOn;
+        _syncToVisualization('light', {'lightId': 'floor_1', 'isOn': isOn});
+        changed = true;
+      }
+    } else if (_isFloor2LightTopic(normalizedTopic)) {
+      final isOn = command == 'on';
+      if (_lightStates['floor_2'] != isOn) {
+        _lightStates['floor_2'] = isOn;
+        _syncToVisualization('light', {'lightId': 'floor_2', 'isOn': isOn});
+        changed = true;
+      }
+    } else if (_isRgbLightTopic(normalizedTopic)) {
+      if (command == 'off') {
+        if (_lightStates['rgb'] != false) {
+          _lightStates['rgb'] = false;
+          changed = true;
+        }
+      } else if (command.startsWith('b ')) {
+        final brightness = int.tryParse(command.substring(2).trim());
+        if (brightness != null) {
+          final clamped = brightness.clamp(0, 100);
+          if (_rgbBrightness != clamped) {
+            _rgbBrightness = clamped;
+            _lightBrightness['rgb'] = clamped;
+            _lightStates['rgb'] = clamped > 0;
+            changed = true;
+          }
+        }
+      } else if (command.startsWith('c ')) {
+        final colorText = command.substring(2).trim().replaceFirst('#', '');
+        final parsedColor = int.tryParse(colorText, radix: 16);
+        if (parsedColor != null) {
+          _rgbLightColor = parsedColor & 0xFFFFFF;
+          _lightStates['rgb'] = true;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        _syncToVisualization('rgb', {
+          'color': _rgbLightColor,
+          'brightness': _rgbBrightness,
+          'isOn': _lightStates['rgb'] ?? false,
+        });
+      }
+    } else if (_isBuzzerTopic(normalizedTopic)) {
+      final isActive = command == 'on';
+      if (_isBuzzerActive != isActive) {
+        _isBuzzerActive = isActive;
+        _syncToVisualization('buzzer', {'isActive': isActive});
+        changed = true;
+      }
+    } else if (_isGarageTopic(normalizedTopic)) {
+      final isOpen = command == 'open';
+      if (_isGarageDoorOpen != isOpen) {
+        _isGarageDoorOpen = isOpen;
+        _syncToVisualization('garage', {'isOpen': isOpen});
+        changed = true;
+      }
+    } else if (_isFrontWindowTopic(normalizedTopic)) {
+      final isOpen = command == 'open';
+      if (_windowStates['front_window'] != isOpen) {
+        _windowStates['front_window'] = isOpen;
+        _syncToVisualization(
+            'window', {'windowId': 'front_window', 'isOpen': isOpen});
+        changed = true;
+      }
+    } else if (_isDoorTopic(normalizedTopic)) {
+      final isOpen = command == 'open';
+      if (_isMainDoorOpen != isOpen) {
+        _isMainDoorOpen = isOpen;
+        _syncToVisualization('door', {'isOpen': isOpen});
+        changed = true;
+      }
+    } else if (_isGateTopic(normalizedTopic)) {
+      final isOpen = command == 'open';
+      if (_windowStates['gate'] != isOpen) {
+        _windowStates['gate'] = isOpen;
+        _syncToVisualization('window', {'windowId': 'gate', 'isOpen': isOpen});
+        changed = true;
+      }
+    } else {
+      debugPrint('⚠️ Unhandled actuator topic: $topic (command: $command)');
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  String _extractActuatorCommand(
+    String rawPayload,
+    Map<String, dynamic>? payload,
+  ) {
+    if (payload != null) {
+      final commandValue =
+          payload['command'] ?? payload['action'] ?? payload['state'] ?? payload['value'];
+      if (commandValue is String) {
+        return commandValue.trim().toLowerCase();
+      }
+      if (commandValue is num) {
+        return commandValue.toString();
+      }
+    }
+
+    return rawPayload.trim().toLowerCase();
+  }
+
+  bool _isFanTopic(String topic) => topic.endsWith('/actuators/fan');
+  bool _isFloor1LightTopic(String topic) =>
+      topic.endsWith('/actuators/lights/floor1') ||
+      topic.endsWith('/actuators/lights/floor_1');
+  bool _isFloor2LightTopic(String topic) =>
+      topic.endsWith('/actuators/lights/floor2') ||
+      topic.endsWith('/actuators/lights/floor_2');
+  bool _isRgbLightTopic(String topic) => topic.endsWith('/actuators/lights/rgb');
+  bool _isBuzzerTopic(String topic) => topic.endsWith('/actuators/buzzer');
+  bool _isGarageTopic(String topic) => topic.endsWith('/actuators/motors/garage');
+  bool _isFrontWindowTopic(String topic) =>
+      topic.endsWith('/actuators/motors/frontwindow');
+  bool _isDoorTopic(String topic) => topic.endsWith('/actuators/motors/door');
+  bool _isGateTopic(String topic) => topic.endsWith('/actuators/motors/gate');
 
   Map<String, dynamic> _normalizeStatePayload(
     String rawPayload,
@@ -807,6 +1050,7 @@ class DeviceProvider with ChangeNotifier {
         debugPrint('💧 Humidity: $value%');
         break;
       case 'gas':
+      case 'mq135':
         _gasLevel = value;
         type = SensorType.gas;
         debugPrint('☣️ Gas: ${value}ppm');

@@ -819,7 +819,9 @@ class _QuickControlsSection extends StatelessWidget {
           _buildSectionHeader(context, 'Windows', Icons.window, isDark),
           const SizedBox(height: 8),
           ...deviceProvider.windowStates.entries
-              .where((entry) => entry.key != 'gate')
+              .where((entry) =>
+                entry.key != 'gate' &&
+                (entry.key == 'front' || entry.key == 'front_window'))
               .map((entry) {
             final windowName = _formatName(entry.key);
             // Map window IDs to actual ESP32 topics
@@ -858,7 +860,7 @@ class _QuickControlsSection extends StatelessWidget {
             final lightName = _formatName(entry.key);
             final isRgb = entry.key == 'rgb';
             // These lights are simple on/off without brightness controls
-            final simpleOnOffLights = ['landscape', 'floor_1', 'floor_2'];
+            final simpleOnOffLights = ['floor_1', 'floor_2'];
             final hasNoBrightnessControl =
                 simpleOnOffLights.contains(entry.key);
             final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
@@ -1877,6 +1879,8 @@ class _QuickControlsSection extends StatelessWidget {
                   provider.toggleDoor();
                 } else if (doorName == 'Garage Door') {
                   provider.toggleGarage();
+                } else if (doorName == 'Gate Door') {
+                  provider.toggleWindow('gate');
                 }
               },
               style: ElevatedButton.styleFrom(

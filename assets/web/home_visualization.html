@@ -2411,6 +2411,21 @@
                             }
                             window.pendingGarageState = undefined;
                         }
+
+                        // Discover gate/fans for new simulation model names
+                        findGate();
+                        findFans();
+
+                        // Apply any pending gate state
+                        if (window.pendingGateState !== undefined) {
+                            console.log('🔄 Applying pending gate state:', window.pendingGateState ? 'OPEN' : 'CLOSED');
+                            if (window.pendingGateState) {
+                                openGate();
+                            } else {
+                                closeGate();
+                            }
+                            window.pendingGateState = undefined;
+                        }
                         
                         // Clean up blob URL
                         URL.revokeObjectURL(url);
@@ -2495,6 +2510,7 @@
         function getElementType(name) {
             if (!name) return null;
             const nameLower = name.toLowerCase();
+            if (nameLower.includes('gate')) return 'gate';
             if (nameLower.includes('door') && !nameLower.includes('garage')) return 'door';
             if (nameLower.includes('garage')) return 'garage';
             if (nameLower.includes('window') || nameLower.includes('glass')) return 'window';
@@ -2554,6 +2570,7 @@
         // SVG Icons for professional look (no emojis)
         const icons = {
             door: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V5a2 2 0 012-2h9a2 2 0 012 2v16"/><path d="M16 21H3"/><path d="M21 21V10a1 1 0 00-1-1h-4"/><circle cx="12" cy="12" r="1"/></svg>',
+            gate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V5a2 2 0 012-2h5v18"/><path d="M11 3h8a2 2 0 012 2v16"/><line x1="11" y1="12" x2="13" y2="12"/></svg>',
             garage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="14" rx="1"/><path d="M2 8L12 2l10 6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="15" x2="18" y2="15"/><line x1="6" y1="18" x2="18" y2="18"/></svg>',
             window: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
             lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
@@ -2587,6 +2604,25 @@
             let statusText = '';
             
             switch (elementType) {
+                case 'gate':
+                    iconEl.innerHTML = icons.gate;
+                    isOpen = gateOpen;
+                    statusText = isOpen ? 'Status: Open' : 'Status: Closed';
+
+                    const gateBtn = document.createElement('button');
+                    gateBtn.className = 'selection-btn ' + (isOpen ? 'danger' : 'primary');
+                    gateBtn.innerHTML = '<span class="btn-icon">' + (isOpen ? icons.lock : icons.unlock) + '</span>' + (isOpen ? 'Close Gate' : 'Open Gate');
+                    gateBtn.onclick = () => {
+                        const targetState = !gateOpen;
+                        toggleGate();
+                        statusEl.textContent = targetState ? 'Status: Open' : 'Status: Closed';
+                        statusEl.className = 'selection-status ' + (targetState ? 'open' : 'closed');
+                        gateBtn.className = 'selection-btn ' + (targetState ? 'danger' : 'primary');
+                        gateBtn.innerHTML = '<span class="btn-icon">' + (targetState ? icons.lock : icons.unlock) + '</span>' + (targetState ? 'Close Gate' : 'Open Gate');
+                    };
+                    actionsEl.appendChild(gateBtn);
+                    break;
+
                 case 'door':
                     iconEl.innerHTML = icons.door;
                     isOpen = doorOpen;
@@ -3695,6 +3731,24 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+
+            const nowFrame = Date.now();
+            const deltaSeconds = Math.min((nowFrame - lastFrameTimestamp) / 1000, 0.05);
+            lastFrameTimestamp = nowFrame;
+
+            // Rotate active fans around their own center pivots.
+            if (fanMeshes.fire && fanSpeeds.fire > 0) {
+                const firePivot = fanPivots.fire || ensureFanSpinPivot(fanMeshes.fire, 'fire');
+                if (firePivot) {
+                    firePivot.rotateY(deltaSeconds * (fanSpeeds.fire * 8));
+                }
+            }
+            if (fanMeshes.ventilation && fanSpeeds.ventilation > 0) {
+                const ventPivot = fanPivots.ventilation || ensureFanSpinPivot(fanMeshes.ventilation, 'ventilation');
+                if (ventPivot) {
+                    ventPivot.rotateY(deltaSeconds * (fanSpeeds.ventilation * 8));
+                }
+            }
             
             // Update day/night cycle periodically
             const now = Date.now();
@@ -3792,12 +3846,180 @@
         let windowAnimating = false;
         let windowsOpen = false;
 
+        // Gate animation variables (independent from windows)
+        let gateMesh = null;
+        let gateAnimating = false;
+        let gateOpen = false;
+
+        // Fan animation variables
+        let fanMeshes = {
+            fire: null,
+            ventilation: null
+        };
+        let fanPivots = {
+            fire: null,
+            ventilation: null
+        };
+        let fanSpeeds = {
+            fire: 0,
+            ventilation: 0
+        };
+        let lastFrameTimestamp = Date.now();
+
         // Animation state tracking for all interactive elements
         const animationStates = {
             doors: {},
             garages: {},
-            windows: {}
+            windows: {},
+            gates: {},
+            fans: {}
         };
+
+        function getNameLower(mesh) {
+            return (mesh && mesh.name ? mesh.name : '').toLowerCase();
+        }
+
+        function ensureFanSpinPivot(mesh, fanKey) {
+            if (!mesh) return null;
+
+            if (mesh.userData.spinPivot && mesh.userData.spinPivot.parent) {
+                fanPivots[fanKey] = mesh.userData.spinPivot;
+                return mesh.userData.spinPivot;
+            }
+
+            const bbox = new THREE.Box3().setFromObject(mesh);
+            const center = new THREE.Vector3();
+            bbox.getCenter(center);
+
+            const pivot = new THREE.Group();
+            pivot.position.copy(center);
+            scene.add(pivot);
+            pivot.attach(mesh);
+
+            mesh.userData.spinPivot = pivot;
+            fanPivots[fanKey] = pivot;
+
+            console.log('🌀 Created fan spin pivot:', fanKey, 'mesh:', mesh.name);
+            return pivot;
+        }
+
+        function findGate() {
+            const exactGateNames = [
+                'gate', 'gate_mesh', 'main_gate', 'front_gate', 'yard_gate',
+                'entrance_gate', 'gate door', 'gate_door'
+            ];
+
+            for (const name of exactGateNames) {
+                if (roomMeshes[name]) {
+                    gateMesh = roomMeshes[name];
+                    if (!gateMesh.userData.originalRotation) {
+                        gateMesh.userData.originalRotation = gateMesh.rotation.clone();
+                    }
+                    console.log('🚧 Found gate mesh (exact):', name);
+                    return true;
+                }
+            }
+
+            for (const [name, mesh] of Object.entries(roomMeshes)) {
+                const nameLower = name.toLowerCase();
+                if (nameLower.includes('gate')) {
+                    gateMesh = mesh;
+                    if (!gateMesh.userData.originalRotation) {
+                        gateMesh.userData.originalRotation = gateMesh.rotation.clone();
+                    }
+                    console.log('🚧 Found gate mesh (partial):', name);
+                    return true;
+                }
+            }
+
+            if (homeModel) {
+                homeModel.traverse((child) => {
+                    const childLower = getNameLower(child);
+                    if (!gateMesh && child.isMesh && childLower.includes('gate')) {
+                        gateMesh = child;
+                        roomMeshes[child.name] = child;
+                        if (!gateMesh.userData.originalRotation) {
+                            gateMesh.userData.originalRotation = gateMesh.rotation.clone();
+                        }
+                        console.log('🚧 Found gate mesh (scene traverse):', child.name);
+                    }
+                });
+            }
+
+            if (!gateMesh) {
+                console.log('⚠️ Gate mesh not found');
+                return false;
+            }
+
+            return true;
+        }
+
+        function findFans() {
+            fanMeshes = { fire: null, ventilation: null };
+            fanPivots = { fire: null, ventilation: null };
+
+            const fanCandidates = [];
+            Object.entries(roomMeshes).forEach(([name, mesh]) => {
+                const nameLower = name.toLowerCase();
+                if (nameLower.includes('fan') || nameLower.includes('vent')) {
+                    fanCandidates.push(mesh);
+                }
+            });
+
+            if (homeModel && fanCandidates.length === 0) {
+                homeModel.traverse((child) => {
+                    const nameLower = getNameLower(child);
+                    if (child.isMesh && (nameLower.includes('fan') || nameLower.includes('vent'))) {
+                        fanCandidates.push(child);
+                        roomMeshes[child.name] = child;
+                    }
+                });
+            }
+
+            for (const mesh of fanCandidates) {
+                const nameLower = getNameLower(mesh);
+                if (!fanMeshes.fire && (nameLower.includes('fire') || nameLower.includes('red'))) {
+                    fanMeshes.fire = mesh;
+                } else if (!fanMeshes.ventilation && (nameLower.includes('vent') || nameLower.includes('blue'))) {
+                    fanMeshes.ventilation = mesh;
+                }
+            }
+
+            for (const mesh of fanCandidates) {
+                if (!fanMeshes.fire) {
+                    fanMeshes.fire = mesh;
+                    continue;
+                }
+                if (!fanMeshes.ventilation && mesh !== fanMeshes.fire) {
+                    fanMeshes.ventilation = mesh;
+                }
+            }
+
+            if (fanMeshes.fire) {
+                fanMeshes.fire.userData.isFireFan = true;
+                ensureFanSpinPivot(fanMeshes.fire, 'fire');
+                if (fanMeshes.fire.material?.color) {
+                    fanMeshes.fire.material.color.setHex(0xff3333);
+                    fanMeshes.fire.userData.originalColor = fanMeshes.fire.material.color.clone();
+                }
+            }
+
+            if (fanMeshes.ventilation) {
+                fanMeshes.ventilation.userData.isVentilationFan = true;
+                ensureFanSpinPivot(fanMeshes.ventilation, 'ventilation');
+                if (fanMeshes.ventilation.material?.color) {
+                    fanMeshes.ventilation.material.color.setHex(0x3a8dff);
+                    fanMeshes.ventilation.userData.originalColor = fanMeshes.ventilation.material.color.clone();
+                }
+            }
+
+            console.log('🌀 Fans detected:', {
+                fire: fanMeshes.fire ? fanMeshes.fire.name : null,
+                ventilation: fanMeshes.ventilation ? fanMeshes.ventilation.name : null
+            });
+
+            return fanMeshes.fire || fanMeshes.ventilation;
+        }
 
         function findDoor() {
             // First try exact names in roomMeshes (including _mesh suffix variants)
@@ -3941,11 +4163,11 @@
 
         function findWindows() {
             windowMeshes = [];
-            // Specific window names from model: front_window_mesh, side_window_mesh, upper_window_mesh_1, upper_window_mesh_2
+            // Current model has a primary front window plus optional upper windows.
             const specificWindowNames = [
-                'front_window_mesh', 'side_window_mesh', 
+                'front_window_mesh',
                 'upper_window_mesh_1', 'upper_window_mesh_2',
-                'front_window', 'side_window', 'upper_window_1', 'upper_window_2'
+                'front_window', 'upper_window_1', 'upper_window_2'
             ];
             const windowPatterns = ['window', 'Window', 'WINDOW', 'glass', 'Glass'];
             
@@ -4012,6 +4234,12 @@
             if (!mesh || !mesh.name) return false;
             
             const nameLower = mesh.name.toLowerCase();
+
+            // Check if it's a gate
+            if (nameLower.includes('gate')) {
+                toggleGate();
+                return true;
+            }
             
             // Check if it's a door
             if (nameLower.includes('door') && !nameLower.includes('garage')) {
@@ -4032,6 +4260,135 @@
             }
             
             return false;
+        }
+
+        function toggleGate() {
+            if (!gateMesh) {
+                findGate();
+            }
+
+            if (!gateMesh) {
+                console.log('⚠️ Cannot toggle gate - mesh not found');
+                return;
+            }
+
+            if (gateOpen) {
+                closeGate();
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:window:gate:closed');
+                }
+            } else {
+                openGate();
+                if (window.FlutterBridge) {
+                    window.FlutterBridge.postMessage('deviceStateChanged:window:gate:open');
+                }
+            }
+        }
+
+        function openGate() {
+            if (!window.modelLoaded) {
+                window.pendingGateState = true;
+                return;
+            }
+
+            if (!gateMesh && !findGate()) {
+                return;
+            }
+
+            if (gateAnimating || gateOpen) {
+                return;
+            }
+
+            gateAnimating = true;
+
+            if (!gateMesh.userData.pivotGroup) {
+                const bbox = new THREE.Box3().setFromObject(gateMesh);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                bbox.getSize(size);
+                bbox.getCenter(center);
+
+                const hingePos = center.clone();
+                if (size.x >= size.z) {
+                    hingePos.x += size.x / 2;
+                } else {
+                    hingePos.z += size.z / 2;
+                }
+
+                const pivotGroup = new THREE.Group();
+                pivotGroup.position.copy(hingePos);
+                scene.add(pivotGroup);
+                pivotGroup.attach(gateMesh);
+                gateMesh.userData.pivotGroup = pivotGroup;
+                pivotGroup.userData.originalRotationY = pivotGroup.rotation.y;
+            }
+
+            const pivotGroup = gateMesh.userData.pivotGroup;
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = (pivotGroup.userData.originalRotationY || 0) - Math.PI / 2;
+            const duration = 900;
+            const startTime = Date.now();
+
+            function animateOpen() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateOpen);
+                } else {
+                    gateAnimating = false;
+                    gateOpen = true;
+                    console.log('✅ Gate opened');
+                }
+            }
+
+            animateOpen();
+        }
+
+        function closeGate() {
+            if (!window.modelLoaded) {
+                window.pendingGateState = false;
+                return;
+            }
+
+            if (!gateMesh || gateAnimating || !gateOpen) {
+                return;
+            }
+
+            const pivotGroup = gateMesh.userData.pivotGroup;
+            if (!pivotGroup) {
+                gateOpen = false;
+                return;
+            }
+
+            gateAnimating = true;
+
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = pivotGroup.userData.originalRotationY || 0;
+            const duration = 900;
+            const startTime = Date.now();
+
+            function animateClose() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateClose);
+                } else {
+                    pivotGroup.rotation.y = targetRotY;
+                    gateAnimating = false;
+                    gateOpen = false;
+                    console.log('✅ Gate closed');
+                }
+            }
+
+            animateClose();
         }
 
         // Toggle door open/close
@@ -4141,36 +4498,57 @@
                 return;
             }
 
-            console.log('🚗 Opening garage (tilting up)...');
+            console.log('🚗 Opening garage (side hinge)...');
             garageAnimating = true;
 
-            // Ensure originalRotation is set
-            if (!garageMesh.userData.originalRotation) {
-                garageMesh.userData.originalRotation = garageMesh.rotation.clone();
+            // Create a side hinge pivot so garage opens like a swinging panel
+            if (!garageMesh.userData.pivotGroup) {
+                const bbox = new THREE.Box3().setFromObject(garageMesh);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                bbox.getSize(size);
+                bbox.getCenter(center);
+
+                const hingePos = center.clone();
+                if (size.x >= size.z) {
+                    hingePos.x += size.x / 2;
+                } else {
+                    hingePos.z += size.z / 2;
+                }
+
+                const pivotGroup = new THREE.Group();
+                pivotGroup.position.copy(hingePos);
+                scene.add(pivotGroup);
+                pivotGroup.attach(garageMesh);
+                garageMesh.userData.pivotGroup = pivotGroup;
             }
-            
-            // Garage door tilts up on X axis (like overhead door)
-            const rotationAmount = -Math.PI / 3;  // -60 degrees (tilt up and back)
-            const startRotX = garageMesh.rotation.x;
-            const targetRotX = garageMesh.userData.originalRotation.x + rotationAmount;
+
+            const pivotGroup = garageMesh.userData.pivotGroup;
+            if (!pivotGroup.userData.originalRotationY) {
+                pivotGroup.userData.originalRotationY = pivotGroup.rotation.y;
+            }
+
+            const rotationAmount = -Math.PI / 2; // 90 degrees open
+            const startRotY = pivotGroup.rotation.y;
+            const targetRotY = pivotGroup.userData.originalRotationY + rotationAmount;
             const duration = 1000;
             const startTime = Date.now();
-            
-            console.log('🚗 Garage start rotX:', startRotX, 'target rotX:', targetRotX);
+
+            console.log('🚗 Garage start rotY:', startRotY, 'target rotY:', targetRotY);
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
-                
-                garageMesh.rotation.x = startRotX + (targetRotX - startRotX) * easeProgress;
+
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
                 } else {
                     garageAnimating = false;
                     garageOpen = true;
-                    console.log('✅ Garage opened at rotX:', garageMesh.rotation.x);
+                    console.log('✅ Garage opened at rotY:', pivotGroup.rotation.y);
                 }
             }
 
@@ -4187,11 +4565,18 @@
             
             if (!garageMesh || garageAnimating || !garageOpen) return;
 
-            console.log('🚗 Closing garage (tilting down)...');
+            console.log('🚗 Closing garage (side hinge)...');
             garageAnimating = true;
 
-            const targetRotX = garageMesh.userData.originalRotation?.x || 0;
-            const startRotX = garageMesh.rotation.x;
+            const pivotGroup = garageMesh.userData.pivotGroup;
+            if (!pivotGroup) {
+                garageAnimating = false;
+                garageOpen = false;
+                return;
+            }
+
+            const targetRotY = pivotGroup.userData.originalRotationY || 0;
+            const startRotY = pivotGroup.rotation.y;
             const duration = 1000;
             const startTime = Date.now();
 
@@ -4199,13 +4584,13 @@
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
-                
-                garageMesh.rotation.x = startRotX + (targetRotX - startRotX) * easeProgress;
+
+                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
-                    garageMesh.rotation.x = targetRotX;
+                    pivotGroup.rotation.y = targetRotY;
                     garageAnimating = false;
                     garageOpen = false;
                     console.log('✅ Garage closed');
@@ -4416,54 +4801,56 @@
             console.log('🚪 Opening door:', doorMesh.name);
             doorAnimating = true;
 
-            // Create pivot group if not exists
+            // Create pivot group if not exists.
             if (!doorMesh.userData.pivotGroup) {
-                // Get door's world position and dimensions
-                const worldPos = new THREE.Vector3();
-                doorMesh.getWorldPosition(worldPos);
-                
-                const bbox = new THREE.Box3().setFromObject(doorMesh);
+                // Prefer local geometry bounds so we hinge around the actual door panel,
+                // not around an oversized scene/object bounding box.
+                let localBBox = null;
+                if (doorMesh.geometry) {
+                    if (!doorMesh.geometry.boundingBox) {
+                        doorMesh.geometry.computeBoundingBox();
+                    }
+                    localBBox = doorMesh.geometry.boundingBox ? doorMesh.geometry.boundingBox.clone() : null;
+                }
+
+                if (!localBBox) {
+                    localBBox = new THREE.Box3().setFromObject(doorMesh);
+                }
+
                 const size = new THREE.Vector3();
-                const center = new THREE.Vector3();
-                bbox.getSize(size);
-                bbox.getCenter(center);
-                
-                console.log('🚪 Door world pos:', worldPos.x.toFixed(3), worldPos.y.toFixed(3), worldPos.z.toFixed(3));
-                console.log('🚪 Door bbox center:', center.x.toFixed(3), center.y.toFixed(3), center.z.toFixed(3));
-                console.log('🚪 Door size:', size.x.toFixed(3), size.y.toFixed(3), size.z.toFixed(3));
-                
-                // Find hinge edge - it's at center + half width on the appropriate axis
-                // Door width is 0.6, so hinge is 0.3 from center
-                // We need to figure out which direction based on door orientation
-                const hingePos = center.clone();
-                
-                // Try +Z first (right edge when looking at door)
-                hingePos.z += size.z / 2;
-                
-                console.log('🚪 Hinge position:', hingePos.x.toFixed(3), hingePos.y.toFixed(3), hingePos.z.toFixed(3));
-                
-                // Create pivot group at hinge position
+                const centerLocal = new THREE.Vector3();
+                localBBox.getSize(size);
+                localBBox.getCenter(centerLocal);
+
+                // Choose hinge on dominant horizontal axis of the door panel.
+                const hingeLocal = centerLocal.clone();
+                if (size.x >= size.z) {
+                    hingeLocal.x += size.x / 2;
+                } else {
+                    hingeLocal.z += size.z / 2;
+                }
+
+                // Convert local hinge position to world coordinates.
+                const hingeWorld = hingeLocal.clone();
+                doorMesh.localToWorld(hingeWorld);
+
+                console.log('🚪 Door local size:', size.x.toFixed(3), size.y.toFixed(3), size.z.toFixed(3));
+                console.log('🚪 Door hinge world:', hingeWorld.x.toFixed(3), hingeWorld.y.toFixed(3), hingeWorld.z.toFixed(3));
+
                 const pivotGroup = new THREE.Group();
-                pivotGroup.position.copy(hingePos);
+                pivotGroup.position.copy(hingeWorld);
                 scene.add(pivotGroup);
-                
-                // Store door's original parent and world matrix
-                const originalParent = doorMesh.parent;
-                const doorWorldMatrix = doorMesh.matrixWorld.clone();
-                
-                // Reparent door to pivot group
+
                 pivotGroup.attach(doorMesh);
-                
-                // Store references
+
                 doorMesh.userData.pivotGroup = pivotGroup;
-                doorMesh.userData.originalParent = originalParent;
-                doorMesh.userData.originalWorldMatrix = doorWorldMatrix;
-                doorMesh.userData.hingePos = hingePos.clone();
+                doorMesh.userData.hingePos = hingeWorld.clone();
+                pivotGroup.userData.originalRotationY = pivotGroup.rotation.y;
             }
             
             const pivotGroup = doorMesh.userData.pivotGroup;
             const startRotY = pivotGroup.rotation.y;
-            const targetRotY = -Math.PI / 2;  // -90 degrees
+            const targetRotY = (pivotGroup.userData.originalRotationY || 0) - Math.PI / 2;
             const duration = 800;
             const startTime = Date.now();
 
@@ -4508,7 +4895,7 @@
             }
             
             const startRotY = pivotGroup.rotation.y;
-            const targetRotY = 0;
+            const targetRotY = pivotGroup.userData.originalRotationY || 0;
             const duration = 800;
             const startTime = Date.now();
 
@@ -4522,7 +4909,7 @@
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
-                    pivotGroup.rotation.y = 0;
+                    pivotGroup.rotation.y = targetRotY;
                     doorAnimating = false;
                     doorOpen = false;
                     console.log('✅ Door closed');
@@ -4893,6 +5280,12 @@
                         if (state.isOpen && !garageOpen) openGarage();
                         else if (!state.isOpen && garageOpen) closeGarage();
                         break;
+                    case 'fan':
+                        syncFanState(state?.fanId, state?.speed);
+                        break;
+                    case 'fans':
+                        syncFanStates(state || {});
+                        break;
                     case 'buzzer':
                         // Handle both direct boolean and object with isActive
                         let buzzerValue;
@@ -4945,6 +5338,11 @@
                         syncWindowById(windowId, isOpen);
                     }
                 }
+
+                // Sync fans
+                if (states.fans) {
+                    syncFanStates(states.fans);
+                }
                 
                 // Sync lights
                 if (states.lights) {
@@ -4980,17 +5378,31 @@
             }
         }
         
-        // Sync window by ID (front_window, side_window, upper_window_1, upper_window_2)
+        // Sync window by ID (front_window, upper_window_1, upper_window_2)
         function syncWindowById(windowId, isOpen) {
+            if ((windowId || '').toLowerCase().includes('gate')) {
+                if (isOpen) {
+                    openGate();
+                } else {
+                    closeGate();
+                }
+                return;
+            }
+
+            // Legacy compatibility: side_window was replaced by fan behavior.
+            if ((windowId || '').toLowerCase() === 'side_window') {
+                syncFanState('ventilation_fan', isOpen ? 1 : 0);
+                return;
+            }
+
             // Ensure windows are discovered first
             if (windowMeshes.length === 0) findWindows();
             
             // Map window IDs to mesh names (adjust based on your 3D model)
             const windowMeshNames = {
                 'front_window': ['front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front', 'upper_window_mesh_1', 'upper_window_1'],
-                'side_window': ['side_window_mesh', 'side_window', 'sideWindow', 'window_side', 'Window_Side', 'upper_window_mesh_2', 'upper_window_2'],
                 'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1', 'front_window_mesh', 'front_window'],
-                'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2', 'side_window_mesh', 'side_window']
+                'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2']
             };
             
             const possibleNames = windowMeshNames[windowId] || [windowId];
@@ -5033,13 +5445,10 @@
             // Try partial matching in windowMeshes array
             if (!foundMesh && windowMeshes.length > 0) {
                 const idLower = windowId.replace('_', '').toLowerCase();
-                // Try to find by index: front_window = index 0, side_window = index 1
+                // Try to find by index for single primary window layouts
                 if (windowId === 'front_window' && windowMeshes[0]) {
                     foundMesh = windowMeshes[0];
                     console.log('🪟 Using first window mesh for front_window:', foundMesh.name);
-                } else if (windowId === 'side_window' && windowMeshes[1]) {
-                    foundMesh = windowMeshes[1];
-                    console.log('🪟 Using second window mesh for side_window:', foundMesh.name);
                 } else {
                     // Try partial name match
                     foundMesh = windowMeshes.find(m => m.name.toLowerCase().includes(idLower));
@@ -5057,6 +5466,62 @@
                 }
             } else {
                 console.log('⚠️ Window mesh not found for:', windowId, '- Available windows:', windowMeshes.map(m => m.name));
+            }
+        }
+
+        function syncFanState(fanId, speed) {
+            const normalizedId = (fanId || '').toLowerCase();
+            const safeSpeed = Number.isFinite(speed) ? Number(speed) : 0;
+
+            if (!fanMeshes.fire && !fanMeshes.ventilation) {
+                findFans();
+            }
+
+            if (normalizedId.includes('fire')) {
+                fanSpeeds.fire = safeSpeed;
+                return;
+            }
+
+            if (normalizedId.includes('vent') || normalizedId.includes('blue')) {
+                fanSpeeds.ventilation = safeSpeed;
+                return;
+            }
+
+            if (safeSpeed <= 0) {
+                fanSpeeds.fire = 0;
+                fanSpeeds.ventilation = 0;
+            } else if (safeSpeed === 1) {
+                // mode=in => ventilation fan
+                fanSpeeds.fire = 0;
+                fanSpeeds.ventilation = safeSpeed;
+            } else {
+                // mode=out/high => fire fan
+                fanSpeeds.fire = safeSpeed;
+                fanSpeeds.ventilation = 0;
+            }
+        }
+
+        function syncFanStates(fansState) {
+            if (!fansState || typeof fansState !== 'object') {
+                return;
+            }
+
+            if (!fanMeshes.fire && !fanMeshes.ventilation) {
+                findFans();
+            }
+
+            let hadExplicitFanId = false;
+            for (const [fanId, speed] of Object.entries(fansState)) {
+                const idLower = fanId.toLowerCase();
+                if (idLower.includes('fire') || idLower.includes('vent') || idLower.includes('blue')) {
+                    syncFanState(fanId, speed);
+                    hadExplicitFanId = true;
+                }
+            }
+
+            if (!hadExplicitFanId) {
+                const firstSpeed = Number(Object.values(fansState)[0] || 0);
+                syncFanState('kitchen', firstSpeed);
             }
         }
         
@@ -5377,6 +5842,9 @@
         window.openGarage = openGarage;
         window.closeGarage = closeGarage;
         window.toggleGarage = toggleGarage;
+        window.openGate = openGate;
+        window.closeGate = closeGate;
+        window.toggleGate = toggleGate;
         window.openAllWindows = openAllWindows;
         window.closeAllWindows = closeAllWindows;
         window.toggleAllWindows = toggleAllWindows;
@@ -5400,6 +5868,8 @@
         window.syncDeviceState = syncDeviceState;
         window.syncAllDeviceStates = syncAllDeviceStates;
         window.syncWindowById = syncWindowById;
+        window.syncFanState = syncFanState;
+        window.syncFanStates = syncFanStates;
         window.setBuzzerState = setBuzzerState;
         // RGB corner lights functions
         window.setRGBColor = setRGBColor;

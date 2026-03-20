@@ -333,6 +333,16 @@ class SettingsProvider with ChangeNotifier {
           _mqttBrokerAddress = _normalizeBrokerAddress(
             userSettings['mqttBrokerAddress'] as String?,
           );
+          final prefs = await SharedPreferences.getInstance();
+          final localDiscoveredBroker = _normalizeBrokerAddress(
+            prefs.getString('mqttBrokerAddress'),
+          );
+          if (localDiscoveredBroker.isNotEmpty &&
+              localDiscoveredBroker != _mqttBrokerAddress) {
+            debugPrint(
+                '🌐 Settings: Preferring local discovered broker $localDiscoveredBroker over cloud $_mqttBrokerAddress');
+            _mqttBrokerAddress = localDiscoveredBroker;
+          }
           _mqttBrokerPort = userSettings['mqttBrokerPort'] as int? ?? 1883;
           _mqttUsername = userSettings['mqttUsername'] as String? ?? '';
           _mqttPassword = userSettings['mqttPassword'] as String? ?? '';

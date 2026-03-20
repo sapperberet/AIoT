@@ -53,6 +53,7 @@ class MqttService {
     String? brokerAddress,
     int? port,
     bool useCloud = false,
+    bool scheduleReconnectOnFailure = true,
   }) async {
     // Prevent duplicate connection attempts
     if (_currentStatus == ConnectionStatus.connecting) {
@@ -82,6 +83,8 @@ class MqttService {
     }
 
     try {
+      _reconnectTimer?.cancel();
+      _isReconnecting = false;
       _updateStatus(ConnectionStatus.connecting);
       _currentBrokerAddress = targetAddress;
       _currentBrokerPort = targetPort;
@@ -97,22 +100,16 @@ class MqttService {
 
       // CRITICAL: Connection settings for persistent connection
       _client!.keepAlivePeriod = MqttConfig.keepAlivePeriod;
-      _client!.autoReconnect = true; // Enable auto-reconnect
-      _client!.resubscribeOnAutoReconnect = true; // Re-subscribe on reconnect
+      _client!.autoReconnect = false; // Manual reconnect scheduling is handled below.
+      _client!.resubscribeOnAutoReconnect = false;
       _client!.connectTimeoutPeriod = 10000; // 10 second timeout
       _client!.secure = false; // No TLS for local Mosquitto
 
-      // Set connection message with clean session
-      final connMessage = MqttConnectMessage()
+        // Keep CONNECT packet minimal for maximum compatibility across
+        // forwarded/network-translated paths.
+        final connMessage = MqttConnectMessage()
           .withClientIdentifier(clientId)
-          .startClean() // Clean session for fresh subscriptions
-          .withWillQos(MqttQos.atLeastOnce)
-          .keepAliveFor(MqttConfig.keepAlivePeriod);
-
-      // Add will message for disconnect detection
-      connMessage.withWillTopic('home/app/status');
-      connMessage.withWillMessage('offline');
-      connMessage.withWillRetain();
+          .startClean();
 
       _client!.connectionMessage = connMessage;
 
@@ -166,18 +163,24 @@ class MqttService {
     } on SocketException catch (e) {
       debugPrint('❌ MQTT: Socket error - ${e.message}');
       _updateStatus(ConnectionStatus.error);
-      _scheduleReconnect();
+      if (scheduleReconnectOnFailure) {
+        _scheduleReconnect();
+      }
       return false;
     } on NoConnectionException catch (e) {
       debugPrint('❌ MQTT: No connection - $e');
       _updateStatus(ConnectionStatus.error);
-      _scheduleReconnect();
+      if (scheduleReconnectOnFailure) {
+        _scheduleReconnect();
+      }
       return false;
     } catch (e) {
       debugPrint('❌ MQTT: Connection error - $e');
       _updateStatus(ConnectionStatus.error);
       _client?.disconnect();
-      _scheduleReconnect();
+      if (scheduleReconnectOnFailure) {
+        _scheduleReconnect();
+      }
       return false;
     }
   }
@@ -342,7 +345,7 @@ class MqttService {
     }
 
     // Schedule manual reconnect if auto-reconnect fails
-    if (_wasConnected) {
+    if (_wasConnected && _currentStatus != ConnectionStatus.connecting) {
       _scheduleReconnect();
     }
   }
@@ -409,6 +412,7 @@ class MqttService {
       final success = await connect(
         brokerAddress: _currentBrokerAddress,
         port: _currentBrokerPort,
+        scheduleReconnectOnFailure: false,
       );
 
       if (!success && _reconnectAttempts < _maxReconnectAttempts) {

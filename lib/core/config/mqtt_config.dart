@@ -282,4 +282,37 @@ class MqttConfig {
       'http://$localBrokerAddress:$n8nPort/api/door';
   static String get n8nCameraFeedUrl =>
       'http://$localBrokerAddress:$n8nPort/api/camera-feed';
+
+  /// Build broker candidates from a primary IPv4 host.
+  static List<String> buildBrokerCandidates(String primary) {
+    final candidates = <String>[];
+
+    void addIfValid(String value) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return;
+      if (!candidates.contains(trimmed)) {
+        candidates.add(trimmed);
+      }
+    }
+
+    // Highest-priority candidates first.
+    addIfValid(primary);
+    addIfValid(_localBrokerAddress);
+    addIfValid(defaultLocalBrokerAddress);
+    addIfValid(previousDefaultLocalBrokerAddress);
+    addIfValid(legacyDefaultLocalBrokerAddress);
+
+    // In Android debug sessions, localhost/emulator host can be valid
+    // fallback targets (for adb reverse/emulator routing).
+    // Keep them after primary to avoid overriding working LAN hosts.
+    if (kDebugMode && !kIsWeb && Platform.isAndroid) {
+      addIfValid('127.0.0.1');
+      addIfValid('10.0.2.2');
+    }
+
+    // Common container-host gateway fallback in local dev setups.
+    addIfValid('172.17.0.1');
+
+    return candidates;
+  }
 }

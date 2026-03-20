@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -19,10 +20,13 @@ class VisualizationTab extends StatefulWidget {
 }
 
 class _VisualizationTabState extends State<VisualizationTab> {
+  static const Duration _periodicSyncInterval = Duration(milliseconds: 500);
+
   late WebViewController _webViewController;
   bool _isLoading = true;
   bool _isDoorOpen = false;
   bool _isGarageOpen = false;
+  Timer? _periodicSyncTimer;
 
   // Listener references for cleanup
   VoidCallback? _alarmListener;
@@ -64,6 +68,8 @@ class _VisualizationTabState extends State<VisualizationTab> {
 
   @override
   void dispose() {
+    _periodicSyncTimer?.cancel();
+
     // Remove all listeners to prevent setState after dispose
     if (_alarmListener != null && _deviceProvider != null) {
       _deviceProvider!.removeListener(_alarmListener!);
@@ -140,21 +146,51 @@ class _VisualizationTabState extends State<VisualizationTab> {
             _syncThemeWithVisualization();
             // Sync current device states
             _syncDeviceStates();
+            _startPeriodicDeviceSync();
           },
         ),
       )
       ..loadFlutterAsset('assets/web/home_visualization.html');
   }
 
+  void _startPeriodicDeviceSync() {
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(_periodicSyncInterval, (_) {
+      if (!mounted || _isLoading) return;
+      _syncDeviceStates();
+    });
+  }
+
   Future<void> _loadGlbModel() async {
     try {
       debugPrint('📦 Loading .glb model from assets...');
-      // Use newer model from web folder
-      final ByteData data = await rootBundle.load('assets/web/home_model.glb');
+      final assetCandidates = <String>[
+        'assets/3d/home_model.glb',
+        'assets/web/home_model.glb',
+      ];
+
+      ByteData? data;
+      String? loadedAssetPath;
+
+      for (final assetPath in assetCandidates) {
+        try {
+          data = await rootBundle.load(assetPath);
+          loadedAssetPath = assetPath;
+          break;
+        } catch (_) {
+          // Try next candidate path.
+        }
+      }
+
+      if (data == null || loadedAssetPath == null) {
+        throw StateError('No GLB asset found in expected locations');
+      }
+
       final List<int> bytes = data.buffer.asUint8List();
       final String base64String = base64Encode(bytes);
 
-      debugPrint('✅ .glb model loaded: ${bytes.length} bytes');
+      debugPrint(
+          '✅ .glb model loaded from $loadedAssetPath: ${bytes.length} bytes');
       debugPrint('📤 Sending to WebView...');
 
       await _webViewController.runJavaScript('''
@@ -280,6 +316,13 @@ class _VisualizationTabState extends State<VisualizationTab> {
         _webViewController.runJavaScript('syncDeviceState($lightCmd)');
       }
 
+      // Sync fans to JS
+      final fanStates = _deviceProvider?.fanStates ?? {};
+      if (fanStates.isNotEmpty) {
+        final fanCmd = jsonEncode({'type': 'fans', 'state': fanStates});
+        _webViewController.runJavaScript('syncDeviceState($fanCmd)');
+      }
+
       // Sync buzzer to JS
       _webViewController.runJavaScript('setBuzzerState($buzzerActive)');
     };
@@ -306,6 +349,14 @@ class _VisualizationTabState extends State<VisualizationTab> {
       case 'light':
       case 'lights':
         final command = jsonEncode({'type': 'lights', 'state': state});
+        _webViewController.runJavaScript('syncDeviceState($command)');
+        break;
+      case 'fan':
+        final command = jsonEncode({'type': 'fan', 'state': state});
+        _webViewController.runJavaScript('syncDeviceState($command)');
+        break;
+      case 'fans':
+        final command = jsonEncode({'type': 'fans', 'state': state});
         _webViewController.runJavaScript('syncDeviceState($command)');
         break;
       case 'buzzer':
@@ -492,6 +543,9 @@ class _VisualizationTabState extends State<VisualizationTab> {
   String? _mapWindowNameToId(String meshName) {
     final nameLower = meshName.toLowerCase();
     if (nameLower.contains('front')) {
+      return 'front_window';
+    } else if (nameLower.contains('side')) {
+      // side_window was replaced in the model; route legacy names to front window.
       return 'front_window';
     } else if (nameLower.contains('gate')) {
       return 'gate';
