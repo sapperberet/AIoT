@@ -156,6 +156,19 @@ void main() {
       runApp(const SmartHomeApp());
     },
     (error, stack) {
+      final errorText = error.toString().toLowerCase();
+      if (errorText.contains('socketexception') &&
+          (errorText.contains('connection reset by peer') ||
+              errorText.contains('connection refused'))) {
+        debugPrint('Transient socket error ignored: $error');
+        return;
+      }
+
+      if (errorText.contains('[cloud_firestore/permission-denied]') ||
+          errorText.contains('[cloud_firestore/failed-precondition]')) {
+        debugPrint('Firestore startup warning ignored in zone handler: $error');
+        return;
+      }
       debugPrint('Unhandled zone error: $error');
     },
     zoneSpecification: ZoneSpecification(

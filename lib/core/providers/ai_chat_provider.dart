@@ -111,6 +111,17 @@ class AIChatProvider with ChangeNotifier {
   /// Check backend services availability (TTS, ASR, voice chat)
   Future<void> _checkBackendServices() async {
     try {
+      final serverUp = await _chatService.checkServerHealth();
+      _isServerAvailable = serverUp;
+      if (!serverUp) {
+        _isTtsAvailable = false;
+        _isAsrAvailable = false;
+        _isVoiceChatAvailable = false;
+        _isExternalLlmAvailable = false;
+        notifyListeners();
+        return;
+      }
+
       // Check TTS availability
       _isTtsAvailable = await _backendVoiceService.checkTtsHealth();
       _logger.i('TTS available: $_isTtsAvailable');

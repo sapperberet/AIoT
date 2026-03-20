@@ -480,7 +480,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
       final parts = message.substring('deviceStateChanged:'.length).split(':');
       if (parts.length >= 2) {
         final deviceType = parts[0];
-        final state = parts[1];
+        final state = parts.sublist(1).join(':');
         _handleDeviceStateFromVisualization(deviceType, state);
       }
       return;
@@ -542,7 +542,14 @@ class _VisualizationTabState extends State<VisualizationTab> {
   /// Map 3D mesh window names to device provider window IDs
   String? _mapWindowNameToId(String meshName) {
     final nameLower = meshName.toLowerCase();
+    if (nameLower.contains('glass') && !nameLower.contains('window')) {
+      return null;
+    }
     if (nameLower.contains('front')) {
+      return 'front_window';
+    } else if (nameLower.contains('upper_window') ||
+        nameLower.contains('window_mesh')) {
+      // Current firmware endpoint tracks a single front window actuator.
       return 'front_window';
     } else if (nameLower.contains('side')) {
       // side_window was replaced in the model; route legacy names to front window.

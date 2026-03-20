@@ -279,10 +279,7 @@ class SensorService {
       return null;
     }
 
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('sensor_data');
+    return _firestore.collection('users').doc(userId).collection('sensor_data');
   }
 
   /// Get default unit for sensor type

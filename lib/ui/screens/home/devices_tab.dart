@@ -820,8 +820,8 @@ class _QuickControlsSection extends StatelessWidget {
           const SizedBox(height: 8),
           ...deviceProvider.windowStates.entries
               .where((entry) =>
-                entry.key != 'gate' &&
-                (entry.key == 'front' || entry.key == 'front_window'))
+                  entry.key != 'gate' &&
+                  (entry.key == 'front' || entry.key == 'front_window'))
               .map((entry) {
             final windowName = _formatName(entry.key);
             // Map window IDs to actual ESP32 topics

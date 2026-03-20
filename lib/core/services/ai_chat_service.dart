@@ -25,6 +25,12 @@ enum LlmProvider {
 class AIChatService {
   final Logger _logger = Logger();
   final Uuid _uuid = const Uuid();
+  DateTime? _lastHealthCheckAt;
+  bool _lastHealthCheckResult = false;
+  Future<bool>? _inFlightHealthCheck;
+
+  static const Duration _successHealthCacheWindow = Duration(seconds: 12);
+  static const Duration _failureHealthCacheWindow = Duration(seconds: 30);
 
   // Default: Use the same IP as MQTT broker (where n8n is running)
   // Production API endpoint (always active when workflow is active)
@@ -343,7 +349,33 @@ class AIChatService {
 
   /// Check if the AI agent server is available
   Future<bool> checkServerHealth() async {
+    final inFlight = _inFlightHealthCheck;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final now = DateTime.now();
+    if (_lastHealthCheckAt != null) {
+      final cacheWindow = _lastHealthCheckResult
+          ? _successHealthCacheWindow
+          : _failureHealthCacheWindow;
+      if (now.difference(_lastHealthCheckAt!) < cacheWindow) {
+        return _lastHealthCheckResult;
+      }
+    }
+
+    _inFlightHealthCheck = _checkServerHealthInternal();
+    try {
+      return await _inFlightHealthCheck!;
+    } finally {
+      _inFlightHealthCheck = null;
+    }
+  }
+
+  Future<bool> _checkServerHealthInternal() async {
     final candidates = <String>[];
+
+    bool isGatewayHost(String host) => host.trim().endsWith('.1');
 
     void addCandidate(String host) {
       final trimmed = host.trim();
@@ -353,21 +385,32 @@ class AIChatService {
       }
     }
 
-    // 1) Current endpoint host (can differ from MqttConfig if user changed URL)
-    try {
-      addCandidate(Uri.parse(_baseUrl).host);
-    } catch (_) {
-      // Ignore malformed URL and continue with config-based candidates.
-    }
-
-    // 2) Config-driven candidates (discovered/stored/default fallbacks)
-    for (final host
-        in MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress)) {
-      addCandidate(host);
-    }
+    // Probe only the configured broker host to avoid stale URL host probes
+    // and noisy LAN scans.
+    addCandidate(MqttConfig.localBrokerAddress);
 
     for (final host in candidates) {
+      if (isGatewayHost(host)) {
+        _logger
+            .d('Skipping non-explicit gateway host during health probe: $host');
+        continue;
+      }
+
       try {
+        // Quick TCP gate to avoid long HTTP timeouts when backend is down.
+        try {
+          final socket = await Socket.connect(
+            host,
+            MqttConfig.n8nPort,
+            timeout: const Duration(milliseconds: 700),
+          );
+          socket.destroy();
+        } catch (_) {
+          _logger.d(
+              'Health probe skipped, TCP unreachable for $host:${MqttConfig.n8nPort}');
+          continue;
+        }
+
         // Use n8n's built-in health endpoint instead of sending to webhook.
         // This is more reliable as it doesn't depend on workflow processing.
         final n8nBaseUrl = 'http://$host:${MqttConfig.n8nPort}';
@@ -377,7 +420,7 @@ class AIChatService {
 
         final response = await http
             .get(Uri.parse(healthUrl))
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 3));
 
         _logger.d('n8n health response from $host: ${response.statusCode}');
 
@@ -385,6 +428,8 @@ class AIChatService {
           if (host != MqttConfig.localBrokerAddress) {
             updateBrokerEndpoint(host, port: MqttConfig.n8nPort);
           }
+          _lastHealthCheckAt = DateTime.now();
+          _lastHealthCheckResult = true;
           return true;
         }
 
@@ -392,13 +437,15 @@ class AIChatService {
         final webhookUrl = 'http://$host:${MqttConfig.n8nPort}/api/agent';
         final webhookResponse = await http
             .head(Uri.parse(webhookUrl))
-            .timeout(const Duration(seconds: 4));
+            .timeout(const Duration(seconds: 2));
 
         // n8n may return 404/405 for HEAD on webhook; still means server is up.
         if (webhookResponse.statusCode < 500) {
           if (host != MqttConfig.localBrokerAddress) {
             updateBrokerEndpoint(host, port: MqttConfig.n8nPort);
           }
+          _lastHealthCheckAt = DateTime.now();
+          _lastHealthCheckResult = true;
           return true;
         }
       } catch (e) {
@@ -408,6 +455,8 @@ class AIChatService {
     }
 
     _logger.w('AI agent server health check failed on all broker candidates');
+    _lastHealthCheckAt = DateTime.now();
+    _lastHealthCheckResult = false;
     return false;
   }
 

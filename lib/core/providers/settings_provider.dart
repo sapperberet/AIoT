@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../config/mqtt_config.dart';
@@ -183,6 +184,13 @@ class SettingsProvider with ChangeNotifier {
     saveSettings();
   }
 
+  bool _isLoopbackBroker(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == '127.0.0.1' ||
+        normalized == 'localhost' ||
+        normalized == '10.0.2.2';
+  }
+
   String _normalizeBrokerAddress(String? address) {
     final trimmed = address?.trim() ?? '';
     if (trimmed.isEmpty ||
@@ -190,7 +198,53 @@ class SettingsProvider with ChangeNotifier {
         trimmed == MqttConfig.legacyDefaultLocalBrokerAddress) {
       return MqttConfig.defaultLocalBrokerAddress;
     }
+
+    // Avoid persisting/selecting loopback emulator hosts on real devices.
+    // They are only valid when adb reverse override mode is intentionally used.
+    if (_isLoopbackBroker(trimmed) && !MqttConfig.useDebugAdbReverseOverride) {
+      return MqttConfig.defaultLocalBrokerAddress;
+    }
+
     return trimmed;
+  }
+
+  Future<bool> _isBrokerReachable(String host, int port) async {
+    try {
+      final socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(milliseconds: 700),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<String> _resolveReachableBrokerAddress(String preferred) async {
+    final normalizedPreferred = _normalizeBrokerAddress(preferred);
+    final candidates = MqttConfig.buildBrokerCandidates(normalizedPreferred);
+
+    final results = await Future.wait(
+      candidates.map((candidate) async {
+        final reachable =
+            await _isBrokerReachable(candidate, MqttConfig.localBrokerPort);
+        return MapEntry(candidate, reachable);
+      }),
+    );
+
+    for (final result in results) {
+      if (result.value) {
+        if (result.key != normalizedPreferred) {
+          debugPrint(
+              '🌐 Settings: Replacing unreachable broker $normalizedPreferred with reachable ${result.key}');
+        }
+        return result.key;
+      }
+    }
+
+    return normalizedPreferred;
   }
 
   // Toggle notification settings
@@ -333,15 +387,28 @@ class SettingsProvider with ChangeNotifier {
           _mqttBrokerAddress = _normalizeBrokerAddress(
             userSettings['mqttBrokerAddress'] as String?,
           );
+          final brokerBeforeResolve = _mqttBrokerAddress;
           final prefs = await SharedPreferences.getInstance();
           final localDiscoveredBroker = _normalizeBrokerAddress(
             prefs.getString('mqttBrokerAddress'),
           );
           if (localDiscoveredBroker.isNotEmpty &&
               localDiscoveredBroker != _mqttBrokerAddress) {
-            debugPrint(
-                '🌐 Settings: Preferring local discovered broker $localDiscoveredBroker over cloud $_mqttBrokerAddress');
-            _mqttBrokerAddress = localDiscoveredBroker;
+            if (_isLoopbackBroker(localDiscoveredBroker) &&
+                !MqttConfig.useDebugAdbReverseOverride) {
+              debugPrint(
+                  '🌐 Settings: Ignoring loopback discovered broker $localDiscoveredBroker');
+            } else {
+              debugPrint(
+                  '🌐 Settings: Preferring local discovered broker $localDiscoveredBroker over cloud $_mqttBrokerAddress');
+              _mqttBrokerAddress = localDiscoveredBroker;
+            }
+          }
+
+          _mqttBrokerAddress =
+              await _resolveReachableBrokerAddress(_mqttBrokerAddress);
+          if (_mqttBrokerAddress != brokerBeforeResolve) {
+            await prefs.setString('mqttBrokerAddress', _mqttBrokerAddress);
           }
           _mqttBrokerPort = userSettings['mqttBrokerPort'] as int? ?? 1883;
           _mqttUsername = userSettings['mqttUsername'] as String? ?? '';
@@ -474,6 +541,12 @@ class SettingsProvider with ChangeNotifier {
       _mqttBrokerAddress = _normalizeBrokerAddress(
         prefs.getString('mqttBrokerAddress'),
       );
+      final brokerBeforeResolve = _mqttBrokerAddress;
+      _mqttBrokerAddress =
+          await _resolveReachableBrokerAddress(_mqttBrokerAddress);
+      if (_mqttBrokerAddress != brokerBeforeResolve) {
+        await prefs.setString('mqttBrokerAddress', _mqttBrokerAddress);
+      }
       _mqttBrokerPort = prefs.getInt('mqttBrokerPort') ?? 1883;
       _mqttUsername = prefs.getString('mqttUsername') ?? '';
       _mqttPassword = prefs.getString('mqttPassword') ?? '';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:io';
 import '../services/mqtt_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
@@ -17,6 +18,11 @@ typedef VisualizationSyncCallback = void Function(
     String deviceType, Map<String, dynamic> state);
 
 class DeviceProvider with ChangeNotifier {
+  static const Duration _recentConnectionRetention = Duration(minutes: 5);
+  static const Duration _recentStateActivityRetention = Duration(minutes: 5);
+  static const Duration _disconnectStickyOnlineWindow = Duration(minutes: 20);
+  static const Duration _deviceStaleOfflineTimeout = Duration(hours: 1);
+
   final MqttService _mqttService;
   final FirestoreService _firestoreService;
   final NotificationService _notificationService;
@@ -26,6 +32,10 @@ class DeviceProvider with ChangeNotifier {
   List<Device> _devices = [];
   List<AlarmEvent> _alarms = [];
   bool _isConnectedToMqtt = false;
+  DateTime? _lastMqttConnectedAt;
+  DateTime? _lastMqttDisconnectedAt;
+  DateTime? _lastDeviceStateActivityAt;
+  bool _hasSeenSuccessfulMqttConnection = false;
   bool _useCloudMode = false;
   String? _userId;
 
@@ -198,6 +208,7 @@ class DeviceProvider with ChangeNotifier {
   /// Handle global state updates from Firebase (synced from other devices)
   void _handleGlobalStateUpdate(Map<String, dynamic> states) {
     debugPrint('🔄 Received global state update from Firebase');
+    _lastDeviceStateActivityAt = DateTime.now();
     bool hasChanges = false;
 
     // Sync door state
@@ -359,8 +370,53 @@ class DeviceProvider with ChangeNotifier {
     }
 
     if (hasChanges) {
+      _applyConnectivityStatusToDevices();
       notifyListeners();
     }
+  }
+
+  void _applyConnectivityStatusToDevices() {
+    if (_devices.isEmpty) return;
+
+    final now = DateTime.now();
+    final hasRecentMqtt = _lastMqttConnectedAt != null &&
+        now.difference(_lastMqttConnectedAt!) < _recentConnectionRetention;
+    final hasRecentStateActivity = _lastDeviceStateActivityAt != null &&
+        now.difference(_lastDeviceStateActivityAt!) <
+            _recentStateActivityRetention;
+    final inReconnectGrace = _hasSeenSuccessfulMqttConnection &&
+        _lastMqttDisconnectedAt != null &&
+        now.difference(_lastMqttDisconnectedAt!) <
+            _disconnectStickyOnlineWindow;
+
+    final shouldTreatAsOnline = _isConnectedToMqtt ||
+        hasRecentMqtt ||
+        hasRecentStateActivity ||
+        inReconnectGrace;
+
+    _devices = _devices.map((device) {
+      if (shouldTreatAsOnline) {
+        if (device.status == DeviceStatus.online) {
+          return device;
+        }
+        return device.copyWith(
+          status: DeviceStatus.online,
+          lastUpdated: now,
+        );
+      }
+
+      final recentlySeen =
+          now.difference(device.lastUpdated) < _deviceStaleOfflineTimeout;
+      if (recentlySeen) {
+        return device;
+      }
+
+      if (device.status == DeviceStatus.offline) {
+        return device;
+      }
+
+      return device.copyWith(status: DeviceStatus.offline);
+    }).toList();
   }
 
   /// Save current device states to Firebase for global sync
@@ -394,7 +450,18 @@ class DeviceProvider with ChangeNotifier {
   void _init() {
     // Listen to MQTT connection status
     _mqttService.statusStream.listen((status) {
+      final now = DateTime.now();
       _isConnectedToMqtt = status == ConnectionStatus.connected;
+      if (_isConnectedToMqtt) {
+        _hasSeenSuccessfulMqttConnection = true;
+        _lastMqttConnectedAt = now;
+        _lastMqttDisconnectedAt = null;
+      } else if (status == ConnectionStatus.disconnected ||
+          status == ConnectionStatus.error) {
+        // Keep reconnect grace alive while retries are in progress.
+        _lastMqttDisconnectedAt = now;
+      }
+      _applyConnectivityStatusToDevices();
       notifyListeners();
     });
 
@@ -411,6 +478,7 @@ class DeviceProvider with ChangeNotifier {
     // Load devices from Firestore
     _firestoreService.getDevicesStream(userId).listen((devices) {
       _devices = devices;
+      _applyConnectivityStatusToDevices();
       _syncDeviceStates();
       notifyListeners();
     });
@@ -478,18 +546,82 @@ class DeviceProvider with ChangeNotifier {
       debugPrint(
           '📍 Broker: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}');
 
+      final originalBrokerAddress = MqttConfig.localBrokerAddress;
+
+      // Fast path: try the currently configured broker first with no probe delay.
+      final primarySuccess = await _mqttService.connect(
+        brokerAddress: originalBrokerAddress,
+        port: MqttConfig.localBrokerPort,
+        useCloud: _useCloudMode,
+        scheduleReconnectOnFailure: false,
+      );
+
+      if (primarySuccess) {
+        debugPrint(
+            '✅ DeviceProvider: MQTT connected quickly on primary broker $originalBrokerAddress');
+        _subscribeToTopics();
+        return;
+      }
+
+      // Give the backend a brief warm-up window in case MQTT service was just
+      // restarted, then retry primary once before scanning fallbacks.
+      final primaryReachable = await _isBrokerReachable(
+        originalBrokerAddress,
+        MqttConfig.localBrokerPort,
+      );
+      if (primaryReachable) {
+        debugPrint(
+            '⏳ DeviceProvider: Primary broker reachable, retrying after warm-up delay...');
+        await Future.delayed(const Duration(milliseconds: 1200));
+        final warmupRetrySuccess = await _mqttService.connect(
+          brokerAddress: originalBrokerAddress,
+          port: MqttConfig.localBrokerPort,
+          useCloud: _useCloudMode,
+          scheduleReconnectOnFailure: false,
+        );
+        if (warmupRetrySuccess) {
+          debugPrint(
+              '✅ DeviceProvider: MQTT connected on warm-up retry $originalBrokerAddress');
+          _subscribeToTopics();
+          return;
+        }
+      }
+
       final brokerCandidates =
-          MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress);
-      final candidatesToTry = brokerCandidates;
+          MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress)
+              .where((candidate) => candidate != originalBrokerAddress)
+              .toList();
+      final reachableCandidates = <String>[];
+
+      final reachabilityResults = await Future.wait(
+        brokerCandidates.map((candidate) async {
+          final reachable = await _isBrokerReachable(
+            candidate,
+            MqttConfig.localBrokerPort,
+          );
+          return MapEntry(candidate, reachable);
+        }),
+      );
+
+      for (final entry in reachabilityResults) {
+        if (entry.value) {
+          reachableCandidates.add(entry.key);
+        } else {
+          debugPrint(
+              '⏭️ DeviceProvider: Skipping unreachable broker ${entry.key}:${MqttConfig.localBrokerPort}');
+        }
+      }
+
+      final candidatesToTry = reachableCandidates;
 
       debugPrint(
           '🔍 DeviceProvider: Candidate brokers: ${candidatesToTry.join(', ')}');
-      final originalBrokerAddress = MqttConfig.localBrokerAddress;
       bool success = false;
       String? connectedBroker;
 
       for (final candidate in candidatesToTry) {
-        debugPrint('🔄 DeviceProvider: Trying broker $candidate:${MqttConfig.localBrokerPort}');
+        debugPrint(
+            '🔄 DeviceProvider: Trying broker $candidate:${MqttConfig.localBrokerPort}');
         success = await _mqttService.connect(
           brokerAddress: candidate,
           port: MqttConfig.localBrokerPort,
@@ -517,10 +649,23 @@ class DeviceProvider with ChangeNotifier {
         // Subscribe to all device topics
         _subscribeToTopics();
       } else {
-        final retryBroker = originalBrokerAddress;
+        final retryBroker = reachableCandidates.isNotEmpty
+            ? reachableCandidates.first
+            : originalBrokerAddress;
+        final currentBrokerBeforeRetry = MqttConfig.localBrokerAddress;
 
+        // Do not promote unknown fallbacks after failures; keep retries on the
+        // trusted primary broker to avoid getting stuck on dead neighbor hosts.
         if (retryBroker != MqttConfig.localBrokerAddress) {
           MqttConfig.localBrokerAddress = retryBroker;
+        }
+
+        if (shouldPersistFallbackBroker(
+          retryBroker: retryBroker,
+          originalBrokerAddress: originalBrokerAddress,
+          currentBrokerAddress: currentBrokerBeforeRetry,
+          reachableCandidates: reachableCandidates,
+        )) {
           unawaited(_persistBrokerAddress(retryBroker));
         }
 
@@ -532,11 +677,37 @@ class DeviceProvider with ChangeNotifier {
           useCloud: _useCloudMode,
           scheduleReconnectOnFailure: true,
         ));
-        debugPrint('❌ DeviceProvider: MQTT connection failed (retry broker: $retryBroker)');
+        debugPrint(
+            '❌ DeviceProvider: MQTT connection failed (retry broker: $retryBroker)');
       }
     } catch (e) {
       debugPrint('❌ DeviceProvider: MQTT connection error: $e');
     }
+  }
+
+  Future<bool> _isBrokerReachable(String host, int port) async {
+    try {
+      final socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(milliseconds: 700),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool shouldPersistFallbackBroker({
+    required String retryBroker,
+    required String originalBrokerAddress,
+    required String currentBrokerAddress,
+    required List<String> reachableCandidates,
+  }) {
+    return retryBroker != originalBrokerAddress &&
+        retryBroker != currentBrokerAddress &&
+        reachableCandidates.contains(retryBroker);
   }
 
   Future<void> _persistBrokerAddress(String address) async {
@@ -610,6 +781,13 @@ class DeviceProvider with ChangeNotifier {
   }
 
   void _handleMqttMessage(AppMqttMessage message) {
+    final now = DateTime.now();
+    _hasSeenSuccessfulMqttConnection = true;
+    _lastMqttConnectedAt = now;
+    _lastMqttDisconnectedAt = null;
+    _lastDeviceStateActivityAt = now;
+    _applyConnectivityStatusToDevices();
+
     final payload = message.jsonPayload;
     final rawPayload = message.payload.trim().toLowerCase();
 
@@ -799,8 +977,10 @@ class DeviceProvider with ChangeNotifier {
     Map<String, dynamic>? payload,
   ) {
     if (payload != null) {
-      final commandValue =
-          payload['command'] ?? payload['action'] ?? payload['state'] ?? payload['value'];
+      final commandValue = payload['command'] ??
+          payload['action'] ??
+          payload['state'] ??
+          payload['value'];
       if (commandValue is String) {
         return commandValue.trim().toLowerCase();
       }
@@ -819,9 +999,11 @@ class DeviceProvider with ChangeNotifier {
   bool _isFloor2LightTopic(String topic) =>
       topic.endsWith('/actuators/lights/floor2') ||
       topic.endsWith('/actuators/lights/floor_2');
-  bool _isRgbLightTopic(String topic) => topic.endsWith('/actuators/lights/rgb');
+  bool _isRgbLightTopic(String topic) =>
+      topic.endsWith('/actuators/lights/rgb');
   bool _isBuzzerTopic(String topic) => topic.endsWith('/actuators/buzzer');
-  bool _isGarageTopic(String topic) => topic.endsWith('/actuators/motors/garage');
+  bool _isGarageTopic(String topic) =>
+      topic.endsWith('/actuators/motors/garage');
   bool _isFrontWindowTopic(String topic) =>
       topic.endsWith('/actuators/motors/frontwindow');
   bool _isDoorTopic(String topic) => topic.endsWith('/actuators/motors/door');
@@ -1320,6 +1502,7 @@ class DeviceProvider with ChangeNotifier {
     final deviceIndex = _devices.indexWhere((d) => d.id == deviceId);
 
     if (deviceIndex != -1) {
+      _lastDeviceStateActivityAt = DateTime.now();
       _devices[deviceIndex] = _devices[deviceIndex].copyWith(
         state: payload,
         status: DeviceStatus.online,

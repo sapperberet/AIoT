@@ -26,7 +26,7 @@ class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
   // NOTE: This is a fallback default. The actual IP should be discovered via beacon.
   static const String defaultLocalBrokerAddress =
-      String.fromEnvironment('BACKEND_HOST', defaultValue: '192.168.1.2');
+      String.fromEnvironment('BACKEND_HOST', defaultValue: '192.168.1.3');
   static const String previousDefaultLocalBrokerAddress = '192.168.1.17';
   static const String legacyDefaultLocalBrokerAddress = '192.168.1.100';
 
@@ -287,6 +287,10 @@ class MqttConfig {
   static List<String> buildBrokerCandidates(String primary) {
     final candidates = <String>[];
 
+    bool isLegacyFallback(String value) =>
+        value == previousDefaultLocalBrokerAddress ||
+        value == legacyDefaultLocalBrokerAddress;
+
     void addIfValid(String value) {
       final trimmed = value.trim();
       if (trimmed.isEmpty) return;
@@ -297,21 +301,46 @@ class MqttConfig {
 
     // Highest-priority candidates first.
     addIfValid(primary);
+
+    // If a primary LAN IPv4 is available, include immediate neighbors.
+    // This helps when DHCP shifts the host IP by one octet.
+    final parts = primary.trim().split('.');
+    if (parts.length == 4) {
+      final octets = parts.map(int.tryParse).toList();
+      final hasValidOctets = octets.every((o) => o != null);
+      if (hasValidOctets) {
+        final last = octets[3]!;
+        // Avoid auto-probing .1 (commonly the router gateway), which creates
+        // repeated health/MQTT failures in mobile LAN setups.
+        if (last > 2) {
+          addIfValid('${octets[0]}.${octets[1]}.${octets[2]}.${last - 1}');
+        }
+      }
+    }
+
     addIfValid(_localBrokerAddress);
     addIfValid(defaultLocalBrokerAddress);
-    addIfValid(previousDefaultLocalBrokerAddress);
-    addIfValid(legacyDefaultLocalBrokerAddress);
+
+    // Keep legacy defaults out of automatic scans unless explicitly selected
+    // as the primary/current broker. This avoids long failure cascades.
+    if (isLegacyFallback(primary.trim())) {
+      addIfValid(previousDefaultLocalBrokerAddress);
+      addIfValid(legacyDefaultLocalBrokerAddress);
+    }
 
     // In Android debug sessions, localhost/emulator host can be valid
-    // fallback targets (for adb reverse/emulator routing).
-    // Keep them after primary to avoid overriding working LAN hosts.
+    // fallback targets only when adb reverse override is explicitly enabled.
     if (kDebugMode && !kIsWeb && Platform.isAndroid) {
-      addIfValid('127.0.0.1');
-      addIfValid('10.0.2.2');
+      if (useDebugAdbReverseOverride) {
+        addIfValid('127.0.0.1');
+        addIfValid('10.0.2.2');
+      }
     }
 
     // Common container-host gateway fallback in local dev setups.
-    addIfValid('172.17.0.1');
+    if (useDebugAdbReverseOverride) {
+      addIfValid('172.17.0.1');
+    }
 
     return candidates;
   }

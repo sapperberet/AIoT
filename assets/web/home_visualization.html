@@ -3740,13 +3740,15 @@
             if (fanMeshes.fire && fanSpeeds.fire > 0) {
                 const firePivot = fanPivots.fire || ensureFanSpinPivot(fanMeshes.fire, 'fire');
                 if (firePivot) {
-                    firePivot.rotateY(deltaSeconds * (fanSpeeds.fire * 8));
+                    const fireAxis = firePivot.userData.spinAxis || new THREE.Vector3(0, 1, 0);
+                    firePivot.rotateOnAxis(fireAxis, deltaSeconds * (fanSpeeds.fire * 8));
                 }
             }
             if (fanMeshes.ventilation && fanSpeeds.ventilation > 0) {
                 const ventPivot = fanPivots.ventilation || ensureFanSpinPivot(fanMeshes.ventilation, 'ventilation');
                 if (ventPivot) {
-                    ventPivot.rotateY(deltaSeconds * (fanSpeeds.ventilation * 8));
+                    const ventAxis = ventPivot.userData.spinAxis || new THREE.Vector3(0, 1, 0);
+                    ventPivot.rotateOnAxis(ventAxis, deltaSeconds * (fanSpeeds.ventilation * 8));
                 }
             }
             
@@ -3889,17 +3891,28 @@
 
             const bbox = new THREE.Box3().setFromObject(mesh);
             const center = new THREE.Vector3();
+            const size = new THREE.Vector3();
             bbox.getCenter(center);
+            bbox.getSize(size);
+
+            // Fan spin axis is usually aligned to the thinnest mesh dimension.
+            const dims = [
+                { axis: new THREE.Vector3(1, 0, 0), value: size.x },
+                { axis: new THREE.Vector3(0, 1, 0), value: size.y },
+                { axis: new THREE.Vector3(0, 0, 1), value: size.z }
+            ].sort((a, b) => a.value - b.value);
+            const spinAxis = dims[0].axis.clone();
 
             const pivot = new THREE.Group();
             pivot.position.copy(center);
             scene.add(pivot);
             pivot.attach(mesh);
+            pivot.userData.spinAxis = spinAxis;
 
             mesh.userData.spinPivot = pivot;
             fanPivots[fanKey] = pivot;
 
-            console.log('🌀 Created fan spin pivot:', fanKey, 'mesh:', mesh.name);
+            console.log('🌀 Created fan spin pivot:', fanKey, 'mesh:', mesh.name, 'axis:', spinAxis.toArray());
             return pivot;
         }
 
@@ -4169,7 +4182,7 @@
                 'upper_window_mesh_1', 'upper_window_mesh_2',
                 'front_window', 'upper_window_1', 'upper_window_2'
             ];
-            const windowPatterns = ['window', 'Window', 'WINDOW', 'glass', 'Glass'];
+            const windowPatterns = ['window', 'Window', 'WINDOW'];
             
             // First check roomMeshes
             Object.entries(roomMeshes).forEach(([name, mesh]) => {
@@ -4254,7 +4267,7 @@
             }
             
             // Check if it's a window
-            if (nameLower.includes('window') || nameLower.includes('glass')) {
+            if (nameLower.includes('window')) {
                 toggleWindow(mesh);
                 return true;
             }
@@ -4498,10 +4511,10 @@
                 return;
             }
 
-            console.log('🚗 Opening garage (side hinge)...');
+            console.log('🚗 Opening garage (top hinge upward)...');
             garageAnimating = true;
 
-            // Create a side hinge pivot so garage opens like a swinging panel
+            // Create a top-edge pivot so the garage opens upward like a flap.
             if (!garageMesh.userData.pivotGroup) {
                 const bbox = new THREE.Box3().setFromObject(garageMesh);
                 const size = new THREE.Vector3();
@@ -4510,10 +4523,14 @@
                 bbox.getCenter(center);
 
                 const hingePos = center.clone();
+                hingePos.y += size.y / 2;
+
+                // Hinge axis runs along the wider horizontal dimension.
+                let hingeAxis;
                 if (size.x >= size.z) {
-                    hingePos.x += size.x / 2;
+                    hingeAxis = new THREE.Vector3(1, 0, 0);
                 } else {
-                    hingePos.z += size.z / 2;
+                    hingeAxis = new THREE.Vector3(0, 0, 1);
                 }
 
                 const pivotGroup = new THREE.Group();
@@ -4521,34 +4538,42 @@
                 scene.add(pivotGroup);
                 pivotGroup.attach(garageMesh);
                 garageMesh.userData.pivotGroup = pivotGroup;
+                pivotGroup.userData.hingeAxis = hingeAxis;
             }
 
             const pivotGroup = garageMesh.userData.pivotGroup;
-            if (!pivotGroup.userData.originalRotationY) {
-                pivotGroup.userData.originalRotationY = pivotGroup.rotation.y;
+            if (!pivotGroup.userData.hingeAxis) {
+                pivotGroup.userData.hingeAxis = new THREE.Vector3(1, 0, 0);
+            }
+            if (!pivotGroup.userData.originalQuaternion) {
+                pivotGroup.userData.originalQuaternion = pivotGroup.quaternion.clone();
             }
 
-            const rotationAmount = -Math.PI / 2; // 90 degrees open
-            const startRotY = pivotGroup.rotation.y;
-            const targetRotY = pivotGroup.userData.originalRotationY + rotationAmount;
+            const hingeAxis = pivotGroup.userData.hingeAxis;
+            const startQuat = pivotGroup.quaternion.clone();
+            const targetQuat = pivotGroup.userData.originalQuaternion.clone();
+            const openRotation = Math.PI / 2;
+            targetQuat.multiply(new THREE.Quaternion().setFromAxisAngle(hingeAxis, openRotation));
+
             const duration = 1000;
             const startTime = Date.now();
 
-            console.log('🚗 Garage start rotY:', startRotY, 'target rotY:', targetRotY);
+            console.log('🚗 Garage opening with axis:', hingeAxis.toArray());
 
             function animateOpen() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
 
-                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+                pivotGroup.quaternion.copy(startQuat).slerp(targetQuat, easeProgress);
 
                 if (progress < 1) {
                     requestAnimationFrame(animateOpen);
                 } else {
+                    pivotGroup.quaternion.copy(targetQuat);
                     garageAnimating = false;
                     garageOpen = true;
-                    console.log('✅ Garage opened at rotY:', pivotGroup.rotation.y);
+                    console.log('✅ Garage opened upward');
                 }
             }
 
@@ -4565,7 +4590,7 @@
             
             if (!garageMesh || garageAnimating || !garageOpen) return;
 
-            console.log('🚗 Closing garage (side hinge)...');
+            console.log('🚗 Closing garage (top hinge upward)...');
             garageAnimating = true;
 
             const pivotGroup = garageMesh.userData.pivotGroup;
@@ -4575,8 +4600,10 @@
                 return;
             }
 
-            const targetRotY = pivotGroup.userData.originalRotationY || 0;
-            const startRotY = pivotGroup.rotation.y;
+            const targetQuat = pivotGroup.userData.originalQuaternion
+                ? pivotGroup.userData.originalQuaternion.clone()
+                : new THREE.Quaternion();
+            const startQuat = pivotGroup.quaternion.clone();
             const duration = 1000;
             const startTime = Date.now();
 
@@ -4585,12 +4612,12 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
 
-                pivotGroup.rotation.y = startRotY + (targetRotY - startRotY) * easeProgress;
+                pivotGroup.quaternion.copy(startQuat).slerp(targetQuat, easeProgress);
 
                 if (progress < 1) {
                     requestAnimationFrame(animateClose);
                 } else {
-                    pivotGroup.rotation.y = targetRotY;
+                    pivotGroup.quaternion.copy(targetQuat);
                     garageAnimating = false;
                     garageOpen = false;
                     console.log('✅ Garage closed');
@@ -5400,8 +5427,9 @@
             
             // Map window IDs to mesh names (adjust based on your 3D model)
             const windowMeshNames = {
-                'front_window': ['front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front', 'upper_window_mesh_1', 'upper_window_1'],
-                'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1', 'front_window_mesh', 'front_window'],
+                // System front_window corresponds to the upper/front opening in this model.
+                'front_window': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1', 'front_window_mesh', 'front_window', 'frontWindow', 'window_front', 'Window_Front'],
+                'upper_window_1': ['upper_window_mesh_1', 'upper_window_1', 'upperWindow1', 'window_upper_1'],
                 'upper_window_2': ['upper_window_mesh_2', 'upper_window_2', 'upperWindow2', 'window_upper_2']
             };
             

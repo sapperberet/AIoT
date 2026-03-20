@@ -34,19 +34,23 @@ class MqttService {
   int? _currentBrokerPort;
   bool _wasConnected = false;
   StreamSubscription? _messageSubscription;
+  bool _isManualDisconnect = false;
 
   // Subscribed topics tracking - persist across reconnections
   final Set<String> _subscribedTopics = {};
 
   // CRITICAL: Robust reconnection handling
   Timer? _reconnectTimer;
+  Timer? _reconnectUnblockTimer;
   Timer? _pingTimer;
   bool _isReconnecting = false;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 10;
-  static const Duration _initialReconnectDelay = Duration(seconds: 2);
+  static const int _maxReconnectAttempts = 5;
+  static const Duration _initialReconnectDelay = Duration(seconds: 1);
   static const Duration _maxReconnectDelay = Duration(seconds: 30);
+  static const Duration _reconnectCooldownAfterMax = Duration(seconds: 90);
   static const Duration _pingInterval = Duration(seconds: 30);
+  DateTime? _reconnectBlockedUntil;
 
   /// Connect to MQTT broker with robust error handling
   Future<bool> connect({
@@ -93,23 +97,23 @@ class MqttService {
 
       // Create unique client ID with timestamp to avoid conflicts
       final clientId =
-          '${MqttConfig.localClientId}_${DateTime.now().millisecondsSinceEpoch % 10000}';
+          '${MqttConfig.localClientId}_${DateTime.now().millisecondsSinceEpoch}';
 
       _client = MqttServerClient.withPort(targetAddress, clientId, targetPort);
       _client!.logging(on: false);
 
       // CRITICAL: Connection settings for persistent connection
       _client!.keepAlivePeriod = MqttConfig.keepAlivePeriod;
-      _client!.autoReconnect = false; // Manual reconnect scheduling is handled below.
+      _client!.autoReconnect =
+          false; // Manual reconnect scheduling is handled below.
       _client!.resubscribeOnAutoReconnect = false;
-      _client!.connectTimeoutPeriod = 10000; // 10 second timeout
+      _client!.connectTimeoutPeriod = 5000; // 5 second timeout
       _client!.secure = false; // No TLS for local Mosquitto
 
-        // Keep CONNECT packet minimal for maximum compatibility across
-        // forwarded/network-translated paths.
-        final connMessage = MqttConnectMessage()
-          .withClientIdentifier(clientId)
-          .startClean();
+      // Keep CONNECT packet minimal for maximum compatibility across
+      // forwarded/network-translated paths.
+      final connMessage =
+          MqttConnectMessage().withClientIdentifier(clientId).startClean();
 
       _client!.connectionMessage = connMessage;
 
@@ -162,6 +166,8 @@ class MqttService {
       return true;
     } on SocketException catch (e) {
       debugPrint('❌ MQTT: Socket error - ${e.message}');
+      _client?.disconnect();
+      _client = null;
       _updateStatus(ConnectionStatus.error);
       if (scheduleReconnectOnFailure) {
         _scheduleReconnect();
@@ -169,6 +175,8 @@ class MqttService {
       return false;
     } on NoConnectionException catch (e) {
       debugPrint('❌ MQTT: No connection - $e');
+      _client?.disconnect();
+      _client = null;
       _updateStatus(ConnectionStatus.error);
       if (scheduleReconnectOnFailure) {
         _scheduleReconnect();
@@ -178,6 +186,7 @@ class MqttService {
       debugPrint('❌ MQTT: Connection error - $e');
       _updateStatus(ConnectionStatus.error);
       _client?.disconnect();
+      _client = null;
       if (scheduleReconnectOnFailure) {
         _scheduleReconnect();
       }
@@ -240,6 +249,7 @@ class MqttService {
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
     _messageSubscription?.cancel();
+    _isManualDisconnect = true;
 
     if (_client != null &&
         _client!.connectionStatus?.state == MqttConnectionState.connected) {
@@ -251,6 +261,7 @@ class MqttService {
       }
     }
     _client = null;
+    _isManualDisconnect = false;
   }
 
   /// Subscribe to a topic - tracks subscriptions for reconnection
@@ -339,6 +350,11 @@ class MqttService {
   void _onDisconnected() {
     debugPrint('🔌 MQTT: onDisconnected callback triggered');
 
+    if (_isManualDisconnect) {
+      _updateStatus(ConnectionStatus.disconnected);
+      return;
+    }
+
     // Only update to disconnected if we're not auto-reconnecting
     if (!_isReconnecting) {
       _updateStatus(ConnectionStatus.disconnected);
@@ -376,6 +392,14 @@ class MqttService {
 
   /// Schedule reconnection with exponential backoff
   void _scheduleReconnect() {
+    if (_reconnectBlockedUntil != null &&
+        DateTime.now().isBefore(_reconnectBlockedUntil!)) {
+      final remaining = _reconnectBlockedUntil!.difference(DateTime.now());
+      debugPrint(
+          '⏸️ MQTT: Reconnect temporarily paused for ${remaining.inSeconds}s after max attempts');
+      return;
+    }
+
     if (_isReconnecting) {
       debugPrint('🔄 MQTT: Reconnection already in progress');
       return;
@@ -384,7 +408,18 @@ class MqttService {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
       debugPrint(
           '❌ MQTT: Max reconnection attempts ($_maxReconnectAttempts) reached');
-      _reconnectAttempts = 0;
+      _reconnectBlockedUntil = DateTime.now().add(_reconnectCooldownAfterMax);
+      _reconnectUnblockTimer?.cancel();
+      _reconnectUnblockTimer = Timer(_reconnectCooldownAfterMax, () {
+        _reconnectAttempts = 0;
+        _isReconnecting = false;
+        _reconnectBlockedUntil = null;
+
+        if (!_isManualDisconnect &&
+            _currentStatus != ConnectionStatus.connected) {
+          _scheduleReconnect();
+        }
+      });
       _updateStatus(ConnectionStatus.error);
       return;
     }
@@ -452,6 +487,7 @@ class MqttService {
     debugPrint('🧹 MQTT: Disposing service...');
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
+    _reconnectUnblockTimer?.cancel();
     _messageSubscription?.cancel();
     disconnect();
     _statusController.close();
