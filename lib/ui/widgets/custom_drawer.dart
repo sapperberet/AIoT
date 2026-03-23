@@ -248,18 +248,6 @@ class CustomDrawer extends StatelessWidget {
                           delay: const Duration(milliseconds: 500),
                           child: _buildMenuItem(
                             context,
-                            icon: Iconsax.timer,
-                            title: loc.t('automations'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.pushNamed(context, '/automations');
-                            },
-                          ),
-                        ),
-                        FadeInLeft(
-                          delay: const Duration(milliseconds: 545),
-                          child: _buildMenuItem(
-                            context,
                             icon: Iconsax.cpu_setting,
                             title: loc.t('scenarios'),
                             onTap: () {
@@ -269,7 +257,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 600),
+                          delay: const Duration(milliseconds: 545),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.flash_1,
@@ -281,7 +269,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 625),
+                          delay: const Duration(milliseconds: 600),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.chart_21,
@@ -293,7 +281,7 @@ class CustomDrawer extends StatelessWidget {
                           ),
                         ),
                         FadeInLeft(
-                          delay: const Duration(milliseconds: 650),
+                          delay: const Duration(milliseconds: 625),
                           child: _buildMenuItem(
                             context,
                             icon: Iconsax.cpu_setting,

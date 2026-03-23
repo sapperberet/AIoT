@@ -4,6 +4,7 @@ import '../services/scenario_service.dart';
 
 class ScenarioProvider with ChangeNotifier {
   final ScenarioService _service;
+  static const Duration _refreshCooldown = Duration(seconds: 2);
 
   ScenarioProvider({required ScenarioService service}) : _service = service;
 
@@ -15,6 +16,12 @@ class ScenarioProvider with ChangeNotifier {
 
   String? _error;
   String? get error => _error;
+  DateTime? _lastSyncedAt;
+
+  Future<void> _syncFromEndpoint() async {
+    _scenarios = await _service.getScenarios();
+    _lastSyncedAt = DateTime.now();
+  }
 
   // ── Load all scenarios ────────────────────────────────────
 
@@ -24,14 +31,34 @@ class ScenarioProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _scenarios = await _service.getScenarios();
+      await _syncFromEndpoint();
       _error = null;
     } catch (e) {
       _error = e.toString();
+      // Keep UI strictly endpoint-driven: never show stale local scenarios.
+      _scenarios = [];
       debugPrint('❌ ScenarioProvider load error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> refreshFromEndpoint() async {
+    if (_isLoading) return;
+    if (_lastSyncedAt != null &&
+        DateTime.now().difference(_lastSyncedAt!) < _refreshCooldown) {
+      return;
+    }
+    try {
+      await _syncFromEndpoint();
+      _error = null;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _scenarios = [];
+      notifyListeners();
+      debugPrint('❌ ScenarioProvider refresh error: $e');
     }
   }
 
@@ -41,11 +68,12 @@ class ScenarioProvider with ChangeNotifier {
     try {
       _error = null;
       await _service.createScenario(scenario);
-      _scenarios = await _service.getScenarios();
+      await _syncFromEndpoint();
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
+      _scenarios = [];
       notifyListeners();
       return false;
     }
@@ -57,14 +85,12 @@ class ScenarioProvider with ChangeNotifier {
     try {
       _error = null;
       await _service.updateScenario(id, scenario);
-      final index = _scenarios.indexWhere((s) => s.id == id);
-      if (index != -1) {
-        _scenarios[index] = scenario.copyWith(id: id);
-      }
+      await _syncFromEndpoint();
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
+      _scenarios = [];
       notifyListeners();
       return false;
     }
@@ -76,11 +102,12 @@ class ScenarioProvider with ChangeNotifier {
     try {
       _error = null;
       await _service.deleteScenario(id);
-      _scenarios.removeWhere((s) => s.id == id);
+      await _syncFromEndpoint();
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
+      _scenarios = [];
       notifyListeners();
       return false;
     }
@@ -92,14 +119,12 @@ class ScenarioProvider with ChangeNotifier {
     try {
       _error = null;
       await _service.toggleScenario(id, active);
-      final index = _scenarios.indexWhere((s) => s.id == id);
-      if (index != -1) {
-        _scenarios[index] = _scenarios[index].copyWith(isActive: active);
-      }
+      await _syncFromEndpoint();
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
+      _scenarios = [];
       notifyListeners();
       return false;
     }

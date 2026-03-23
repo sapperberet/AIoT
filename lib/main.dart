@@ -44,8 +44,6 @@ import 'ui/screens/auth/pending_approval_screen.dart';
 import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/settings/settings_screen.dart';
 import 'ui/screens/notifications/notifications_screen.dart';
-import 'ui/screens/automations/automations_screen.dart';
-import 'ui/screens/automations/automation_management_screen.dart';
 import 'ui/screens/scenarios/scenarios_screen.dart';
 import 'ui/screens/energy/energy_monitor_screen.dart';
 import 'ui/screens/sensors/sensor_monitor_screen.dart';
@@ -410,9 +408,6 @@ class SmartHomeApp extends StatelessWidget {
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
               '/notifications': (context) => const NotificationsScreen(),
-              '/automations': (context) => const AutomationsScreen(),
-              '/automation-management': (context) =>
-                  const AutomationManagementScreen(),
               '/scenarios': (context) => const ScenariosScreen(),
               '/energy': (context) => const EnergyMonitorScreen(),
               '/sensors': (context) => const SensorMonitorScreen(),

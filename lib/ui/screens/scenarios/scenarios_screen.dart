@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,12 +20,26 @@ class ScenariosScreen extends StatefulWidget {
 }
 
 class _ScenariosScreenState extends State<ScenariosScreen> {
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ScenarioProvider>().loadScenarios();
+      if (!mounted) return;
+      final provider = context.read<ScenarioProvider>();
+      provider.loadScenarios();
+      _refreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!mounted) return;
+        provider.refreshFromEndpoint();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -490,25 +505,19 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
   // ── Actions ───────────────────────────────────────────────
 
   void _openCreate(BuildContext context) async {
-    final created = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const ScenarioCreateScreen()),
     );
-    if (created == true && mounted) {
-      context.read<ScenarioProvider>().loadScenarios();
-    }
   }
 
   void _openEdit(BuildContext context, Scenario scenario) async {
-    final updated = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => ScenarioCreateScreen(editScenario: scenario),
       ),
     );
-    if (updated == true && mounted) {
-      context.read<ScenarioProvider>().loadScenarios();
-    }
   }
 
   void _toggle(BuildContext context, Scenario scenario, bool active) {
