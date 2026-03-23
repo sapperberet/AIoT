@@ -42,8 +42,7 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
     final authProvider = context.read<AuthProvider>();
     _connectionAttempts = 0;
 
-    // Get stream URL - works with or without beacon discovery
-    // High-level users (Admin/Manager) can access camera without face auth
+    // Get stream URL from beacon-resolved broker only.
     String? streamUrl = authProvider.getRtspStreamUrl();
     String? beaconIp;
 
@@ -51,17 +50,19 @@ class _CameraFeedScreenState extends State<CameraFeedScreen> {
       beaconIp = authProvider.discoveredBeacon!.ip;
       debugPrint('🌐 Camera Feed: Using discovered beacon IP: $beaconIp');
     } else {
-      // Fallback to configured MQTT broker address for high-level users
       beaconIp = MqttConfig.localBrokerAddress;
-      debugPrint('🌐 Camera Feed: Using configured broker IP: $beaconIp');
-      // Build stream URL manually if no beacon
-      streamUrl ??= 'rtsp://$beaconIp:8554/cam';
+      if (beaconIp.trim().isNotEmpty) {
+        debugPrint('🌐 Camera Feed: Using resolved broker IP: $beaconIp');
+        streamUrl ??= 'rtsp://$beaconIp:8554/cam';
+      }
     }
 
-    // Final fallback if still null
-    if (streamUrl == null) {
-      streamUrl = 'rtsp://${MqttConfig.localBrokerAddress}:8554/cam';
-      debugPrint('🌐 Camera Feed: Using final fallback stream URL: $streamUrl');
+    if (streamUrl == null || streamUrl.trim().isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Beacon broker not resolved for camera stream';
+      });
+      return;
     }
 
     debugPrint(

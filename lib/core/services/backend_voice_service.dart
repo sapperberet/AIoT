@@ -24,7 +24,7 @@ class BackendVoiceService {
   String get asrUrl => '$baseUrl:${MqttConfig.asrWhisperPort}/transcribe';
 
   /// Voice chat endpoint (n8n - sends audio, receives audio)
-  String get voiceChatUrl => '$baseUrl:${MqttConfig.n8nPort}/api/voice';
+  String get voiceChatUrl => '$baseUrl:${MqttConfig.n8nPort}/run/voice';
 
   /// Set custom base URL for all services
   void setBaseUrl(String url) {
@@ -173,7 +173,7 @@ class BackendVoiceService {
     }
   }
 
-  /// Send voice message and receive voice reply (via n8n /api/voice)
+  /// Send voice message and receive voice reply (via n8n /run/voice)
   /// Returns the path to the response audio file and the transcription
   Future<VoiceChatResult?> sendVoiceChat(
     String audioFilePath,

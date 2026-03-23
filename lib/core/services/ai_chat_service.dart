@@ -47,9 +47,9 @@ class AIChatService {
 
   AIChatService() {
     _baseUrl =
-        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
     _voiceChatUrl =
-        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/voice';
+        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/voice';
 
     // Initialize external LLM settings from config
     _externalLlmUrl = 'https://${MqttConfig.externalLlmDomain}';
@@ -434,7 +434,7 @@ class AIChatService {
         }
 
         // Some n8n setups may not expose /healthz.
-        final webhookUrl = 'http://$host:${MqttConfig.n8nPort}/api/agent';
+        final webhookUrl = 'http://$host:${MqttConfig.n8nPort}/run/agent';
         final webhookResponse = await http
             .head(Uri.parse(webhookUrl))
             .timeout(const Duration(seconds: 2));
@@ -465,7 +465,7 @@ class AIChatService {
     try {
       final response = await http
           .get(
-            Uri.parse('$_baseUrl/api/chat/history?user_id=$userId'),
+            Uri.parse('$_baseUrl/run/chat/history?user_id=$userId'),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -495,7 +495,7 @@ class AIChatService {
     try {
       await http
           .delete(
-            Uri.parse('$_baseUrl/api/chat/history?user_id=$userId'),
+            Uri.parse('$_baseUrl/run/chat/history?user_id=$userId'),
           )
           .timeout(const Duration(seconds: 10));
     } catch (e) {
@@ -557,7 +557,7 @@ class AIChatService {
     }
   }
 
-  /// Send voice message and receive voice reply via n8n /api/voice
+  /// Send voice message and receive voice reply via n8n /run/voice
   /// Returns VoiceChatResponse with audio file path and transcriptions
   Future<VoiceChatResponse?> sendVoiceMessage(
     String audioFilePath,
@@ -748,9 +748,9 @@ class AIChatService {
     // Update MqttConfig for other services to use
     MqttConfig.localBrokerAddress = newAddress;
 
-    _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/agent';
+    _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/run/agent';
     _voiceChatUrl =
-        'http://$newAddress:${port ?? MqttConfig.n8nPort}/api/voice';
+        'http://$newAddress:${port ?? MqttConfig.n8nPort}/run/voice';
     _logger.i(
         '🔄 Broker endpoint updated to: $newAddress (all services will use this IP)');
   }

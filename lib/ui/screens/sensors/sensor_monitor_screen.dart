@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+import 'dart:async';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/device_provider.dart';
 import '../../../core/services/mqtt_service.dart';
+import '../../../core/services/sensor_service.dart';
+import '../../../core/models/sensor_data_model.dart';
 import '../../widgets/floating_chat_button.dart';
 
 class SensorMonitorScreen extends StatefulWidget {
@@ -17,6 +20,99 @@ class SensorMonitorScreen extends StatefulWidget {
 
 class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
   String _selectedSensor = 'all';
+  static const int _maxChartPoints = 48;
+
+  final Map<String, List<SensorData>> _sensorHistory = {
+    'temperature': [],
+    'humidity': [],
+    'gas': [],
+  };
+  final List<StreamSubscription<SensorData>> _sensorSubscriptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeSensorHistory();
+      _listenToLiveSensorData();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _sensorSubscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
+  }
+
+  Future<void> _initializeSensorHistory() async {
+    final sensorService = context.read<SensorService>();
+    final now = DateTime.now();
+    final start = now.subtract(const Duration(hours: 24));
+
+    final temperatureHistory = await sensorService.getSensorHistory(
+      type: SensorType.temperature,
+      startTime: start,
+      endTime: now,
+      limit: _maxChartPoints,
+    );
+    final humidityHistory = await sensorService.getSensorHistory(
+      type: SensorType.humidity,
+      startTime: start,
+      endTime: now,
+      limit: _maxChartPoints,
+    );
+    final gasHistory = await sensorService.getSensorHistory(
+      type: SensorType.gas,
+      startTime: start,
+      endTime: now,
+      limit: _maxChartPoints,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _sensorHistory['temperature'] = temperatureHistory.reversed.toList();
+      _sensorHistory['humidity'] = humidityHistory.reversed.toList();
+      _sensorHistory['gas'] = gasHistory.reversed.toList();
+    });
+  }
+
+  void _listenToLiveSensorData() {
+    final sensorService = context.read<SensorService>();
+
+    _sensorSubscriptions.add(
+      sensorService.getSensorStream(SensorType.temperature).listen((reading) {
+        _appendReading('temperature', reading);
+      }),
+    );
+
+    _sensorSubscriptions.add(
+      sensorService.getSensorStream(SensorType.humidity).listen((reading) {
+        _appendReading('humidity', reading);
+      }),
+    );
+
+    _sensorSubscriptions.add(
+      sensorService.getSensorStream(SensorType.gas).listen((reading) {
+        _appendReading('gas', reading);
+      }),
+    );
+  }
+
+  void _appendReading(String key, SensorData reading) {
+    if (!mounted) return;
+
+    setState(() {
+      final existing = List<SensorData>.from(_sensorHistory[key] ?? []);
+      existing.add(reading);
+      if (existing.length > _maxChartPoints) {
+        existing.removeRange(0, existing.length - _maxChartPoints);
+      }
+      _sensorHistory[key] = existing;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +558,7 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
           'Temperature Trend',
           Iconsax.sun_1,
           Colors.orange,
+          'temperature',
           deviceProvider.temperature,
           '°C',
         ),
@@ -471,6 +568,7 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
           'Humidity Trend',
           Iconsax.drop,
           Colors.blue,
+          'humidity',
           deviceProvider.humidity,
           '%',
         ),
@@ -480,6 +578,7 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
           'Gas Level Trend',
           Iconsax.cloud,
           Colors.purple,
+          'gas',
           deviceProvider.gasLevel,
           'ppm',
         ),
@@ -491,6 +590,7 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
     String title,
     IconData icon,
     Color color,
+    String sensorKey,
     double currentValue,
     String unit,
   ) {
@@ -498,12 +598,14 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onBackground;
 
-    // Simulated chart data points
-    final dataPoints = List.generate(
-      12,
-      (i) =>
-          (currentValue * (0.8 + (i % 3) * 0.1)).clamp(0.0, currentValue * 1.2),
-    );
+    final history = _sensorHistory[sensorKey] ?? const <SensorData>[];
+    final dataPoints = history.isEmpty
+        ? <double>[currentValue]
+        : history.map((reading) => reading.value).toList();
+    final maxValue = dataPoints.reduce((a, b) => a > b ? a : b);
+    final minValue = dataPoints.reduce((a, b) => a < b ? a : b);
+    final range =
+        (maxValue - minValue).abs() < 0.0001 ? 1.0 : (maxValue - minValue);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -541,6 +643,16 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          Text(
+            history.isNotEmpty
+                ? 'Live: ${history.length} stored point${history.length == 1 ? '' : 's'}'
+                : 'Waiting for live data...',
+            style: TextStyle(
+              fontSize: 11,
+              color: textColor.withOpacity(0.55),
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             height: 80,
@@ -549,8 +661,8 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
               children: dataPoints.asMap().entries.map((entry) {
                 final index = entry.key;
                 final value = entry.value;
-                final maxValue = dataPoints.reduce((a, b) => a > b ? a : b);
-                final height = maxValue > 0 ? (value / maxValue) * 60 : 0.0;
+                final normalized = (value - minValue) / range;
+                final height = history.length <= 1 ? 30.0 : (normalized * 60);
 
                 return Expanded(
                   child: Padding(
@@ -574,12 +686,16 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '12h ago',
+                history.isNotEmpty
+                    ? _formatTime(history.first.timestamp)
+                    : '--:--',
                 style:
                     TextStyle(fontSize: 10, color: textColor.withOpacity(0.5)),
               ),
               Text(
-                'Now',
+                history.isNotEmpty
+                    ? _formatTime(history.last.timestamp)
+                    : 'Now',
                 style:
                     TextStyle(fontSize: 10, color: textColor.withOpacity(0.5)),
               ),
@@ -588,6 +704,12 @@ class _SensorMonitorScreenState extends State<SensorMonitorScreen> {
         ],
       ),
     );
+  }
+
+  String _formatTime(DateTime value) {
+    final h = value.hour.toString().padLeft(2, '0');
+    final m = value.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 

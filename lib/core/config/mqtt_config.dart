@@ -24,16 +24,28 @@ import 'package:flutter/foundation.dart';
 /// - Humidity: home/sensors/humidity
 class MqttConfig {
   // Local MQTT Broker Configuration (e.g., Mosquitto on Raspberry Pi)
-  // NOTE: This is a fallback default. The actual IP should be discovered via beacon.
+  // NOTE: Beacon-only mode is enforced at runtime.
+  // These defaults are kept only for compatibility/migration checks.
   static const String defaultLocalBrokerAddress =
       String.fromEnvironment('BACKEND_HOST', defaultValue: '192.168.1.3');
   static const String previousDefaultLocalBrokerAddress = '192.168.1.17';
   static const String legacyDefaultLocalBrokerAddress = '192.168.1.100';
 
-  static String _localBrokerAddress =
-      defaultLocalBrokerAddress; // Fallback default
+  static String _localBrokerAddress = '';
   static const bool useDebugAdbReverseOverride =
       bool.fromEnvironment('USE_ADB_REVERSE', defaultValue: false);
+
+  static bool isDefaultOrLegacyAddress(String? value) {
+    final normalized = value?.trim() ?? '';
+    return normalized.isEmpty ||
+        normalized == defaultLocalBrokerAddress ||
+        normalized == previousDefaultLocalBrokerAddress ||
+        normalized == legacyDefaultLocalBrokerAddress;
+  }
+
+  static bool get hasBeaconBrokerAddress =>
+      _localBrokerAddress.trim().isNotEmpty &&
+      !isDefaultOrLegacyAddress(_localBrokerAddress);
 
   // Getter and setter for dynamic IP address from beacon discovery
   static String get localBrokerAddress {
@@ -45,13 +57,21 @@ class MqttConfig {
         Platform.isAndroid) {
       return '127.0.0.1';
     }
-    return _localBrokerAddress;
+    // Beacon-only policy: do not surface hardcoded defaults at runtime.
+    return hasBeaconBrokerAddress ? _localBrokerAddress : '';
   }
 
   static set localBrokerAddress(String address) {
-    _localBrokerAddress = address;
+    final normalized = address.trim();
+    if (normalized.isEmpty) return;
+    if (isDefaultOrLegacyAddress(normalized)) {
+      print(
+          '⚠️ MqttConfig: Ignoring default/legacy broker address: $normalized');
+      return;
+    }
+    _localBrokerAddress = normalized;
     // Log the IP change for debugging
-    print('🌐 MqttConfig: Broker address updated to $address');
+    print('🌐 MqttConfig: Broker address updated to $normalized');
   }
 
   static const int localBrokerPort = 1883;
@@ -275,58 +295,29 @@ class MqttConfig {
 
   // Helper: Build n8n webhook URL
   static String get n8nAgentUrl =>
-      'http://$localBrokerAddress:$n8nPort/api/agent';
+      'http://$localBrokerAddress:$n8nPort/run/agent';
   static String get n8nVoiceUrl =>
-      'http://$localBrokerAddress:$n8nPort/api/voice';
+      'http://$localBrokerAddress:$n8nPort/run/voice';
   static String get n8nDoorUrl =>
-      'http://$localBrokerAddress:$n8nPort/api/door';
+      'http://$localBrokerAddress:$n8nPort/run/door';
   static String get n8nCameraFeedUrl =>
-      'http://$localBrokerAddress:$n8nPort/api/camera-feed';
+      'http://$localBrokerAddress:$n8nPort/run/camera-feed';
 
   /// Build broker candidates from a primary IPv4 host.
   static List<String> buildBrokerCandidates(String primary) {
     final candidates = <String>[];
 
-    bool isLegacyFallback(String value) =>
-        value == previousDefaultLocalBrokerAddress ||
-        value == legacyDefaultLocalBrokerAddress;
-
     void addIfValid(String value) {
       final trimmed = value.trim();
-      if (trimmed.isEmpty) return;
+      if (trimmed.isEmpty || isDefaultOrLegacyAddress(trimmed)) return;
       if (!candidates.contains(trimmed)) {
         candidates.add(trimmed);
       }
     }
 
-    // Highest-priority candidates first.
+    // Beacon-only policy: candidates can only come from discovered broker data.
     addIfValid(primary);
-
-    // If a primary LAN IPv4 is available, include immediate neighbors.
-    // This helps when DHCP shifts the host IP by one octet.
-    final parts = primary.trim().split('.');
-    if (parts.length == 4) {
-      final octets = parts.map(int.tryParse).toList();
-      final hasValidOctets = octets.every((o) => o != null);
-      if (hasValidOctets) {
-        final last = octets[3]!;
-        // Avoid auto-probing .1 (commonly the router gateway), which creates
-        // repeated health/MQTT failures in mobile LAN setups.
-        if (last > 2) {
-          addIfValid('${octets[0]}.${octets[1]}.${octets[2]}.${last - 1}');
-        }
-      }
-    }
-
     addIfValid(_localBrokerAddress);
-    addIfValid(defaultLocalBrokerAddress);
-
-    // Keep legacy defaults out of automatic scans unless explicitly selected
-    // as the primary/current broker. This avoids long failure cascades.
-    if (isLegacyFallback(primary.trim())) {
-      addIfValid(previousDefaultLocalBrokerAddress);
-      addIfValid(legacyDefaultLocalBrokerAddress);
-    }
 
     // In Android debug sessions, localhost/emulator host can be valid
     // fallback targets only when adb reverse override is explicitly enabled.

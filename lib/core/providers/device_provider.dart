@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:io';
 import '../services/mqtt_service.dart';
@@ -63,6 +62,12 @@ class DeviceProvider with ChangeNotifier {
     'floor_1': 100,
     'floor_2': 100,
     'rgb': 100,
+  };
+
+  static const Set<String> _supportedLightIds = {
+    'floor_1',
+    'floor_2',
+    'rgb',
   };
 
   // RGB light color (hex)
@@ -277,6 +282,10 @@ class DeviceProvider with ChangeNotifier {
     if (states['lights'] != null) {
       final lightStates = states['lights'] as Map<String, dynamic>;
       lightStates.forEach((lightId, value) {
+        if (!_supportedLightIds.contains(lightId)) {
+          debugPrint('⚠️ Ignoring unsupported light in sync: $lightId');
+          return;
+        }
         if (value is Map<String, dynamic>) {
           final isOn = value['isOn'] as bool? ?? false;
           final brightness = value['brightness'] as int? ?? 100;
@@ -547,6 +556,11 @@ class DeviceProvider with ChangeNotifier {
           '📍 Broker: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}');
 
       final originalBrokerAddress = MqttConfig.localBrokerAddress;
+      if (originalBrokerAddress.trim().isEmpty) {
+        debugPrint(
+            '❌ DeviceProvider: No beacon broker configured, skipping MQTT connect');
+        return;
+      }
 
       // Fast path: try the currently configured broker first with no probe delay.
       final primarySuccess = await _mqttService.connect(
@@ -587,99 +601,15 @@ class DeviceProvider with ChangeNotifier {
         }
       }
 
-      final brokerCandidates =
-          MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress)
-              .where((candidate) => candidate != originalBrokerAddress)
-              .toList();
-      final reachableCandidates = <String>[];
-
-      final reachabilityResults = await Future.wait(
-        brokerCandidates.map((candidate) async {
-          final reachable = await _isBrokerReachable(
-            candidate,
-            MqttConfig.localBrokerPort,
-          );
-          return MapEntry(candidate, reachable);
-        }),
-      );
-
-      for (final entry in reachabilityResults) {
-        if (entry.value) {
-          reachableCandidates.add(entry.key);
-        } else {
-          debugPrint(
-              '⏭️ DeviceProvider: Skipping unreachable broker ${entry.key}:${MqttConfig.localBrokerPort}');
-        }
-      }
-
-      final candidatesToTry = reachableCandidates;
-
+      // Beacon-only policy: retry only the resolved beacon broker.
+      unawaited(_mqttService.connect(
+        brokerAddress: originalBrokerAddress,
+        port: MqttConfig.localBrokerPort,
+        useCloud: _useCloudMode,
+        scheduleReconnectOnFailure: true,
+      ));
       debugPrint(
-          '🔍 DeviceProvider: Candidate brokers: ${candidatesToTry.join(', ')}');
-      bool success = false;
-      String? connectedBroker;
-
-      for (final candidate in candidatesToTry) {
-        debugPrint(
-            '🔄 DeviceProvider: Trying broker $candidate:${MqttConfig.localBrokerPort}');
-        success = await _mqttService.connect(
-          brokerAddress: candidate,
-          port: MqttConfig.localBrokerPort,
-          useCloud: _useCloudMode,
-          scheduleReconnectOnFailure: false,
-        );
-
-        if (success) {
-          connectedBroker = candidate;
-          break;
-        }
-      }
-
-      if (success) {
-        if (connectedBroker != null &&
-            connectedBroker != MqttConfig.localBrokerAddress) {
-          debugPrint(
-              '🌐 DeviceProvider: Updating broker address from ${MqttConfig.localBrokerAddress} to $connectedBroker');
-          MqttConfig.localBrokerAddress = connectedBroker;
-          if (connectedBroker != '127.0.0.1' && connectedBroker != '10.0.2.2') {
-            unawaited(_persistBrokerAddress(connectedBroker));
-          }
-        }
-        debugPrint('✅ DeviceProvider: MQTT connected successfully');
-        // Subscribe to all device topics
-        _subscribeToTopics();
-      } else {
-        final retryBroker = reachableCandidates.isNotEmpty
-            ? reachableCandidates.first
-            : originalBrokerAddress;
-        final currentBrokerBeforeRetry = MqttConfig.localBrokerAddress;
-
-        // Do not promote unknown fallbacks after failures; keep retries on the
-        // trusted primary broker to avoid getting stuck on dead neighbor hosts.
-        if (retryBroker != MqttConfig.localBrokerAddress) {
-          MqttConfig.localBrokerAddress = retryBroker;
-        }
-
-        if (shouldPersistFallbackBroker(
-          retryBroker: retryBroker,
-          originalBrokerAddress: originalBrokerAddress,
-          currentBrokerAddress: currentBrokerBeforeRetry,
-          reachableCandidates: reachableCandidates,
-        )) {
-          unawaited(_persistBrokerAddress(retryBroker));
-        }
-
-        // No candidate succeeded; let service manage delayed retries on the
-        // best available host instead of rapidly cycling every neighbor.
-        unawaited(_mqttService.connect(
-          brokerAddress: retryBroker,
-          port: MqttConfig.localBrokerPort,
-          useCloud: _useCloudMode,
-          scheduleReconnectOnFailure: true,
-        ));
-        debugPrint(
-            '❌ DeviceProvider: MQTT connection failed (retry broker: $retryBroker)');
-      }
+          '❌ DeviceProvider: MQTT connection failed (retry broker: $originalBrokerAddress)');
     } catch (e) {
       debugPrint('❌ DeviceProvider: MQTT connection error: $e');
     }
@@ -696,27 +626,6 @@ class DeviceProvider with ChangeNotifier {
       return true;
     } catch (_) {
       return false;
-    }
-  }
-
-  static bool shouldPersistFallbackBroker({
-    required String retryBroker,
-    required String originalBrokerAddress,
-    required String currentBrokerAddress,
-    required List<String> reachableCandidates,
-  }) {
-    return retryBroker != originalBrokerAddress &&
-        retryBroker != currentBrokerAddress &&
-        reachableCandidates.contains(retryBroker);
-  }
-
-  Future<void> _persistBrokerAddress(String address) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('mqttBrokerAddress', address);
-      debugPrint('💾 DeviceProvider: Persisted broker address $address');
-    } catch (e) {
-      debugPrint('⚠️ DeviceProvider: Failed to persist broker address: $e');
     }
   }
 
@@ -877,6 +786,13 @@ class DeviceProvider with ChangeNotifier {
       if (_fanStates['kitchen'] != speed) {
         _fanStates['kitchen'] = speed;
         _syncToVisualization('fan', {'fanId': 'kitchen', 'speed': speed});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logFanEvent(
+            userId: _userId!,
+            speed: speed,
+            location: 'Kitchen',
+          );
+        }
         changed = true;
       }
     } else if (_isFloor1LightTopic(normalizedTopic)) {
@@ -884,6 +800,14 @@ class DeviceProvider with ChangeNotifier {
       if (_lightStates['floor_1'] != isOn) {
         _lightStates['floor_1'] = isOn;
         _syncToVisualization('light', {'lightId': 'floor_1', 'isOn': isOn});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logLightEvent(
+            userId: _userId!,
+            isOn: isOn,
+            location: 'Floor 1',
+            brightness: _lightBrightness['floor_1'],
+          );
+        }
         changed = true;
       }
     } else if (_isFloor2LightTopic(normalizedTopic)) {
@@ -891,6 +815,14 @@ class DeviceProvider with ChangeNotifier {
       if (_lightStates['floor_2'] != isOn) {
         _lightStates['floor_2'] = isOn;
         _syncToVisualization('light', {'lightId': 'floor_2', 'isOn': isOn});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logLightEvent(
+            userId: _userId!,
+            isOn: isOn,
+            location: 'Floor 2',
+            brightness: _lightBrightness['floor_2'],
+          );
+        }
         changed = true;
       }
     } else if (_isRgbLightTopic(normalizedTopic)) {
@@ -915,7 +847,8 @@ class DeviceProvider with ChangeNotifier {
         final parsedColor = int.tryParse(colorText, radix: 16);
         if (parsedColor != null) {
           _rgbLightColor = parsedColor & 0xFFFFFF;
-          _lightStates['rgb'] = true;
+          // Color updates should not force ON state. ON/OFF is brightness-based.
+          _lightStates['rgb'] = _rgbBrightness > 0;
           changed = true;
         }
       }
@@ -932,6 +865,13 @@ class DeviceProvider with ChangeNotifier {
       if (_isBuzzerActive != isActive) {
         _isBuzzerActive = isActive;
         _syncToVisualization('buzzer', {'isActive': isActive});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logBuzzerEvent(
+            userId: _userId!,
+            isActive: isActive,
+            reason: 'MQTT actuator update',
+          );
+        }
         changed = true;
       }
     } else if (_isGarageTopic(normalizedTopic)) {
@@ -939,6 +879,12 @@ class DeviceProvider with ChangeNotifier {
       if (_isGarageDoorOpen != isOpen) {
         _isGarageDoorOpen = isOpen;
         _syncToVisualization('garage', {'isOpen': isOpen});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logGarageEvent(
+            userId: _userId!,
+            isOpen: isOpen,
+          );
+        }
         changed = true;
       }
     } else if (_isFrontWindowTopic(normalizedTopic)) {
@@ -947,6 +893,13 @@ class DeviceProvider with ChangeNotifier {
         _windowStates['front_window'] = isOpen;
         _syncToVisualization(
             'window', {'windowId': 'front_window', 'isOpen': isOpen});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logWindowEvent(
+            userId: _userId!,
+            isOpen: isOpen,
+            location: 'Front Window',
+          );
+        }
         changed = true;
       }
     } else if (_isDoorTopic(normalizedTopic)) {
@@ -954,6 +907,14 @@ class DeviceProvider with ChangeNotifier {
       if (_isMainDoorOpen != isOpen) {
         _isMainDoorOpen = isOpen;
         _syncToVisualization('door', {'isOpen': isOpen});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logDoorEvent(
+            userId: _userId!,
+            isOpen: isOpen,
+            location: 'Main Door',
+            triggeredBy: 'MQTT actuator update',
+          );
+        }
         changed = true;
       }
     } else if (_isGateTopic(normalizedTopic)) {
@@ -961,6 +922,13 @@ class DeviceProvider with ChangeNotifier {
       if (_windowStates['gate'] != isOpen) {
         _windowStates['gate'] = isOpen;
         _syncToVisualization('window', {'windowId': 'gate', 'isOpen': isOpen});
+        if (_userId != null && _eventLogService != null) {
+          _eventLogService!.logWindowEvent(
+            userId: _userId!,
+            isOpen: isOpen,
+            location: 'Gate',
+          );
+        }
         changed = true;
       }
     } else {
@@ -1151,6 +1119,10 @@ class DeviceProvider with ChangeNotifier {
     // Extract light/room ID from topic: home/{room}/light/status
     final parts = topic.split('/');
     final lightId = parts.length > 1 ? parts[1] : 'main';
+    if (!_supportedLightIds.contains(lightId)) {
+      debugPrint('⚠️ Ignoring unsupported light status topic id: $lightId');
+      return;
+    }
     final isOn = payload['state'] == 'on';
     final previousState = _lightStates[lightId] ?? false;
     _lightStates[lightId] = isOn;
@@ -1208,12 +1180,20 @@ class DeviceProvider with ChangeNotifier {
   }) {
     debugPrint('📊 Sensor data received on $topic: $payload');
 
-    // Extract sensor type from topic: home/sensors/{type}
+    // Extract sensor type from topic: */sensors/{type}
     final parts = topic.split('/');
-    final sensorType = parts.length > 2 ? parts[2] : '';
+    final sensorsIndex =
+        parts.indexWhere((part) => part.toLowerCase() == 'sensors');
+    final sensorType = (sensorsIndex >= 0 && sensorsIndex + 1 < parts.length)
+        ? parts[sensorsIndex + 1].toLowerCase()
+        : (parts.length > 2 ? parts[2].toLowerCase() : '');
 
     // Extract value from payload
-    final value = _extractSensorValue(rawPayload, payload);
+    final value = _extractSensorValue(
+      rawPayload,
+      payload,
+      sensorType: sensorType,
+    );
 
     // Store sensor data using sensor service if available
     SensorType? type;
@@ -1233,6 +1213,14 @@ class DeviceProvider with ChangeNotifier {
         break;
       case 'gas':
       case 'mq135':
+      case 'mq2':
+      case 'mq-2':
+      case 'mq_2':
+      case 'co2':
+      case 'co':
+      case 'lpg':
+      case 'gaslevel':
+      case 'gas_level':
         _gasLevel = value;
         type = SensorType.gas;
         debugPrint('☣️ Gas: ${value}ppm');
@@ -1333,22 +1321,80 @@ class DeviceProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  double _extractSensorValue(
-    String rawPayload,
-    Map<String, dynamic>? payload,
-  ) {
+  double _extractSensorValue(String rawPayload, Map<String, dynamic>? payload,
+      {String? sensorType}) {
+    final sensorKey = (sensorType ?? '').toLowerCase();
+
     if (payload != null) {
-      final jsonValue = payload['value'] ?? payload['data'];
-      if (jsonValue is num) {
-        return jsonValue.toDouble();
+      final candidateKeys = <String>[
+        'value',
+        if (sensorKey == 'temperature' || sensorKey == 'temp') ...[
+          'temperature',
+          'temp',
+          'celsius',
+        ],
+        if (sensorKey == 'humidity') ...['humidity', 'rh'],
+        if (sensorKey == 'gas' ||
+            sensorKey.startsWith('mq') ||
+            sensorKey == 'co2') ...[
+          'gas',
+          'ppm',
+          'mq2',
+          'mq-2',
+          'mq135',
+          'co2',
+          'co',
+          'lpg',
+          'gas_level',
+        ],
+        if (sensorKey == 'ldr' || sensorKey == 'light') ...[
+          'ldr',
+          'light',
+          'lux'
+        ],
+        if (sensorKey == 'voltage') ...['voltage', 'v'],
+        if (sensorKey == 'current') ...['current', 'a'],
+        if (sensorKey == 'flame') ...['flame', 'detected'],
+        if (sensorKey == 'rain') ...['rain', 'detected'],
+        'reading',
+        'data',
+      ];
+
+      for (final key in candidateKeys) {
+        if (!payload.containsKey(key)) continue;
+        final parsed = _toDouble(payload[key]);
+        if (parsed != null) {
+          return parsed;
+        }
       }
-      if (jsonValue is String) {
-        return double.tryParse(jsonValue.trim()) ?? 0.0;
+
+      final nestedData = payload['data'];
+      if (nestedData is Map<String, dynamic>) {
+        for (final key in candidateKeys) {
+          if (!nestedData.containsKey(key)) continue;
+          final parsed = _toDouble(nestedData[key]);
+          if (parsed != null) {
+            return parsed;
+          }
+        }
       }
     }
 
     final normalized = rawPayload.trim();
     return double.tryParse(normalized) ?? 0.0;
+  }
+
+  double? _toDouble(dynamic raw) {
+    if (raw is num) {
+      return raw.toDouble();
+    }
+    if (raw is String) {
+      return double.tryParse(raw.trim());
+    }
+    if (raw is bool) {
+      return raw ? 1.0 : 0.0;
+    }
+    return null;
   }
 
   /// Create gas alarm when dangerous levels detected
@@ -1581,6 +1627,12 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set door state explicitly
   Future<void> setDoorState(bool isOpen) async {
+    if (_isMainDoorOpen == isOpen) {
+      debugPrint(
+          '🚪 MQTT: Door already in target state (${isOpen ? 'open' : 'close'}), skipping command');
+      return;
+    }
+
     // ESP32 expects simple string: "open" or "close"
     final message = isOpen ? 'open' : 'close';
 
@@ -1591,6 +1643,15 @@ class DeviceProvider with ChangeNotifier {
 
     _isMainDoorOpen = isOpen;
     _syncToVisualization('door', {'isOpen': isOpen});
+
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logDoorEvent(
+        userId: _userId!,
+        isOpen: isOpen,
+        location: 'Main Door',
+        triggeredBy: 'App User',
+      );
+    }
 
     // Save to Firebase for global sync
     _saveDeviceToFirebase('door', {'isOpen': isOpen});
@@ -1636,6 +1697,12 @@ class DeviceProvider with ChangeNotifier {
 
   /// Set garage state explicitly
   Future<void> setGarageState(bool isOpen) async {
+    if (_isGarageDoorOpen == isOpen) {
+      debugPrint(
+          '🚗 MQTT: Garage already in target state (${isOpen ? 'open' : 'close'}), skipping command');
+      return;
+    }
+
     // ESP32 expects simple string: "open" or "close"
     final message = isOpen ? 'open' : 'close';
 
@@ -1646,6 +1713,13 @@ class DeviceProvider with ChangeNotifier {
 
     _isGarageDoorOpen = isOpen;
     _syncToVisualization('garage', {'isOpen': isOpen});
+
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logGarageEvent(
+        userId: _userId!,
+        isOpen: isOpen,
+      );
+    }
 
     // Save to Firebase for global sync
     _saveDeviceToFirebase('garage', {'isOpen': isOpen});
@@ -1777,6 +1851,14 @@ class DeviceProvider with ChangeNotifier {
     _isBuzzerActive = isActive;
     _syncToVisualization('buzzer', {'isActive': isActive});
 
+    if (_userId != null && _eventLogService != null) {
+      _eventLogService!.logBuzzerEvent(
+        userId: _userId!,
+        isActive: isActive,
+        reason: reason ?? 'App User',
+      );
+    }
+
     // Save to Firebase for global sync
     _saveDeviceToFirebase('buzzer', {'isActive': isActive});
 
@@ -1785,20 +1867,42 @@ class DeviceProvider with ChangeNotifier {
 
   /// Toggle a specific light
   Future<void> toggleLightById(String lightId) async {
+    if (!_supportedLightIds.contains(lightId)) {
+      debugPrint('⚠️ Ignoring toggle for unsupported light id: $lightId');
+      return;
+    }
     final isOn = _lightStates[lightId] ?? false;
     final newState = !isOn;
     final lightName = _formatWindowName(lightId); // Reuse name formatter
-    // ESP32 expects simple string: "on" or "off"
-    final message = newState ? 'on' : 'off';
+    // RGB must use brightness payloads only. Other lights use on/off.
+    final message = lightId == 'rgb' ? null : (newState ? 'on' : 'off');
+    final int rgbPublishBrightness = newState
+        ? ((_rgbBrightness > 0 ? _rgbBrightness : 100).clamp(1, 100))
+        : 0;
 
     if (_isConnectedToMqtt && !_useCloudMode) {
       final topic = MqttConfig.lightCommandTopic(lightId);
-      _mqttService.publish(topic, message);
-      debugPrint('💡 MQTT: Light command sent - $lightId $message');
+      if (lightId == 'rgb') {
+        _mqttService.publish(topic, 'b $rgbPublishBrightness');
+        debugPrint(
+            '🌈 MQTT: RGB brightness command sent - b $rgbPublishBrightness');
+      } else {
+        _mqttService.publish(topic, message!);
+        debugPrint('💡 MQTT: Light command sent - $lightId $message');
+      }
     }
 
     // Optimistic update
     _lightStates[lightId] = newState;
+    if (lightId == 'rgb') {
+      _rgbBrightness = rgbPublishBrightness;
+      _lightBrightness['rgb'] = rgbPublishBrightness;
+      _syncToVisualization('rgb', {
+        'color': _rgbLightColor,
+        'brightness': _rgbBrightness,
+        'isOn': _lightStates['rgb'] ?? false,
+      });
+    }
     _visualizationCallback
         ?.call('light', {'lightId': lightId, 'isOn': newState});
 
@@ -1809,6 +1913,9 @@ class DeviceProvider with ChangeNotifier {
               'isOn': value,
               'brightness': _lightBrightness[key] ?? 100,
             })));
+    if (lightId == 'rgb') {
+      _saveDeviceToFirebase('rgbBrightness', {'value': _rgbBrightness});
+    }
 
     // Log event
     if (_userId != null && _eventLogService != null) {
@@ -1876,6 +1983,8 @@ class DeviceProvider with ChangeNotifier {
   /// Set RGB light color
   Future<void> setRgbLightColor(int color) async {
     _rgbLightColor = color & 0xFFFFFF; // Ensure it's 24-bit RGB
+    _lightStates['rgb'] = _rgbBrightness > 0;
+    _lightBrightness['rgb'] = _rgbBrightness;
 
     // ESP32 expects: "c <color_string>" (hex format)
     final colorHex = _rgbLightColor.toRadixString(16).padLeft(6, '0');
@@ -1902,6 +2011,8 @@ class DeviceProvider with ChangeNotifier {
   /// Set RGB light brightness (0-100)
   Future<void> setRgbBrightness(int brightness) async {
     _rgbBrightness = brightness.clamp(0, 100);
+    _lightBrightness['rgb'] = _rgbBrightness;
+    _lightStates['rgb'] = _rgbBrightness > 0;
 
     // ESP32 expects: "b <brightness>"
     if (_isConnectedToMqtt && !_useCloudMode) {

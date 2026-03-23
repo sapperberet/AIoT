@@ -511,58 +511,72 @@ class _AIChatScreenState extends State<AIChatScreen>
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Messages list
-          Expanded(
-            child: Consumer<AIChatProvider>(
-              builder: (context, chatProvider, child) {
-                if (chatProvider.isLoading && !chatProvider.hasMessages) {
-                  return _buildLoadingState(loc);
-                }
+          Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: Consumer<AIChatProvider>(
+                  builder: (context, chatProvider, child) {
+                    if (chatProvider.isLoading && !chatProvider.hasMessages) {
+                      return _buildLoadingState(loc);
+                    }
 
-                if (!chatProvider.hasMessages) {
-                  return _buildEmptyState(loc, isDark, textColor);
-                }
+                    if (!chatProvider.hasMessages) {
+                      return _buildEmptyState(loc, isDark, textColor);
+                    }
 
-                return Stack(
-                  children: [
-                    ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: chatProvider.messages.length,
-                      itemBuilder: (context, index) {
-                        final message = chatProvider.messages[index];
-                        return FadeInUp(
-                          duration: const Duration(milliseconds: 300),
-                          delay: Duration(milliseconds: index * 50),
-                          child: _buildMessageBubble(
-                            message,
-                            isDark,
-                            textColor,
+                    return Stack(
+                      children: [
+                        NotificationListener<OverscrollIndicatorNotification>(
+                          onNotification: (notification) {
+                            // Remove Android glow/white overscroll effect.
+                            notification.disallowIndicator();
+                            return true;
+                          },
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            physics: const ClampingScrollPhysics(),
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: chatProvider.messages.length,
+                            itemBuilder: (context, index) {
+                              final message = chatProvider.messages[index];
+                              return FadeInUp(
+                                duration: const Duration(milliseconds: 300),
+                                delay: Duration(milliseconds: index * 50),
+                                child: _buildMessageBubble(
+                                  message,
+                                  isDark,
+                                  textColor,
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                    if (chatProvider.isLoading)
-                      Positioned(
-                        bottom: 16,
-                        left: 16,
-                        child: _buildTypingIndicator(isDark),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
+                        ),
+                        if (chatProvider.isLoading)
+                          Positioned(
+                            bottom: 16,
+                            left: 16,
+                            child: _buildTypingIndicator(isDark),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
 
-          // Input area
-          _buildInputArea(isDark, textColor, loc),
+              // Input area
+              _buildInputArea(isDark, textColor, loc),
+            ],
+          ),
 
           // Scroll to bottom button - positioned above input area
           if (_showScrollToBottom)
             Positioned(
-              bottom: 90, // Above the input area
+              bottom: 90,
               right: 16,
               child: FadeInUp(
                 child: GestureDetector(
@@ -1176,14 +1190,21 @@ class _AIChatScreenState extends State<AIChatScreen>
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + mediaQuery.viewPadding.bottom,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1246,6 +1267,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                 const Divider(),
                 const SizedBox(height: 8),
                 ListTile(
+                  isThreeLine: true,
                   contentPadding: EdgeInsets.zero,
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -1265,6 +1287,8 @@ class _AIChatScreenState extends State<AIChatScreen>
                   subtitle: Text(
                     loc.t('dedicated_voice_conversation'),
                     style: const TextStyle(fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: const Icon(Iconsax.arrow_right_3),
                   onTap: () {
@@ -1338,7 +1362,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     final settingsProvider = context.read<SettingsProvider>();
     final textController = TextEditingController(
       text: settingsProvider.aiServerUrl ??
-          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent',
+          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent',
     );
 
     Future.delayed(Duration.zero, () {

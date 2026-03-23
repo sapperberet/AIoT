@@ -5,6 +5,8 @@ import 'package:animate_do/animate_do.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/device_provider.dart';
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/config/mqtt_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/floating_chat_button.dart';
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkAuthAndInitialize() async {
     final authProvider = context.read<AuthProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
 
     // Check if user is authenticated
     if (authProvider.currentUser == null) {
@@ -44,20 +47,32 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Keep startup resilient: initialize using configured IP first.
-    // Beacon discovery remains available via face-auth flows.
-    debugPrint('ℹ️ Home: Skipping blocking beacon discovery at startup');
+    // Beacon-first startup for main app MQTT.
+    // If beacon is found, persist it so all services and future sessions use it.
+    debugPrint('📡 Home: Starting beacon-first broker discovery');
+    final beaconFound = await authProvider.discoverFaceAuthBeacon();
+    if (beaconFound && authProvider.discoveredBeacon != null) {
+      final beaconIp = authProvider.discoveredBeacon!.ip;
+      settingsProvider.updateBrokerAddressFromBeacon(beaconIp);
+      debugPrint('✅ Home: Beacon broker discovered and saved: $beaconIp');
+    } else {
+      debugPrint('⚠️ Home: Beacon discovery did not return a broker IP');
+    }
+
+    // Beacon-only policy: do not continue with MQTT if no beacon broker is known.
+    final resolvedBroker = settingsProvider.mqttBrokerAddress.trim();
+    if (resolvedBroker.isEmpty || !MqttConfig.hasBeaconBrokerAddress) {
+      debugPrint('❌ Home: No beacon broker available, skipping MQTT init');
+      return;
+    }
 
     // User is authenticated, initialize devices
     final deviceProvider = context.read<DeviceProvider>();
     await deviceProvider.initialize(authProvider.currentUser!.uid);
 
-    // Sync beacon IP to all services if it was already discovered elsewhere.
     if (authProvider.discoveredBeacon != null) {
-      final beaconIp = authProvider.discoveredBeacon!.ip;
-      debugPrint('🌐 Home: Syncing beacon IP ($beaconIp) to all services');
-      // The MqttConfig.localBrokerAddress is already updated by AuthProvider
-      // Services will use this IP automatically
+      debugPrint(
+          '🌐 Home: Active broker IP from beacon: ${authProvider.discoveredBeacon!.ip}');
     }
   }
 

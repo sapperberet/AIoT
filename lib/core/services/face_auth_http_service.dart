@@ -495,7 +495,7 @@ class FaceAuthHttpService {
   /// Get camera feed URL from n8n API (Version 2)
   /// Returns the URL to the camera stream (redirects to MediaMTX)
   String getCameraFeedUrl() {
-    return '$n8nBaseUrl/api/camera-feed';
+    return '$n8nBaseUrl/run/camera-feed';
   }
 
   /// Get direct RTSP stream URL (Version 2)
@@ -541,7 +541,7 @@ class FaceAuthHttpService {
   /// Trigger door open via n8n API (Version 2)
   Future<bool> openDoor() async {
     try {
-      final apiUrl = '$n8nBaseUrl/api/door';
+      final apiUrl = '$n8nBaseUrl/run/door';
       _logger.i('🚪 Triggering door open: $apiUrl');
 
       final response = await _httpClient

@@ -864,6 +864,7 @@ class _QuickControlsSection extends StatelessWidget {
             final hasNoBrightnessControl =
                 simpleOnOffLights.contains(entry.key);
             final brightness = deviceProvider.lightBrightness[entry.key] ?? 100;
+            final effectiveIsActive = isRgb ? brightness > 0 : entry.value;
             // Map light IDs to actual ESP32 topics
             final lightTopic = isRgb
                 ? 'home/actuators/lights/rgb'
@@ -881,7 +882,7 @@ class _QuickControlsSection extends StatelessWidget {
                 deviceId: 'light_${entry.key}',
                 lightId: entry.key,
                 mqttTopic: lightTopic,
-                isActive: entry.value,
+                isActive: effectiveIsActive,
                 brightness: brightness,
                 activeColor: isRgb
                     ? Color(deviceProvider.rgbLightColor | 0xFF000000)
@@ -1875,12 +1876,17 @@ class _QuickControlsSection extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                final targetOpenState = !isCurrentlyOpen;
                 if (doorName == 'Main Door') {
-                  provider.toggleDoor();
+                  provider.setDoorState(targetOpenState);
                 } else if (doorName == 'Garage Door') {
-                  provider.toggleGarage();
+                  provider.setGarageState(targetOpenState);
                 } else if (doorName == 'Gate Door') {
-                  provider.toggleWindow('gate');
+                  final currentGateState =
+                      provider.windowStates['gate'] ?? false;
+                  if (currentGateState != targetOpenState) {
+                    provider.toggleWindow('gate');
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(

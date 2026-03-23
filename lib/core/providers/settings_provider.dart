@@ -42,7 +42,7 @@ class SettingsProvider with ChangeNotifier {
   void _resetToDefaults() {
     _themeMode = ThemeMode.dark;
     _connectionMode = ConnectionMode.cloud;
-    _mqttBrokerAddress = MqttConfig.defaultLocalBrokerAddress;
+    _mqttBrokerAddress = '';
     _mqttBrokerPort = 1883;
     _mqttUsername = '';
     _mqttPassword = '';
@@ -73,7 +73,7 @@ class SettingsProvider with ChangeNotifier {
   ConnectionMode get connectionMode => _connectionMode;
 
   // MQTT settings for local mode
-  String _mqttBrokerAddress = MqttConfig.defaultLocalBrokerAddress;
+  String _mqttBrokerAddress = '';
   int _mqttBrokerPort = 1883;
   String _mqttUsername = '';
   String _mqttPassword = '';
@@ -128,7 +128,7 @@ class SettingsProvider with ChangeNotifier {
   // AI Chat settings - use same backend as MQTT broker (where n8n is running)
   // Production API endpoint (always active when workflow is active)
   String _aiServerUrl =
-      'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+      'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
   String? get aiServerUrl => _aiServerUrl;
 
   // Change theme
@@ -158,7 +158,7 @@ class SettingsProvider with ChangeNotifier {
       MqttConfig.localBrokerAddress = _mqttBrokerAddress;
       // Also update AI server URL to use the new broker address
       _aiServerUrl =
-          'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+          'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
       debugPrint(
           '🌐 Settings: Updated broker address to $_mqttBrokerAddress (global: ${MqttConfig.localBrokerAddress})');
     }
@@ -193,16 +193,13 @@ class SettingsProvider with ChangeNotifier {
 
   String _normalizeBrokerAddress(String? address) {
     final trimmed = address?.trim() ?? '';
-    if (trimmed.isEmpty ||
-        trimmed == MqttConfig.previousDefaultLocalBrokerAddress ||
-        trimmed == MqttConfig.legacyDefaultLocalBrokerAddress) {
-      return MqttConfig.defaultLocalBrokerAddress;
-    }
+    if (trimmed.isEmpty) return '';
+    if (MqttConfig.isDefaultOrLegacyAddress(trimmed)) return '';
 
     // Avoid persisting/selecting loopback emulator hosts on real devices.
     // They are only valid when adb reverse override mode is intentionally used.
     if (_isLoopbackBroker(trimmed) && !MqttConfig.useDebugAdbReverseOverride) {
-      return MqttConfig.defaultLocalBrokerAddress;
+      return '';
     }
 
     return trimmed;
@@ -224,26 +221,7 @@ class SettingsProvider with ChangeNotifier {
 
   Future<String> _resolveReachableBrokerAddress(String preferred) async {
     final normalizedPreferred = _normalizeBrokerAddress(preferred);
-    final candidates = MqttConfig.buildBrokerCandidates(normalizedPreferred);
-
-    final results = await Future.wait(
-      candidates.map((candidate) async {
-        final reachable =
-            await _isBrokerReachable(candidate, MqttConfig.localBrokerPort);
-        return MapEntry(candidate, reachable);
-      }),
-    );
-
-    for (final result in results) {
-      if (result.value) {
-        if (result.key != normalizedPreferred) {
-          debugPrint(
-              '🌐 Settings: Replacing unreachable broker $normalizedPreferred with reachable ${result.key}');
-        }
-        return result.key;
-      }
-    }
-
+    // Beacon-only policy: do not probe/replace with non-beacon fallbacks.
     return normalizedPreferred;
   }
 
@@ -350,7 +328,15 @@ class SettingsProvider with ChangeNotifier {
 
   // Update MQTT broker address from beacon discovery
   void updateBrokerAddressFromBeacon(String ipAddress) {
-    _mqttBrokerAddress = ipAddress;
+    _mqttBrokerAddress = _normalizeBrokerAddress(ipAddress);
+    if (_mqttBrokerAddress.isEmpty) {
+      debugPrint(
+          '⚠️ Settings: Ignored invalid beacon broker address: $ipAddress');
+      return;
+    }
+    MqttConfig.localBrokerAddress = _mqttBrokerAddress;
+    _aiServerUrl =
+        'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
     notifyListeners();
     saveSettings(); // Auto-save
   }
@@ -430,7 +416,7 @@ class SettingsProvider with ChangeNotifier {
 
           // AI Chat settings
           _aiServerUrl = userSettings['aiServerUrl'] as String? ??
-              'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+              'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
 
           notifyListeners();
           // Also save to local storage for offline access
@@ -564,7 +550,7 @@ class SettingsProvider with ChangeNotifier {
       _enableBiometricLogin = prefs.getBool('enableBiometricLogin') ?? false;
 
       _aiServerUrl = prefs.getString('aiServerUrl') ??
-          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/api/agent';
+          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
 
       notifyListeners();
     } catch (e) {

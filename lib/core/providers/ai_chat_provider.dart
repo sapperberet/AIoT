@@ -757,7 +757,7 @@ class AIChatProvider with ChangeNotifier {
       } else {
         // More descriptive error for voice chat failure
         throw Exception(
-            'Voice chat backend unavailable. Please check that the n8n voice workflow is configured correctly and accepts POST requests at /api/voice');
+            'Voice chat backend unavailable. Please check that the n8n voice workflow is configured correctly and accepts POST requests at /run/voice');
       }
 
       _isLoading = false;

@@ -242,27 +242,29 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
         _isCheckingBroker = false;
         _subscribeToDeviceTopics(mqttService);
       } else if (_brokerStatus == ConnectionStatus.disconnected) {
-        // Try candidate brokers (discovered + fallback hosts)
-        bool connected = false;
-        final candidates =
-            MqttConfig.buildBrokerCandidates(MqttConfig.localBrokerAddress);
-
-        for (final host in candidates) {
-          connected = await mqttService.connect(
-            brokerAddress: host,
-            port: MqttConfig.localBrokerPort,
-            scheduleReconnectOnFailure: false,
-          );
-          if (connected) {
-            break;
+        final host = MqttConfig.localBrokerAddress;
+        if (host.trim().isEmpty) {
+          if (mounted) {
+            setState(() {
+              _isCheckingBroker = false;
+              _brokerStatus = ConnectionStatus.error;
+              _brokerError = 'Beacon broker not discovered yet';
+            });
           }
+          return;
         }
+
+        final connected = await mqttService.connect(
+          brokerAddress: host,
+          port: MqttConfig.localBrokerPort,
+          scheduleReconnectOnFailure: false,
+        );
 
         if (!connected && mounted) {
           setState(() {
             _isCheckingBroker = false;
             _brokerStatus = ConnectionStatus.error;
-            _brokerError = 'Failed to connect to broker on known hosts';
+            _brokerError = 'Failed to connect to beacon broker';
           });
         }
       }
@@ -482,7 +484,7 @@ class _DeviceHealthScreenState extends State<DeviceHealthScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Address: ${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}',
+              'Address: ${MqttConfig.localBrokerAddress.trim().isEmpty ? '(beacon unresolved)' : '${MqttConfig.localBrokerAddress}:${MqttConfig.localBrokerPort}'}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.grey[600],
               ),

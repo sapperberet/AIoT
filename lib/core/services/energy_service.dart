@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -117,7 +118,8 @@ class EnergyService with ChangeNotifier {
   double get currentVoltage => _currentReading?.voltage ?? 0;
   double get currentCurrent => _currentReading?.current ?? 0;
   double get currentPower => _currentReading?.power ?? 0;
-  double get totalEnergy => _currentReading?.energy ?? 0;
+  double get totalEnergy =>
+      max(_estimatedEnergyKwh, _currentReading?.energy ?? 0);
 
   EnergyService({required MqttService mqttService})
       : _mqttService = mqttService {
@@ -150,6 +152,25 @@ class EnergyService with ChangeNotifier {
     try {
       if (message.topic == _voltageTopic || message.topic == _currentTopic) {
         final rawValue = double.tryParse(message.payload.trim()) ?? 0.0;
+        double? payloadEnergy;
+
+        // Support JSON payloads as well as plain numeric payloads.
+        try {
+          final decoded = jsonDecode(message.payload);
+          if (decoded is Map<String, dynamic>) {
+            if (decoded['voltage'] != null) {
+              _latestVoltage = (decoded['voltage'] as num).toDouble();
+            }
+            if (decoded['current'] != null) {
+              _latestCurrent = (decoded['current'] as num).toDouble();
+            }
+            if (decoded['energy'] != null) {
+              payloadEnergy = (decoded['energy'] as num).toDouble();
+            }
+          }
+        } catch (_) {
+          // Ignore JSON parse failures for plain numeric payloads.
+        }
 
         if (message.topic == _voltageTopic) {
           _latestVoltage = rawValue;
@@ -159,10 +180,15 @@ class EnergyService with ChangeNotifier {
 
         final now = DateTime.now();
         final power = _latestVoltage * _latestCurrent;
-        if (_lastSampleAt != null) {
+        if (payloadEnergy != null && payloadEnergy >= 0) {
+          // Prefer meter-reported cumulative kWh when available.
+          _estimatedEnergyKwh = payloadEnergy;
+        } else if (_lastSampleAt != null) {
           final deltaHours =
               now.difference(_lastSampleAt!).inMilliseconds / 3600000.0;
-          _estimatedEnergyKwh += (power / 1000.0) * deltaHours;
+          if (deltaHours > 0) {
+            _estimatedEnergyKwh += (power / 1000.0) * deltaHours;
+          }
         }
         _lastSampleAt = now;
 
@@ -178,7 +204,7 @@ class EnergyService with ChangeNotifier {
         _readingHistory.add(reading);
 
         // Keep only last 100 readings in memory
-        if (_readingHistory.length > 100) {
+        if (_readingHistory.length > 500) {
           _readingHistory.removeAt(0);
         }
 
@@ -249,6 +275,8 @@ class EnergyService with ChangeNotifier {
 
       if (_readingHistory.isNotEmpty) {
         _currentReading = _readingHistory.last;
+        _estimatedEnergyKwh = max(0, _currentReading!.energy);
+        _lastSampleAt = _currentReading!.timestamp;
       }
 
       notifyListeners();

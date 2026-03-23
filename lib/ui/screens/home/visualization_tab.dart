@@ -21,12 +21,14 @@ class VisualizationTab extends StatefulWidget {
 
 class _VisualizationTabState extends State<VisualizationTab> {
   static const Duration _periodicSyncInterval = Duration(milliseconds: 500);
+  static const Duration _bridgeEventDedupWindow = Duration(milliseconds: 700);
 
   late WebViewController _webViewController;
   bool _isLoading = true;
   bool _isDoorOpen = false;
   bool _isGarageOpen = false;
   Timer? _periodicSyncTimer;
+  final Map<String, DateTime> _recentBridgeEvents = {};
 
   // Listener references for cleanup
   VoidCallback? _alarmListener;
@@ -342,6 +344,9 @@ class _VisualizationTabState extends State<VisualizationTab> {
             .runJavaScript(isOpen ? 'openGarage()' : 'closeGarage()');
         break;
       case 'window':
+        final command = jsonEncode({'type': 'window', 'state': state});
+        _webViewController.runJavaScript('syncDeviceState($command)');
+        break;
       case 'windows':
         final command = jsonEncode({'type': 'windows', 'state': state});
         _webViewController.runJavaScript('syncDeviceState($command)');
@@ -481,35 +486,99 @@ class _VisualizationTabState extends State<VisualizationTab> {
       if (parts.length >= 2) {
         final deviceType = parts[0];
         final state = parts.sublist(1).join(':');
+        if (!_shouldProcessBridgeEvent(deviceType, state)) {
+          return;
+        }
         _handleDeviceStateFromVisualization(deviceType, state);
       }
       return;
     }
   }
 
+  bool _shouldProcessBridgeEvent(String deviceType, String state) {
+    final normalizedDevice = deviceType.trim().toLowerCase();
+    final normalizedState = state.trim().toLowerCase();
+    final key = '$normalizedDevice:$normalizedState';
+    final now = DateTime.now();
+    final lastSeen = _recentBridgeEvents[key];
+
+    _recentBridgeEvents.removeWhere(
+      (_, timestamp) => now.difference(timestamp) > const Duration(seconds: 5),
+    );
+
+    if (lastSeen != null &&
+        now.difference(lastSeen) < _bridgeEventDedupWindow) {
+      debugPrint('🔁 Ignoring duplicate 3D bridge event: $key');
+      return false;
+    }
+
+    _recentBridgeEvents[key] = now;
+    return true;
+  }
+
   /// Handle device state changes from 3D visualization and sync to backend
   void _handleDeviceStateFromVisualization(String deviceType, String state) {
     final deviceProvider = context.read<DeviceProvider>();
+    final normalizedState = state.trim().toLowerCase();
 
-    debugPrint('🔄 3D Visualization -> Backend: $deviceType = $state');
+    debugPrint(
+        '🔄 3D Visualization -> Backend: $deviceType = $normalizedState');
 
     switch (deviceType) {
       case 'door':
-        final isOpen = state == 'open';
-        deviceProvider.setDoorState(isOpen);
+        final isOpen = _parseOpenCloseState(normalizedState);
+        if (isOpen == null) {
+          debugPrint(
+              '⚠️ Ignoring unknown door state from 3D: $normalizedState');
+          return;
+        }
+        if (deviceProvider.isMainDoorOpen != isOpen) {
+          deviceProvider.setDoorState(isOpen);
+        }
         break;
       case 'garage':
-        final isOpen = state == 'open';
-        deviceProvider.setGarageState(isOpen);
+        final isOpen = _parseOpenCloseState(normalizedState);
+        if (isOpen == null) {
+          debugPrint(
+              '⚠️ Ignoring unknown garage state from 3D: $normalizedState');
+          return;
+        }
+        if (deviceProvider.isGarageDoorOpen != isOpen) {
+          deviceProvider.setGarageState(isOpen);
+        }
+        break;
+      case 'gate':
+        final isOpen = _parseOpenCloseState(normalizedState);
+        if (isOpen == null) {
+          debugPrint(
+              '⚠️ Ignoring unknown gate state from 3D: $normalizedState');
+          return;
+        }
+        final currentGateState = deviceProvider.windowStates['gate'] ?? false;
+        if (currentGateState != isOpen) {
+          deviceProvider.toggleWindow('gate');
+        }
         break;
       case 'window':
         // Window state changes from 3D - format: window:windowName:state
         // Parse the state which may contain window name
-        final parts = state.split(':');
+        final parts = normalizedState.split(':');
         if (parts.length >= 2) {
           final windowName = parts[0];
           final windowState = parts[1];
-          final isOpen = windowState == 'open';
+          final isOpen = _parseOpenCloseState(windowState);
+          if (isOpen == null) return;
+
+          // Keep gate on its own path to avoid side effects on regular windows.
+          if (windowName.toLowerCase().contains('gate')) {
+            final currentGateState =
+                deviceProvider.windowStates['gate'] ?? false;
+            if (currentGateState != isOpen) {
+              deviceProvider.toggleWindow('gate');
+            }
+            return;
+          }
+
           // Map 3D window name to device provider window ID
           final windowId = _mapWindowNameToId(windowName);
           if (windowId != null) {
@@ -524,7 +593,7 @@ class _VisualizationTabState extends State<VisualizationTab> {
       case 'light':
       case 'lights':
         // Light state changes from 3D
-        final isOn = state == 'on';
+        final isOn = normalizedState == 'on' || normalizedState == 'active';
         // Toggle all lights in the device provider
         final currentlyAnyOn =
             deviceProvider.lightStates.values.any((on) => on);
@@ -533,9 +602,46 @@ class _VisualizationTabState extends State<VisualizationTab> {
         }
         break;
       case 'buzzer':
-        final isActive = state == 'active';
-        deviceProvider.setBuzzerState(isActive);
+        final isActive = normalizedState == 'active' || normalizedState == 'on';
+        if (deviceProvider.isBuzzerActive != isActive) {
+          deviceProvider.setBuzzerState(isActive);
+        }
         break;
+      case 'fan':
+      case 'fans':
+        int speed;
+        if (normalizedState == 'in') {
+          speed = 1;
+        } else if (normalizedState == 'out') {
+          speed = 2;
+        } else {
+          speed = 0;
+        }
+
+        final currentSpeed = deviceProvider.fanStates['kitchen'] ?? 0;
+        if (currentSpeed != speed) {
+          deviceProvider.setFanSpeed('kitchen', speed);
+        }
+        break;
+    }
+  }
+
+  bool? _parseOpenCloseState(String state) {
+    switch (state) {
+      case 'open':
+      case 'opened':
+      case 'on':
+      case 'true':
+      case '1':
+        return true;
+      case 'close':
+      case 'closed':
+      case 'off':
+      case 'false':
+      case '0':
+        return false;
+      default:
+        return null;
     }
   }
 
@@ -544,6 +650,10 @@ class _VisualizationTabState extends State<VisualizationTab> {
     final nameLower = meshName.toLowerCase();
     if (nameLower.contains('glass') && !nameLower.contains('window')) {
       return null;
+    }
+    // Check gate first so names like "front_gate" never map to front_window.
+    if (nameLower.contains('gate')) {
+      return 'gate';
     }
     if (nameLower.contains('front')) {
       return 'front_window';
@@ -554,8 +664,6 @@ class _VisualizationTabState extends State<VisualizationTab> {
     } else if (nameLower.contains('side')) {
       // side_window was replaced in the model; route legacy names to front window.
       return 'front_window';
-    } else if (nameLower.contains('gate')) {
-      return 'gate';
     } else if (nameLower.contains('back')) {
       return 'back_window';
     }

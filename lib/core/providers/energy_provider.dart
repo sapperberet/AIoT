@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../services/energy_service.dart';
 import '../services/mqtt_service.dart';
@@ -69,6 +70,9 @@ class EnergyProvider extends ChangeNotifier {
   /// Get total energy today (kWh)
   double get totalEnergyToday => _energyService.totalEnergy;
 
+  /// Recent energy history points (persisted + live updates)
+  List<EnergyReading> get readingHistory => _energyService.readingHistory;
+
   /// Get current power in watts
   double get currentPower => _energyService.currentPower;
 
@@ -103,6 +107,27 @@ class EnergyProvider extends ChangeNotifier {
     return {
       for (var device in breakdown) device.deviceName: device.consumption
     };
+  }
+
+  List<EnergyReading> getReadingsForPeriod(Duration period) {
+    final cutoff = DateTime.now().subtract(period);
+    final filtered = readingHistory
+        .where((reading) => reading.timestamp.isAfter(cutoff))
+        .toList();
+    return filtered.isEmpty ? readingHistory : filtered;
+  }
+
+  double getEnergyForPeriod(Duration period) {
+    final readings = getReadingsForPeriod(period);
+    if (readings.isEmpty) return totalEnergyToday;
+
+    final first = readings.first.energy;
+    final last = readings.last.energy;
+    if (last >= first) {
+      return last - first;
+    }
+
+    return max(0, totalEnergyToday);
   }
 
   /// Refresh all energy data
