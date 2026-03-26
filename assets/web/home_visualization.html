@@ -2503,6 +2503,10 @@
         // Format mesh name for display (remove _mesh, underscores, etc.)
         function formatMeshName(name) {
             if (!name) return 'Unknown';
+            const nameLower = name.toLowerCase();
+            if (nameLower.includes('glass')) {
+                return 'Gate';
+            }
             // Remove common suffixes like _mesh, _1, :meshname
             let formatted = name
                 .replace(/_mesh.*$/i, '')
@@ -2515,15 +2519,23 @@
                 word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             ).join(' ');
         }
+
+        function isGateControllerMeshName(name) {
+            if (!name) return false;
+            const nameLower = name.toLowerCase();
+            // Gate functionality is intentionally bound to Glass meshes only.
+            return nameLower.includes('glass');
+        }
         
         // Get element type from mesh name
         function getElementType(name) {
             if (!name) return null;
             const nameLower = name.toLowerCase();
-            if (nameLower.includes('gate')) return 'gate';
+            if (isGateControllerMeshName(nameLower)) return 'gate';
             if (nameLower.includes('door') && !nameLower.includes('garage')) return 'door';
             if (nameLower.includes('garage')) return 'garage';
             if (nameLower.includes('fan') || nameLower.includes('vent')) return 'fan';
+            if (nameLower.includes('gate')) return null;
             if (nameLower.includes('window') || nameLower.includes('glass')) return 'window';
             return null;
         }
@@ -3963,8 +3975,8 @@
 
         function findGate() {
             const exactGateNames = [
-                'gate', 'gate_mesh', 'main_gate', 'front_gate', 'yard_gate',
-                'entrance_gate', 'gate door', 'gate_door'
+                'glass', 'glass_mesh', 'gate_glass', 'glass_gate',
+                'front_glass', 'main_glass'
             ];
 
             for (const name of exactGateNames) {
@@ -3980,7 +3992,7 @@
 
             for (const [name, mesh] of Object.entries(roomMeshes)) {
                 const nameLower = name.toLowerCase();
-                if (nameLower.includes('gate')) {
+                if (isGateControllerMeshName(nameLower)) {
                     gateMesh = mesh;
                     if (!gateMesh.userData.originalRotation) {
                         gateMesh.userData.originalRotation = gateMesh.rotation.clone();
@@ -3993,7 +4005,7 @@
             if (homeModel) {
                 homeModel.traverse((child) => {
                     const childLower = getNameLower(child);
-                    if (!gateMesh && child.isMesh && childLower.includes('gate')) {
+                    if (!gateMesh && child.isMesh && isGateControllerMeshName(childLower)) {
                         gateMesh = child;
                         roomMeshes[child.name] = child;
                         if (!gateMesh.userData.originalRotation) {
@@ -4005,7 +4017,7 @@
             }
 
             if (!gateMesh) {
-                console.log('⚠️ Gate mesh not found');
+                console.log('⚠️ Gate mesh not found (expects Glass mesh)');
                 return false;
             }
 
@@ -4296,7 +4308,7 @@
             const nameLower = mesh.name.toLowerCase();
 
             // Check if it's a gate
-            if (nameLower.includes('gate')) {
+            if (isGateControllerMeshName(nameLower)) {
                 toggleGate();
                 return true;
             }

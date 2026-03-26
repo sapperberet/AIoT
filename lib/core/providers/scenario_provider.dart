@@ -28,6 +28,7 @@ class ScenarioProvider with ChangeNotifier {
   Future<void> loadScenarios() async {
     _isLoading = true;
     _error = null;
+    _scenarios = [];
     notifyListeners();
 
     try {

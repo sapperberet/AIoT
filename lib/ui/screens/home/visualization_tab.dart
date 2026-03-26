@@ -570,7 +570,9 @@ class _VisualizationTabState extends State<VisualizationTab> {
           if (isOpen == null) return;
 
           // Keep gate on its own path to avoid side effects on regular windows.
-          if (windowName.toLowerCase().contains('gate')) {
+          final lowerWindowName = windowName.toLowerCase();
+          if (lowerWindowName.contains('gate') ||
+              lowerWindowName.contains('glass')) {
             final currentGateState =
                 deviceProvider.windowStates['gate'] ?? false;
             if (currentGateState != isOpen) {
@@ -648,8 +650,9 @@ class _VisualizationTabState extends State<VisualizationTab> {
   /// Map 3D mesh window names to device provider window IDs
   String? _mapWindowNameToId(String meshName) {
     final nameLower = meshName.toLowerCase();
-    if (nameLower.contains('glass') && !nameLower.contains('window')) {
-      return null;
+    // In the updated 3D model, the gate is represented by Glass meshes.
+    if (nameLower.contains('glass')) {
+      return 'gate';
     }
     // Check gate first so names like "front_gate" never map to front_window.
     if (nameLower.contains('gate')) {

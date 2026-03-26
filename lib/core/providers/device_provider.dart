@@ -75,6 +75,7 @@ class DeviceProvider with ChangeNotifier {
 
   // RGB light brightness (0-100)
   int _rgbBrightness = 100;
+  int _rgbLastOnBrightness = 100;
 
   // Fan states: 0=off, 1=low, 2=medium, 3=high
   Map<String, int> _fanStates = {
@@ -159,6 +160,13 @@ class DeviceProvider with ChangeNotifier {
   int get rgbLightColor => _rgbLightColor;
   int get rgbBrightness => _rgbBrightness;
   Map<String, int> get fanStates => Map.unmodifiable(_fanStates);
+
+  void _rememberRgbOnBrightness(int brightness) {
+    final clamped = brightness.clamp(0, 100);
+    if (clamped > 0) {
+      _rgbLastOnBrightness = clamped;
+    }
+  }
 
   // Legacy getters for compatibility
   bool get isDoorOpen => _isMainDoorOpen;
@@ -299,6 +307,10 @@ class DeviceProvider with ChangeNotifier {
             _lightBrightness[lightId] = brightness;
             hasChanges = true;
           }
+          if (lightId == 'rgb') {
+            _rgbBrightness = isOn ? brightness : 0;
+            _rememberRgbOnBrightness(brightness);
+          }
         }
       });
     }
@@ -364,6 +376,9 @@ class DeviceProvider with ChangeNotifier {
       if (_rgbBrightness != brightness) {
         debugPrint('🌈 Firebase: RGB brightness changed to $brightness%');
         _rgbBrightness = brightness;
+        _rememberRgbOnBrightness(brightness);
+        _lightStates['rgb'] = brightness > 0;
+        _lightBrightness['rgb'] = brightness;
         rgbChanged = true;
         hasChanges = true;
       }
@@ -837,6 +852,7 @@ class DeviceProvider with ChangeNotifier {
           final clamped = brightness.clamp(0, 100);
           if (_rgbBrightness != clamped) {
             _rgbBrightness = clamped;
+            _rememberRgbOnBrightness(clamped);
             _lightBrightness['rgb'] = clamped;
             _lightStates['rgb'] = clamped > 0;
             changed = true;
@@ -1876,9 +1892,8 @@ class DeviceProvider with ChangeNotifier {
     final lightName = _formatWindowName(lightId); // Reuse name formatter
     // RGB must use brightness payloads only. Other lights use on/off.
     final message = lightId == 'rgb' ? null : (newState ? 'on' : 'off');
-    final int rgbPublishBrightness = newState
-        ? ((_rgbBrightness > 0 ? _rgbBrightness : 100).clamp(1, 100))
-        : 0;
+    final int rgbPublishBrightness =
+        newState ? _rgbLastOnBrightness.clamp(1, 100) : 0;
 
     if (_isConnectedToMqtt && !_useCloudMode) {
       final topic = MqttConfig.lightCommandTopic(lightId);
@@ -1985,6 +2000,7 @@ class DeviceProvider with ChangeNotifier {
     _rgbLightColor = color & 0xFFFFFF; // Ensure it's 24-bit RGB
     _lightStates['rgb'] = _rgbBrightness > 0;
     _lightBrightness['rgb'] = _rgbBrightness;
+    _rememberRgbOnBrightness(_rgbBrightness);
 
     // ESP32 expects: "c <color_string>" (hex format)
     final colorHex = _rgbLightColor.toRadixString(16).padLeft(6, '0');
@@ -2011,6 +2027,7 @@ class DeviceProvider with ChangeNotifier {
   /// Set RGB light brightness (0-100)
   Future<void> setRgbBrightness(int brightness) async {
     _rgbBrightness = brightness.clamp(0, 100);
+    _rememberRgbOnBrightness(_rgbBrightness);
     _lightBrightness['rgb'] = _rgbBrightness;
     _lightStates['rgb'] = _rgbBrightness > 0;
 

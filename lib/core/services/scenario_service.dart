@@ -16,11 +16,22 @@ class ScenarioService {
 
   Future<List<Scenario>> getScenarios() async {
     try {
-      final response = await _client
-          .get(Uri.parse('$_baseUrl/get'))
-          .timeout(const Duration(seconds: 15));
+      final uri = Uri.parse('$_baseUrl/get').replace(
+        queryParameters: {
+          'ts': DateTime.now().millisecondsSinceEpoch.toString(),
+        },
+      );
+      final response = await _client.get(
+        uri,
+        headers: const {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
 
-      debugPrint('📋 ScenarioService GET ${response.statusCode}');
+      debugPrint('📋 ScenarioService GET ${response.statusCode} uri=$uri');
 
       if (response.statusCode == 200) {
         final body = response.body;
