@@ -47,9 +47,9 @@ class AIChatService {
 
   AIChatService() {
     _baseUrl =
-        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+      'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
     _voiceChatUrl =
-        'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/voice';
+      'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/voice';
 
     // Initialize external LLM settings from config
     _externalLlmUrl = 'https://${MqttConfig.externalLlmDomain}';
@@ -385,9 +385,9 @@ class AIChatService {
       }
     }
 
-    // Probe only the configured broker host to avoid stale URL host probes
-    // and noisy LAN scans.
+    // Probe local beacon host first, then cloud fallback host.
     addCandidate(MqttConfig.localBrokerAddress);
+    addCandidate(MqttConfig.cloudServerDomain);
 
     for (final host in candidates) {
       if (isGatewayHost(host)) {
@@ -745,14 +745,16 @@ class AIChatService {
 
   /// Update broker endpoint (for MQTT and n8n services)
   void updateBrokerEndpoint(String newAddress, {int? port}) {
-    // Update MqttConfig for other services to use
-    MqttConfig.localBrokerAddress = newAddress;
+    // Keep MQTT broker address beacon-driven; avoid replacing it with cloud HTTP fallback host.
+    if (newAddress != MqttConfig.cloudServerDomain) {
+      MqttConfig.localBrokerAddress = newAddress;
+    }
 
     _baseUrl = 'http://$newAddress:${port ?? MqttConfig.n8nPort}/run/agent';
     _voiceChatUrl =
         'http://$newAddress:${port ?? MqttConfig.n8nPort}/run/voice';
     _logger.i(
-        '🔄 Broker endpoint updated to: $newAddress (all services will use this IP)');
+      '🔄 Broker endpoint updated to: $newAddress (all services will use this host)');
   }
 
   /// Get current broker address

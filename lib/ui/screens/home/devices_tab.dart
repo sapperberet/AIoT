@@ -598,12 +598,22 @@ class ModernDeviceCard extends StatelessWidget {
   }
 
   void _showDeviceDetails(BuildContext context, Device device) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onSurface;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          gradient: AppTheme.cardGradient,
+          gradient: isDark
+              ? AppTheme.cardGradient
+              : LinearGradient(
+                  colors: [
+                    AppTheme.lightSurface,
+                    AppTheme.lightSurface.withOpacity(0.85),
+                  ],
+                ),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         padding: const EdgeInsets.all(24),
@@ -626,27 +636,29 @@ class ModernDeviceCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     device.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.lightText,
+                      color: textColor,
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _buildDetailRow('ID', device.id),
-            _buildDetailRow('Room', device.room),
-            _buildDetailRow('Type', device.type.toString().split('.').last),
-            _buildDetailRow('Status', device.status.toString().split('.').last),
+            _buildDetailRow(context, 'ID', device.id),
+            _buildDetailRow(context, 'Room', device.room),
+            _buildDetailRow(
+                context, 'Type', device.type.toString().split('.').last),
+            _buildDetailRow(
+                context, 'Status', device.status.toString().split('.').last),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'State:',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.lightText,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -677,7 +689,8 @@ class ModernDeviceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(BuildContext context, String label, String value) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -689,8 +702,8 @@ class ModernDeviceCard extends StatelessWidget {
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: AppTheme.lightText,
+            style: TextStyle(
+              color: textColor,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),

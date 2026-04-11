@@ -4535,8 +4535,16 @@
         // Toggle individual window
         function toggleWindow(windowMesh) {
             if (!windowMesh) return;
-            const isOpen = windowMesh.userData.isOpen || false;
             const windowName = windowMesh.name || 'unknown';
+            const windowNameLower = windowName.toLowerCase();
+
+            // Gate controller must not go through window channel.
+            if (windowNameLower.includes('gate') || isGateControllerMeshName(windowNameLower)) {
+                toggleGate();
+                return;
+            }
+
+            const isOpen = windowMesh.userData.isOpen || false;
             if (isOpen) {
                 closeWindowMesh(windowMesh);
                 // Notify Flutter of window state change (bidirectional sync)

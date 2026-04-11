@@ -515,7 +515,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'View and manage user accounts, approve new registrations, and monitor activity.',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.lightText.withOpacity(0.8),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.8),
                     ),
                   ),
                 ),
@@ -606,7 +609,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : 'Email not configured. OTP codes will only be shown in the admin panel.',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.lightText.withOpacity(0.8),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.8),
                     ),
                   ),
                 ),
@@ -874,10 +880,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Function(ConnectionMode) onChanged,
   ) {
     final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.darkCard,
+        color: theme.brightness == Brightness.dark
+            ? AppTheme.darkCard
+            : Colors.grey.shade200,
         borderRadius: AppTheme.mediumRadius,
       ),
       child: Row(
@@ -910,6 +919,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isSelected,
     VoidCallback onTap,
   ) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -924,9 +934,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(
               icon,
               size: 18,
-              color: isSelected
-                  ? Colors.white
-                  : AppTheme.lightText.withOpacity(0.6),
+              color: isSelected ? Colors.white : textColor.withOpacity(0.7),
             ),
             const SizedBox(width: 8),
             Text(
@@ -934,9 +942,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? Colors.white
-                    : AppTheme.lightText.withOpacity(0.6),
+                color: isSelected ? Colors.white : textColor.withOpacity(0.7),
               ),
             ),
           ],
@@ -1044,18 +1050,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isSelected,
     VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           gradient: isSelected ? AppTheme.primaryGradient : null,
-          color: isSelected ? null : AppTheme.darkCard,
+          color: isSelected
+              ? null
+              : (theme.brightness == Brightness.dark
+                  ? AppTheme.darkCard
+                  : Colors.grey.shade200),
           borderRadius: AppTheme.mediumRadius,
           border: Border.all(
             color: isSelected
                 ? AppTheme.primaryColor
-                : AppTheme.lightText.withOpacity(0.1),
+                : textColor.withOpacity(0.15),
             width: 1,
           ),
         ),
@@ -1063,9 +1075,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected
-                  ? Colors.white
-                  : AppTheme.lightText.withOpacity(0.6),
+              color: isSelected ? Colors.white : textColor.withOpacity(0.75),
               size: 24,
             ),
             const SizedBox(height: 8),
@@ -1074,9 +1084,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? Colors.white
-                    : AppTheme.lightText.withOpacity(0.6),
+                color: isSelected ? Colors.white : textColor.withOpacity(0.75),
               ),
             ),
           ],
@@ -1701,15 +1709,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _deleteAccount(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: theme.brightness == Brightness.dark
+            ? AppTheme.darkCard
+            : Colors.white,
         title: const Text('Delete Account',
             style: TextStyle(color: AppTheme.errorColor)),
-        content: const Text(
+        content: Text(
           'Are you sure you want to delete your account? This action cannot be undone.',
-          style: TextStyle(color: AppTheme.lightText),
+          style: TextStyle(color: textColor),
         ),
         actions: [
           TextButton(

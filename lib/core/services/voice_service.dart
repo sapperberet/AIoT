@@ -97,14 +97,14 @@ class VoiceService {
       // Create recording file path
       final directory = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentRecordingPath = '${directory.path}/voice_$timestamp.aac';
+      _currentRecordingPath = '${directory.path}/voice_$timestamp.wav';
 
-      // Start recording with AAC codec (better Android compatibility)
+      // Use PCM WAV for higher speech-to-text input quality.
       await _recorder.startRecorder(
         toFile: _currentRecordingPath!,
-        codec: Codec.aacADTS,
-        bitRate: 128000,
-        sampleRate: 44100,
+        codec: Codec.pcm16WAV,
+        sampleRate: 16000,
+        numChannels: 1,
       );
 
       _isRecording = true;

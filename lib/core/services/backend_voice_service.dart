@@ -14,8 +14,7 @@ class BackendVoiceService {
   String? _customBaseUrl;
 
   /// Get the base URL for backend services
-  String get baseUrl =>
-      _customBaseUrl ?? 'http://${MqttConfig.localBrokerAddress}';
+  String get baseUrl => _customBaseUrl ?? 'http://${MqttConfig.httpServerHost}';
 
   /// TTS endpoint (Piper)
   String get ttsUrl => '$baseUrl:${MqttConfig.piperTtsPort}/synthesize';

@@ -41,7 +41,8 @@ class FaceAuthHttpService {
   String? _currentRequestId;
 
   // Timeouts
-  static const Duration _beaconDiscoveryTimeout = Duration(seconds: 10);
+  static const Duration _beaconDiscoveryTimeout =
+      Duration(seconds: MqttConfig.beaconDiscoveryTimeoutSeconds);
   static const Duration _authTimeout = Duration(
       seconds:
           45); // Max time for face detection (increased for video processing)
@@ -53,7 +54,7 @@ class FaceAuthHttpService {
   String? _n8nBaseUrl;
   String get n8nBaseUrl =>
       _n8nBaseUrl ??
-      'http://${_discoveredBeacon?.ip ?? MqttConfig.localBrokerAddress}:5678';
+      'http://${_discoveredBeacon?.ip ?? MqttConfig.httpServerHost}:5678';
 
   FaceAuthHttpService();
 
@@ -114,6 +115,7 @@ class FaceAuthHttpService {
                 _logger.i('✅ Beacon discovered: ${beacon.ip}:${beacon.port}');
 
                 _discoveredBeacon = beacon;
+                MqttConfig.disableCloudHttpFallback();
                 _beaconController.add(beacon);
 
                 // Complete discovery
@@ -142,6 +144,7 @@ class FaceAuthHttpService {
 
       // If discovery failed, leave the configured address unchanged.
       if (result == null) {
+        MqttConfig.enableCloudHttpFallback();
         _logger.w(
             '⚠️ Beacon discovery failed, keeping configured server IP: ${MqttConfig.localBrokerAddress}');
         return null;
@@ -150,6 +153,7 @@ class FaceAuthHttpService {
       return result;
     } catch (e) {
       _logger.e('❌ Beacon discovery error: $e');
+      MqttConfig.enableCloudHttpFallback();
       _logger.w(
           '⚠️ Beacon discovery error, keeping configured server IP: ${MqttConfig.localBrokerAddress}');
       return null;

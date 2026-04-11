@@ -41,7 +41,7 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
 
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      
+
       final success = await authProvider.register(
         _emailController.text.trim(),
         _passwordController.text,
@@ -81,6 +81,10 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onBackground;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -116,7 +120,7 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                       ),
                       child: IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Iconsax.arrow_left, color: AppTheme.lightText),
+                        icon: Icon(Iconsax.arrow_left, color: textColor),
                       ),
                     ),
                   ),
@@ -162,17 +166,23 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                           children: [
                             Text(
                               'Create Account',
-                              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                                color: AppTheme.lightText,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .displayMedium
+                                  ?.copyWith(
+                                    color: textColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Join the smart home revolution',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.mutedText,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.mutedText,
+                                  ),
                             ),
                           ],
                         ),
@@ -255,7 +265,9 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                                     obscureText: _obscurePassword,
                                     suffixIcon: IconButton(
                                       icon: Icon(
-                                        _obscurePassword ? Iconsax.eye_slash : Iconsax.eye,
+                                        _obscurePassword
+                                            ? Iconsax.eye_slash
+                                            : Iconsax.eye,
                                         color: AppTheme.mutedText,
                                       ),
                                       onPressed: () {
@@ -286,12 +298,15 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                                     obscureText: _obscureConfirmPassword,
                                     suffixIcon: IconButton(
                                       icon: Icon(
-                                        _obscureConfirmPassword ? Iconsax.eye_slash : Iconsax.eye,
+                                        _obscureConfirmPassword
+                                            ? Iconsax.eye_slash
+                                            : Iconsax.eye,
                                         color: AppTheme.mutedText,
                                       ),
                                       onPressed: () {
                                         setState(() {
-                                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword;
                                         });
                                       },
                                     ),
@@ -325,7 +340,8 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                                             AppTheme.primaryColor,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
                                         ),
                                       ),
@@ -334,14 +350,21 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                                         child: Text.rich(
                                           TextSpan(
                                             text: 'I agree to the ',
-                                            style: Theme.of(context).textTheme.bodySmall,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
                                             children: [
                                               TextSpan(
                                                 text: 'Terms & Conditions',
-                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                  color: AppTheme.primaryColor,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          AppTheme.primaryColor,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
                                               ),
                                             ],
                                           ),
@@ -380,18 +403,24 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
                           children: [
                             Text(
                               'Already have an account? ',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.mutedText,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.mutedText,
+                                  ),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(context),
                               child: Text(
                                 'Sign In',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
                             ),
                           ],
@@ -418,6 +447,8 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = Theme.of(context).colorScheme.onSurface;
     return Container(
       decoration: BoxDecoration(
         borderRadius: AppTheme.mediumRadius,
@@ -433,14 +464,16 @@ class _ModernRegisterScreenState extends State<ModernRegisterScreen> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppTheme.lightText),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
           prefixIcon: Icon(icon, color: AppTheme.primaryColor),
           suffixIcon: suffixIcon,
           filled: true,
-          fillColor: AppTheme.darkSurface.withOpacity(0.5),
+          fillColor: isDark
+              ? AppTheme.darkSurface.withOpacity(0.5)
+              : AppTheme.lightSurface.withOpacity(0.85),
           border: OutlineInputBorder(
             borderRadius: AppTheme.mediumRadius,
             borderSide: BorderSide.none,

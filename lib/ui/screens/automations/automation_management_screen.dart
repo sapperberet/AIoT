@@ -73,6 +73,7 @@ class AutomationManagementScreen extends StatelessWidget {
     AutomationService service,
     AppLocalizations loc,
   ) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
     final automations = service.automations;
 
     if (automations.isEmpty) {
@@ -83,14 +84,14 @@ class AutomationManagementScreen extends StatelessWidget {
             Icon(
               Icons.smart_toy_outlined,
               size: 80,
-              color: Colors.grey[400],
+              color: textColor.withOpacity(0.45),
             ),
             const SizedBox(height: 16),
             Text(
               loc.translate('no_automations'),
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.grey[600],
+                color: textColor.withOpacity(0.72),
               ),
             ),
             const SizedBox(height: 8),
@@ -98,7 +99,7 @@ class AutomationManagementScreen extends StatelessWidget {
               loc.translate('create_first_automation'),
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: textColor.withOpacity(0.62),
               ),
               textAlign: TextAlign.center,
             ),
@@ -124,6 +125,7 @@ class AutomationManagementScreen extends StatelessWidget {
     AppLocalizations loc,
   ) {
     final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -181,7 +183,7 @@ class AutomationManagementScreen extends StatelessWidget {
                 automation.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: textColor.withOpacity(0.72),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -217,24 +219,26 @@ class AutomationManagementScreen extends StatelessWidget {
               // Execution stats
               Row(
                 children: [
-                  Icon(Icons.history, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.history,
+                      size: 16, color: textColor.withOpacity(0.72)),
                   const SizedBox(width: 4),
                   Text(
                     'Executed ${automation.executionCount} times',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: textColor.withOpacity(0.72),
                     ),
                   ),
                   if (automation.lastTriggered != null) ...[
                     const SizedBox(width: 16),
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                    Icon(Icons.access_time,
+                        size: 16, color: textColor.withOpacity(0.72)),
                     const SizedBox(width: 4),
                     Text(
                       _formatLastTriggered(automation.lastTriggered!),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: textColor.withOpacity(0.72),
                       ),
                     ),
                   ],

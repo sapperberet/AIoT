@@ -600,7 +600,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Icon(
                   Iconsax.clock,
                   size: 16,
-                  color: AppTheme.lightText.withOpacity(0.5),
+                  color: textColor.withOpacity(0.5),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -608,7 +608,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       .format(notification.timestamp),
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppTheme.lightText.withOpacity(0.5),
+                    color: textColor.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -665,15 +665,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showClearAllDialog(BuildContext context, NotificationService service) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        title: const Text('Clear All Notifications',
-            style: TextStyle(color: AppTheme.lightText)),
-        content: const Text(
+        backgroundColor: theme.brightness == Brightness.dark
+            ? AppTheme.darkCard
+            : AppTheme.lightSurface,
+        title:
+            Text('Clear All Notifications', style: TextStyle(color: textColor)),
+        content: Text(
           'Are you sure you want to clear all notifications? This action cannot be undone.',
-          style: TextStyle(color: AppTheme.lightText),
+          style: TextStyle(color: textColor),
         ),
         actions: [
           TextButton(

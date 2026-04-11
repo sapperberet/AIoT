@@ -569,15 +569,13 @@ class _VisualizationTabState extends State<VisualizationTab> {
           final isOpen = _parseOpenCloseState(windowState);
           if (isOpen == null) return;
 
-          // Keep gate on its own path to avoid side effects on regular windows.
+          // Gate must use dedicated `deviceStateChanged:gate:*` channel only.
+          // Ignore gate/glass events on window channel to prevent window UI flicker.
           final lowerWindowName = windowName.toLowerCase();
           if (lowerWindowName.contains('gate') ||
               lowerWindowName.contains('glass')) {
-            final currentGateState =
-                deviceProvider.windowStates['gate'] ?? false;
-            if (currentGateState != isOpen) {
-              deviceProvider.toggleWindow('gate');
-            }
+            debugPrint(
+                '⚠️ Ignoring gate/glass event on window channel: $windowName:$windowState');
             return;
           }
 

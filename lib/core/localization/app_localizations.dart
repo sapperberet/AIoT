@@ -277,9 +277,9 @@ class AppLocalizations {
           'This app needs microphone access to record voice messages. Please grant permission in your device settings.',
       'open_settings': 'Open Settings',
       'error_starting_recording': 'Error starting recording',
-      'open_voice_to_voice_screen': 'Open Voice-to-Voice Screen',
+      'open_voice_to_voice_screen': 'Open Audio-to-Audio Screen',
       'dedicated_voice_conversation':
-          'Dedicated screen for hands-free voice conversation',
+          'Dedicated screen for hands-free audio conversation',
 
       // Voice Settings
       'voice_settings': 'Voice Settings',
@@ -288,8 +288,8 @@ class AppLocalizations {
       'text_only_desc': 'Standard text-based chat',
       'voice_to_text': 'Voice to Text',
       'voice_to_text_desc': 'Speak your message, receive text reply',
-      'voice_to_voice': 'Voice to Voice',
-      'voice_to_voice_desc': 'Full voice conversation with AI',
+      'voice_to_voice': 'Audio to Audio',
+      'voice_to_voice_desc': 'Full audio conversation with AI',
       'service_status': 'Service Status',
       'tts_service': 'Text-to-Speech (Piper)',
       'asr_service': 'Speech Recognition (Whisper)',
@@ -625,9 +625,9 @@ class AppLocalizations {
           'Diese App benötigt Mikrofon-Zugriff, um Sprachnachrichten aufzunehmen. Bitte erteilen Sie die Berechtigung in Ihren Geräteeinstellungen.',
       'open_settings': 'Einstellungen öffnen',
       'error_starting_recording': 'Fehler beim Starten der Aufnahme',
-      'open_voice_to_voice_screen': 'Sprache-zu-Sprache-Bildschirm öffnen',
+      'open_voice_to_voice_screen': 'Audio-zu-Audio-Bildschirm öffnen',
       'dedicated_voice_conversation':
-          'Dedizierter Bildschirm für freihändige Sprachkonversation',
+          'Dedizierter Bildschirm für freihändige Audio-Konversation',
 
       // Voice Settings
       'voice_settings': 'Spracheinstellungen',
@@ -637,8 +637,8 @@ class AppLocalizations {
       'voice_to_text': 'Sprache zu Text',
       'voice_to_text_desc':
           'Sprechen Sie Ihre Nachricht, erhalten Sie Textantwort',
-      'voice_to_voice': 'Sprache zu Sprache',
-      'voice_to_voice_desc': 'Vollständiges Sprachgespräch mit KI',
+      'voice_to_voice': 'Audio zu Audio',
+      'voice_to_voice_desc': 'Vollständige Audio-Konversation mit KI',
       'service_status': 'Dienststatus',
       'tts_service': 'Text-zu-Sprache (Piper)',
       'asr_service': 'Spracherkennung (Whisper)',
@@ -972,9 +972,9 @@ class AppLocalizations {
           'يحتاج هذا التطبيق إلى الوصول إلى الميكروفون لتسجيل الرسائل الصوتية. يرجى منح الإذن في إعدادات جهازك.',
       'open_settings': 'فتح الإعدادات',
       'error_starting_recording': 'خطأ في بدء التسجيل',
-      'open_voice_to_voice_screen': 'فتح شاشة الصوت إلى الصوت',
+      'open_voice_to_voice_screen': 'فتح شاشة الصوت إلى الصوت (Audio-to-Audio)',
       'dedicated_voice_conversation':
-          'شاشة مخصصة للمحادثة الصوتية بدون استخدام اليدين',
+          'شاشة مخصصة لمحادثة Audio-to-Audio بدون استخدام اليدين',
 
       // Voice Settings
       'voice_settings': 'إعدادات الصوت',
@@ -983,8 +983,8 @@ class AppLocalizations {
       'text_only_desc': 'دردشة نصية عادية',
       'voice_to_text': 'صوت إلى نص',
       'voice_to_text_desc': 'تحدث رسالتك واحصل على رد نصي',
-      'voice_to_voice': 'صوت إلى صوت',
-      'voice_to_voice_desc': 'محادثة صوتية كاملة مع الذكاء الاصطناعي',
+      'voice_to_voice': 'Audio إلى Audio',
+      'voice_to_voice_desc': 'محادثة Audio-to-Audio كاملة مع الذكاء الاصطناعي',
       'service_status': 'حالة الخدمة',
       'tts_service': 'تحويل النص إلى كلام (Piper)',
       'asr_service': 'التعرف على الكلام (Whisper)',

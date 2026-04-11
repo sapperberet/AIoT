@@ -338,17 +338,19 @@ class SmartHomeApp extends StatelessWidget {
             );
           },
         ),
-        ChangeNotifierProxyProvider<AIChatActionsService, AIChatProvider>(
+        ChangeNotifierProxyProvider2<MqttService, AIChatActionsService,
+            AIChatProvider>(
           create: (context) {
             final provider = AIChatProvider(
               chatService: context.read<AIChatService>(),
+              mqttService: context.read<MqttService>(),
             );
             // Initialize actions service
             final actionsService = context.read<AIChatActionsService>();
             provider.initializeActionsService(actionsService);
             return provider;
           },
-          update: (context, actionsService, provider) {
+          update: (context, mqttService, actionsService, provider) {
             if (provider != null) {
               provider.initializeActionsService(actionsService);
             }

@@ -19,6 +19,7 @@ import 'chat_theme_settings_dialog.dart';
 import '../../../core/providers/chat_theme_provider.dart';
 import '../../widgets/formatted_text_widget.dart';
 import '../../widgets/voice_message_bubble.dart';
+import '../../widgets/back_camera_preview_card.dart';
 import 'chat_sessions_screen.dart';
 
 class AIChatScreen extends StatefulWidget {
@@ -566,6 +567,30 @@ class _AIChatScreenState extends State<AIChatScreen>
                     );
                   },
                 ),
+              ),
+
+              Consumer<AIChatProvider>(
+                builder: (context, chatProvider, _) {
+                  final isTyping = _messageController.text.trim().isNotEmpty;
+                  final keyboardOpen =
+                      MediaQuery.of(context).viewInsets.bottom > 0;
+                  final isVoiceMode =
+                      chatProvider.voiceMode != VoiceMode.textOnly;
+                  return BackCameraPreviewCard(
+                    enabled: chatProvider.isBackCameraPreviewEnabled,
+                    visible: chatProvider.isBackCameraPreviewVisible,
+                    streamUrl: chatProvider.backCameraPreviewUrl,
+                    compact: (isTyping || keyboardOpen) &&
+                        !isVoiceMode &&
+                        !_isRecordingVoice,
+                    onToggle: (enabled) {
+                      chatProvider.setBackCameraPreviewEnabled(enabled);
+                    },
+                    onToggleVisibility: (visible) {
+                      chatProvider.setBackCameraPreviewVisible(visible);
+                    },
+                  );
+                },
               ),
 
               // Input area
@@ -1256,7 +1281,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      '⚠️ Voice-to-voice requires backend voice chat service',
+                      '⚠️ Audio-to-Audio requires backend voice chat service',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.orange.shade700,

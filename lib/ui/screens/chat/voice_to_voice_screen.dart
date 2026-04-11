@@ -1,19 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/ai_chat_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/voice_service.dart';
+import '../../widgets/back_camera_preview_card.dart';
 
-/// Dedicated screen for Voice-to-Voice (V2V) conversation
-/// Records voice -> sends MP3 -> receives MP3 -> plays automatically
+/// Dedicated screen for Audio-to-Audio conversation
+/// Records audio -> sends audio -> receives audio -> plays automatically
 class VoiceToVoiceScreen extends StatefulWidget {
   const VoiceToVoiceScreen({super.key});
 
@@ -351,6 +350,19 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
           return SafeArea(
             child: Column(
               children: [
+                BackCameraPreviewCard(
+                  enabled: chatProvider.isBackCameraPreviewEnabled,
+                  visible: chatProvider.isBackCameraPreviewVisible,
+                  streamUrl: chatProvider.backCameraPreviewUrl,
+                  compact: false,
+                  onToggle: (enabled) {
+                    chatProvider.setBackCameraPreviewEnabled(enabled);
+                  },
+                  onToggleVisibility: (visible) {
+                    chatProvider.setBackCameraPreviewVisible(visible);
+                  },
+                ),
+
                 // Main voice interaction area
                 Expanded(
                   child: Center(

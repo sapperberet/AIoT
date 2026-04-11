@@ -32,6 +32,7 @@ class MqttConfig {
   static const String legacyDefaultLocalBrokerAddress = '192.168.1.100';
 
   static String _localBrokerAddress = '';
+  static bool _forceCloudHttpFallback = false;
   static const bool useDebugAdbReverseOverride =
       bool.fromEnvironment('USE_ADB_REVERSE', defaultValue: false);
 
@@ -70,8 +71,20 @@ class MqttConfig {
       return;
     }
     _localBrokerAddress = normalized;
+    _forceCloudHttpFallback = false;
     // Log the IP change for debugging
     print('🌐 MqttConfig: Broker address updated to $normalized');
+  }
+
+  static bool get isCloudHttpFallbackEnabled => _forceCloudHttpFallback;
+
+  static void enableCloudHttpFallback() {
+    _forceCloudHttpFallback = true;
+    print('☁️ MqttConfig: Cloud HTTP fallback enabled');
+  }
+
+  static void disableCloudHttpFallback() {
+    _forceCloudHttpFallback = false;
   }
 
   static const int localBrokerPort = 1883;
@@ -229,11 +242,15 @@ class MqttConfig {
 
   // Beacon discovery settings
   static const int beaconPort = 18830;
+  static const int beaconDiscoveryTimeoutSeconds = 5;
   static const String beaconServiceName = 'server-beacon';
   static const List<String> beaconServiceNames = [
     'server-beacon',
     'face-broker',
   ];
+
+  // Cloud fallback host for HTTP services when beacon is not available.
+  static const String cloudServerDomain = 'hugely-chief-dingo.ngrok-free.app';
 
   static bool isBeaconName(String? name) =>
       name != null && beaconServiceNames.contains(name);
@@ -290,18 +307,32 @@ class MqttConfig {
   static const String appStatusTopic = '$topicPrefix/app/status';
   static const String appHeartbeatTopic = '$topicPrefix/app/heartbeat';
 
+    // Back camera streaming control topics (used by chat/voice preview UI).
+    static const String cameraStreamToggleTopic =
+      '$topicPrefix/camera/back/stream/toggle';
+    static const String cameraStreamStatusTopic =
+      '$topicPrefix/camera/back/stream/status';
+    static const String cameraStreamUrlTopic = '$topicPrefix/camera/back/stream/url';
+
   // Wildcard topic for all home events (for n8n to listen to everything)
   static const String allHomeEventsTopic = '$topicPrefix/#';
 
   // Helper: Build n8n webhook URL
+  static String get httpServerHost {
+    if (_forceCloudHttpFallback) return cloudServerDomain;
+    final local = localBrokerAddress.trim();
+    if (local.isNotEmpty) return local;
+    return cloudServerDomain;
+  }
+
   static String get n8nAgentUrl =>
-      'http://$localBrokerAddress:$n8nPort/run/agent';
+      'http://$httpServerHost:$n8nPort/run/agent';
   static String get n8nVoiceUrl =>
-      'http://$localBrokerAddress:$n8nPort/run/voice';
+      'http://$httpServerHost:$n8nPort/run/voice';
   static String get n8nDoorUrl =>
-      'http://$localBrokerAddress:$n8nPort/run/door';
+      'http://$httpServerHost:$n8nPort/run/door';
   static String get n8nCameraFeedUrl =>
-      'http://$localBrokerAddress:$n8nPort/run/camera-feed';
+      'http://$httpServerHost:$n8nPort/run/camera-feed';
 
   /// Build broker candidates from a primary IPv4 host.
   static List<String> buildBrokerCandidates(String primary) {

@@ -128,7 +128,7 @@ class SettingsProvider with ChangeNotifier {
   // AI Chat settings - use same backend as MQTT broker (where n8n is running)
   // Production API endpoint (always active when workflow is active)
   String _aiServerUrl =
-      'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+      'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
   String? get aiServerUrl => _aiServerUrl;
 
   // Change theme
@@ -157,8 +157,10 @@ class SettingsProvider with ChangeNotifier {
       // Update global MqttConfig to propagate IP to all services
       MqttConfig.localBrokerAddress = _mqttBrokerAddress;
       // Also update AI server URL to use the new broker address
-      _aiServerUrl =
-          'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+      final host = _mqttBrokerAddress.isNotEmpty
+          ? _mqttBrokerAddress
+          : MqttConfig.httpServerHost;
+      _aiServerUrl = 'http://$host:${MqttConfig.n8nPort}/run/agent';
       debugPrint(
           '🌐 Settings: Updated broker address to $_mqttBrokerAddress (global: ${MqttConfig.localBrokerAddress})');
     }
@@ -335,8 +337,10 @@ class SettingsProvider with ChangeNotifier {
       return;
     }
     MqttConfig.localBrokerAddress = _mqttBrokerAddress;
-    _aiServerUrl =
-        'http://${_mqttBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+    final host = _mqttBrokerAddress.isNotEmpty
+        ? _mqttBrokerAddress
+        : MqttConfig.httpServerHost;
+    _aiServerUrl = 'http://$host:${MqttConfig.n8nPort}/run/agent';
     notifyListeners();
     saveSettings(); // Auto-save
   }
@@ -416,7 +420,7 @@ class SettingsProvider with ChangeNotifier {
 
           // AI Chat settings
           _aiServerUrl = userSettings['aiServerUrl'] as String? ??
-              'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+              'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
 
           notifyListeners();
           // Also save to local storage for offline access
@@ -550,7 +554,7 @@ class SettingsProvider with ChangeNotifier {
       _enableBiometricLogin = prefs.getBool('enableBiometricLogin') ?? false;
 
       _aiServerUrl = prefs.getString('aiServerUrl') ??
-          'http://${MqttConfig.localBrokerAddress}:${MqttConfig.n8nPort}/run/agent';
+          'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
 
       notifyListeners();
     } catch (e) {

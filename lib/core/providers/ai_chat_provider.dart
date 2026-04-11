@@ -6,11 +6,13 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import '../models/chat_message_model.dart';
 import '../models/chat_session_model.dart';
+import '../config/mqtt_config.dart';
 import '../services/ai_chat_service.dart';
 import '../services/voice_service.dart';
 import '../services/backend_voice_service.dart';
 import '../services/chat_storage_service.dart';
 import '../services/ai_chat_actions_service.dart';
+import '../services/mqtt_service.dart';
 
 /// Voice mode for AI chat
 enum VoiceMode {
@@ -27,6 +29,7 @@ enum VoiceMode {
 /// Provider for managing AI chat state
 class AIChatProvider with ChangeNotifier {
   final AIChatService _chatService;
+  final MqttService? _mqttService;
   final VoiceService _voiceService = VoiceService();
   final BackendVoiceService _backendVoiceService = BackendVoiceService();
   final ChatStorageService _storageService = ChatStorageService();
@@ -62,14 +65,22 @@ class AIChatProvider with ChangeNotifier {
   StreamSubscription<String>? _activeStreamSubscription;
   bool _isCancelled = false;
 
+  // Back camera preview state for chat/voice screens
+  StreamSubscription<AppMqttMessage>? _cameraMqttSubscription;
+  bool _isBackCameraPreviewEnabled = false;
+  bool _isBackCameraPreviewVisible = true;
+  String _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
+
   // Callback for when AI response is received (for notifications)
   void Function(String message)? onAIResponseReceived;
 
-  AIChatProvider({required AIChatService chatService})
-      : _chatService = chatService {
+  AIChatProvider({required AIChatService chatService, MqttService? mqttService})
+      : _chatService = chatService,
+        _mqttService = mqttService {
     _checkServerHealth();
     _initializeVoiceService();
     _checkBackendServices();
+    _initBackCameraControl();
   }
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
@@ -82,6 +93,10 @@ class AIChatProvider with ChangeNotifier {
   VoiceService get voiceService => _voiceService;
   BackendVoiceService get backendVoiceService => _backendVoiceService;
   String? get currentLocale => _currentLocale;
+
+  bool get isBackCameraPreviewEnabled => _isBackCameraPreviewEnabled;
+  bool get isBackCameraPreviewVisible => _isBackCameraPreviewVisible;
+  String get backCameraPreviewUrl => _backCameraPreviewUrl;
 
   // Session getters
   List<ChatSession> get sessions => List.unmodifiable(_sessions);
@@ -195,6 +210,7 @@ class AIChatProvider with ChangeNotifier {
   void updateBrokerEndpoint(String address, {int? port}) {
     _chatService.updateBrokerEndpoint(address, port: port);
     _backendVoiceService.updateBrokerAddress(address);
+    _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
     _checkServerHealth();
     _checkBackendServices();
     notifyListeners();
@@ -225,6 +241,73 @@ class AIChatProvider with ChangeNotifier {
   /// Toggle think mode visibility
   void toggleThinkMode(bool value) {
     _showThinkMode = value;
+    notifyListeners();
+  }
+
+  void _initBackCameraControl() {
+    _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
+
+    if (_mqttService == null) {
+      _logger.w('MQTT service unavailable for back camera control');
+      return;
+    }
+
+    _mqttService!.subscribe(MqttConfig.cameraStreamStatusTopic);
+    _mqttService!.subscribe(MqttConfig.cameraStreamUrlTopic);
+
+    _cameraMqttSubscription = _mqttService!.messageStream.listen((message) {
+      if (message.topic == MqttConfig.cameraStreamStatusTopic) {
+        final payload = message.payload.trim().toLowerCase();
+        final json = message.jsonPayload;
+        final enabled = json?['enabled'] as bool? ??
+            json?['streaming'] as bool? ??
+            payload == 'on' ||
+                payload == 'true' ||
+                payload == '1' ||
+                payload == 'enabled';
+
+        if (_isBackCameraPreviewEnabled != enabled) {
+          _isBackCameraPreviewEnabled = enabled;
+          notifyListeners();
+        }
+      }
+
+      if (message.topic == MqttConfig.cameraStreamUrlTopic) {
+        final json = message.jsonPayload;
+        final nextUrl =
+            (json?['url'] as String?)?.trim() ?? message.payload.trim();
+        if (nextUrl.isNotEmpty && nextUrl != _backCameraPreviewUrl) {
+          _backCameraPreviewUrl = nextUrl;
+          notifyListeners();
+        }
+      }
+    });
+  }
+
+  Future<void> setBackCameraPreviewEnabled(bool enabled) async {
+    if (_isBackCameraPreviewEnabled == enabled) return;
+
+    if (_backCameraPreviewUrl.trim().isEmpty) {
+      _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
+    }
+    _isBackCameraPreviewEnabled = enabled;
+    notifyListeners();
+
+    if (_mqttService == null) return;
+
+    _mqttService!.publishJson(
+      MqttConfig.cameraStreamToggleTopic,
+      {
+        'enabled': enabled,
+        'source': 'ai_chat_app',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  void setBackCameraPreviewVisible(bool visible) {
+    if (_isBackCameraPreviewVisible == visible) return;
+    _isBackCameraPreviewVisible = visible;
     notifyListeners();
   }
 
@@ -838,6 +921,7 @@ class AIChatProvider with ChangeNotifier {
     // Cancel any active stream subscription
     _activeStreamSubscription?.cancel();
     _activeStreamSubscription = null;
+    _cameraMqttSubscription?.cancel();
     _audioPlayer.dispose();
     _voiceService.dispose();
     super.dispose();

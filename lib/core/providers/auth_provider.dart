@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_auth_service.dart';
@@ -68,6 +69,18 @@ class AuthProvider with ChangeNotifier {
   String? get faceAuthMessage => _faceAuthMessage;
   bool get isFaceAuthAvailable =>
       _faceAuthService != null || _faceAuthHttpService != null;
+
+  void _notifyListenersSafely() {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      notifyListeners();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
+  }
 
   void _init() {
     _authService.authStateChanges.listen((User? user) async {
@@ -684,7 +697,7 @@ class AuthProvider with ChangeNotifier {
 
     _isLoading = true;
     _faceAuthMessage = 'Searching for face recognition system...';
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       FaceAuthBeacon? beacon;
@@ -712,18 +725,18 @@ class AuthProvider with ChangeNotifier {
         // Note: Any providers that need to react to IP changes should listen to
         // auth provider's beacon updates and call their service's updateBrokerEndpoint()
 
-        notifyListeners();
+        _notifyListenersSafely();
         return true;
       } else {
         _faceAuthMessage =
             'Face recognition system not found. Using configured server IP.';
-        notifyListeners();
+        _notifyListenersSafely();
         return false;
       }
     } catch (e) {
       _isLoading = false;
       _faceAuthMessage = 'Error discovering beacon: $e';
-      notifyListeners();
+      _notifyListenersSafely();
       return false;
     }
   }
