@@ -691,6 +691,7 @@ class DeviceProvider with ChangeNotifier {
     // Subscribe to n8n agent response topics
     _mqttService.subscribe(MqttConfig.agentResponseTopic);
     _mqttService.subscribe(MqttConfig.agentStatusTopic);
+    _mqttService.subscribe(MqttConfig.appAlertTopic);
 
     // Subscribe to n8n door status
     _mqttService.subscribe(MqttConfig.n8nDoorStatusTopic);
@@ -723,6 +724,9 @@ class DeviceProvider with ChangeNotifier {
     } else if (message.topic == MqttConfig.faceRecognizedTopic) {
       if (payload == null) return;
       _handleRecognizedFace(payload);
+      return;
+    } else if (message.topic == MqttConfig.appAlertTopic) {
+      _handleBackendAppAlert(payload, message.payload);
       return;
     }
 
@@ -1527,6 +1531,39 @@ class DeviceProvider with ChangeNotifier {
     _notificationService.notifyPersonRecognized(name, location: 'entrance');
 
     notifyListeners();
+  }
+
+  void _handleBackendAppAlert(
+      Map<String, dynamic>? payload, String rawPayload) {
+    final text =
+        ((payload?['message'] ?? payload?['text']) as String?)?.trim() ??
+            rawPayload.trim();
+    if (text.isEmpty) return;
+
+    final title = ((payload?['title'] ?? payload?['type']) as String?)?.trim();
+    final severity =
+        (payload?['severity'] as String?)?.toLowerCase().trim() ?? 'info';
+
+    final notificationType =
+        severity == 'critical' || severity == 'high' || severity == 'security'
+            ? NotificationType.security
+            : NotificationType.info;
+    final priority = severity == 'critical'
+        ? NotificationPriority.urgent
+        : severity == 'high'
+            ? NotificationPriority.high
+            : NotificationPriority.medium;
+
+    _notificationService.addNotification(
+      title: (title == null || title.isEmpty) ? 'Home Alert' : title,
+      message: text,
+      type: notificationType,
+      priority: priority,
+      data: {
+        'source': 'mqtt',
+        'topic': MqttConfig.appAlertTopic,
+      },
+    );
   }
 
   void _handleAlarm(String topic, Map<String, dynamic> payload) {

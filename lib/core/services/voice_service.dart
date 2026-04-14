@@ -134,12 +134,37 @@ class VoiceService {
         return null;
       }
 
+      final file = File(path);
+      int fileSize = 0;
+      for (int i = 0; i < 8; i++) {
+        if (await file.exists()) {
+          fileSize = await file.length();
+          if (fileSize > 44) break;
+        }
+        await Future.delayed(const Duration(milliseconds: 80));
+      }
+
+      if (fileSize <= 44) {
+        _logger.e('Recorded WAV appears empty (size: $fileSize bytes)');
+        _recordingStartTime = null;
+        _currentRecordingPath = null;
+        return null;
+      }
+
       final duration = DateTime.now().difference(_recordingStartTime!);
-      _logger.i('Recording stopped. Duration: ${duration.inSeconds}s');
+      var durationMs = duration.inMilliseconds;
+
+      // Fallback duration from PCM payload (16kHz mono 16-bit => 32000 bytes/sec).
+      if (durationMs <= 0) {
+        durationMs = (((fileSize - 44) / 32000.0) * 1000).round();
+      }
+
+      _logger.i(
+          'Recording stopped. Duration: ${durationMs}ms, fileSize: $fileSize bytes');
 
       final result = VoiceRecordingResult(
         filePath: path,
-        durationMs: duration.inMilliseconds,
+        durationMs: durationMs,
       );
 
       _recordingStartTime = null;

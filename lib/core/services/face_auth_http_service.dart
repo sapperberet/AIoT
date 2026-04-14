@@ -499,7 +499,7 @@ class FaceAuthHttpService {
   /// Get camera feed URL from n8n API (Version 2)
   /// Returns the URL to the camera stream (redirects to MediaMTX)
   String getCameraFeedUrl() {
-    return '$n8nBaseUrl/run/camera-feed';
+    return '$n8nBaseUrl/run/camera-stream';
   }
 
   /// Get direct RTSP stream URL (Version 2)

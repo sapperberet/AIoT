@@ -1,25 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
 
 import '../../core/theme/app_theme.dart';
 
 class BackCameraPreviewCard extends StatefulWidget {
-  final bool enabled;
   final bool visible;
   final String streamUrl;
-  final ValueChanged<bool> onToggle;
-  final ValueChanged<bool> onToggleVisibility;
-  final bool compact;
 
   const BackCameraPreviewCard({
     super.key,
-    required this.enabled,
     required this.visible,
     required this.streamUrl,
-    required this.onToggle,
-    required this.onToggleVisibility,
-    this.compact = false,
   });
 
   @override
@@ -40,14 +33,14 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
   @override
   void didUpdateWidget(covariant BackCameraPreviewCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.enabled != widget.enabled ||
+    if (oldWidget.visible != widget.visible ||
         oldWidget.streamUrl != widget.streamUrl) {
       _syncController();
     }
   }
 
   Future<void> _syncController() async {
-    if (!widget.enabled) {
+    if (!widget.visible) {
       await _disposeController();
       if (mounted) {
         setState(() {
@@ -76,8 +69,9 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
     });
 
     try {
+      final resolvedUrl = await _resolveFinalStreamUrl(widget.streamUrl.trim());
       final controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.streamUrl),
+        Uri.parse(resolvedUrl),
         videoPlayerOptions: VideoPlayerOptions(
           allowBackgroundPlayback: false,
           mixWithOthers: false,
@@ -106,6 +100,24 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
     }
   }
 
+  Future<String> _resolveFinalStreamUrl(String inputUrl) async {
+    final uri = Uri.parse(inputUrl);
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', uri)..followRedirects = true;
+      final streamed = await client.send(request).timeout(
+            const Duration(seconds: 6),
+          );
+      final finalUri = streamed.request?.url;
+      await streamed.stream.listen((_) {}).cancel();
+      return (finalUri ?? uri).toString();
+    } catch (_) {
+      return inputUrl;
+    } finally {
+      client.close();
+    }
+  }
+
   Future<void> _disposeController() async {
     final c = _controller;
     _controller = null;
@@ -123,11 +135,12 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = widget.enabled ? Colors.green : Colors.orange;
-    final previewHeight = widget.compact ? 92.0 : 178.0;
+    if (!widget.visible) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.cardColor.withOpacity(0.95),
@@ -138,7 +151,7 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
         children: [
           Row(
             children: [
-              Icon(Iconsax.camera, size: 18, color: statusColor),
+              const Icon(Iconsax.camera, size: 18, color: Colors.green),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -148,74 +161,23 @@ class _BackCameraPreviewCardState extends State<BackCameraPreviewCard> {
                   ),
                 ),
               ),
-              if (widget.compact)
-                Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Compact',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              Switch(
-                value: widget.enabled,
-                onChanged: widget.onToggle,
-                activeColor: AppTheme.primaryColor,
-              ),
             ],
           ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => widget.onToggleVisibility(!widget.visible),
-                icon: Icon(
-                  widget.visible ? Iconsax.eye : Iconsax.eye_slash,
-                  size: 18,
-                ),
-                tooltip: widget.visible ? 'Hide preview' : 'Show preview',
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-              Text(
-                widget.visible ? 'Visible' : 'Hidden',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.65),
-                ),
-              ),
-            ],
-          ),
-          if (widget.visible) ...[
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                height: previewHeight,
-                child: _buildPreviewBody(theme),
-              ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 200,
+              width: double.infinity,
+              child: _buildPreviewBody(),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPreviewBody(ThemeData theme) {
-    if (!widget.enabled) {
-      return _buildPlaceholder(
-        icon: Iconsax.video_slash,
-        text: 'Preview is off',
-      );
-    }
-
+  Widget _buildPreviewBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }

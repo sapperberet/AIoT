@@ -306,13 +306,11 @@ class MqttConfig {
   // App Status Topics (for n8n to know when app is connected)
   static const String appStatusTopic = '$topicPrefix/app/status';
   static const String appHeartbeatTopic = '$topicPrefix/app/heartbeat';
+  static const String appAlertTopic = '$topicPrefix/app/alert';
 
-    // Back camera streaming control topics (used by chat/voice preview UI).
-    static const String cameraStreamToggleTopic =
-      '$topicPrefix/camera/back/stream/toggle';
-    static const String cameraStreamStatusTopic =
-      '$topicPrefix/camera/back/stream/status';
-    static const String cameraStreamUrlTopic = '$topicPrefix/camera/back/stream/url';
+  // Back camera streaming control topic.
+  static const String cameraStreamToggleTopic =
+      '$topicPrefix/app/backcamera/stream';
 
   // Wildcard topic for all home events (for n8n to listen to everything)
   static const String allHomeEventsTopic = '$topicPrefix/#';
@@ -325,14 +323,11 @@ class MqttConfig {
     return cloudServerDomain;
   }
 
-  static String get n8nAgentUrl =>
-      'http://$httpServerHost:$n8nPort/run/agent';
-  static String get n8nVoiceUrl =>
-      'http://$httpServerHost:$n8nPort/run/voice';
-  static String get n8nDoorUrl =>
-      'http://$httpServerHost:$n8nPort/run/door';
+  static String get n8nAgentUrl => 'http://$httpServerHost:$n8nPort/run/agent';
+  static String get n8nVoiceUrl => 'http://$httpServerHost:$n8nPort/run/voice';
+  static String get n8nDoorUrl => 'http://$httpServerHost:$n8nPort/run/door';
   static String get n8nCameraFeedUrl =>
-      'http://$httpServerHost:$n8nPort/run/camera-feed';
+      'http://$httpServerHost:$n8nPort/run/camera-stream';
 
   /// Build broker candidates from a primary IPv4 host.
   static List<String> buildBrokerCandidates(String primary) {

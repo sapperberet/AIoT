@@ -68,7 +68,7 @@ class AIChatProvider with ChangeNotifier {
   // Back camera preview state for chat/voice screens
   StreamSubscription<AppMqttMessage>? _cameraMqttSubscription;
   bool _isBackCameraPreviewEnabled = false;
-  bool _isBackCameraPreviewVisible = true;
+  bool _isBackCameraPreviewVisible = false;
   String _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
 
   // Callback for when AI response is received (for notifications)
@@ -252,11 +252,10 @@ class AIChatProvider with ChangeNotifier {
       return;
     }
 
-    _mqttService!.subscribe(MqttConfig.cameraStreamStatusTopic);
-    _mqttService!.subscribe(MqttConfig.cameraStreamUrlTopic);
+    _mqttService!.subscribe(MqttConfig.cameraStreamToggleTopic);
 
     _cameraMqttSubscription = _mqttService!.messageStream.listen((message) {
-      if (message.topic == MqttConfig.cameraStreamStatusTopic) {
+      if (message.topic == MqttConfig.cameraStreamToggleTopic) {
         final payload = message.payload.trim().toLowerCase();
         final json = message.jsonPayload;
         final enabled = json?['enabled'] as bool? ??
@@ -268,16 +267,7 @@ class AIChatProvider with ChangeNotifier {
 
         if (_isBackCameraPreviewEnabled != enabled) {
           _isBackCameraPreviewEnabled = enabled;
-          notifyListeners();
-        }
-      }
-
-      if (message.topic == MqttConfig.cameraStreamUrlTopic) {
-        final json = message.jsonPayload;
-        final nextUrl =
-            (json?['url'] as String?)?.trim() ?? message.payload.trim();
-        if (nextUrl.isNotEmpty && nextUrl != _backCameraPreviewUrl) {
-          _backCameraPreviewUrl = nextUrl;
+          _isBackCameraPreviewVisible = enabled;
           notifyListeners();
         }
       }
@@ -291,6 +281,7 @@ class AIChatProvider with ChangeNotifier {
       _backCameraPreviewUrl = MqttConfig.n8nCameraFeedUrl;
     }
     _isBackCameraPreviewEnabled = enabled;
+    _isBackCameraPreviewVisible = enabled;
     notifyListeners();
 
     if (_mqttService == null) return;
@@ -808,6 +799,7 @@ class AIChatProvider with ChangeNotifier {
       final response = await _chatService.sendVoiceMessage(
         audioFilePath,
         sessionId,
+        durationMs: durationMs,
       );
 
       if (response != null) {

@@ -214,6 +214,9 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
 
     if (result != null) {
       final userId = authProvider.currentUser?.uid ?? 'debug-user';
+      final effectiveDurationMs = result.durationMs > 0
+          ? result.durationMs
+          : (_recordingDuration * 1000);
 
       setState(() {
         _statusMessage = loc.t('waiting_for_response');
@@ -222,7 +225,7 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
       // Send voice message and wait for voice response
       await chatProvider.sendVoiceChatMessage(
         result.filePath,
-        result.durationMs,
+        effectiveDurationMs > 0 ? effectiveDurationMs : 1,
         userId,
       );
 
@@ -351,16 +354,8 @@ class _VoiceToVoiceScreenState extends State<VoiceToVoiceScreen>
             child: Column(
               children: [
                 BackCameraPreviewCard(
-                  enabled: chatProvider.isBackCameraPreviewEnabled,
                   visible: chatProvider.isBackCameraPreviewVisible,
                   streamUrl: chatProvider.backCameraPreviewUrl,
-                  compact: false,
-                  onToggle: (enabled) {
-                    chatProvider.setBackCameraPreviewEnabled(enabled);
-                  },
-                  onToggleVisibility: (visible) {
-                    chatProvider.setBackCameraPreviewVisible(visible);
-                  },
                 ),
 
                 // Main voice interaction area

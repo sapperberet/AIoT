@@ -47,9 +47,9 @@ class AIChatService {
 
   AIChatService() {
     _baseUrl =
-      'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
+        'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/agent';
     _voiceChatUrl =
-      'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/voice';
+        'http://${MqttConfig.httpServerHost}:${MqttConfig.n8nPort}/run/voice';
 
     // Initialize external LLM settings from config
     _externalLlmUrl = 'https://${MqttConfig.externalLlmDomain}';
@@ -560,9 +560,8 @@ class AIChatService {
   /// Send voice message and receive voice reply via n8n /run/voice
   /// Returns VoiceChatResponse with audio file path and transcriptions
   Future<VoiceChatResponse?> sendVoiceMessage(
-    String audioFilePath,
-    String sessionId,
-  ) async {
+      String audioFilePath, String sessionId,
+      {int? durationMs}) async {
     try {
       _logger.i('Sending voice message: $audioFilePath');
       _logger.i('Voice chat URL: $_voiceChatUrl');
@@ -575,18 +574,49 @@ class AIChatService {
 
       final fileSize = await file.length();
       _logger.i('Audio file size: $fileSize bytes');
+      if (fileSize <= 44) {
+        _logger.e('Audio file is empty or header-only (size: $fileSize bytes)');
+        return null;
+      }
+      final fileName = audioFilePath.split(Platform.pathSeparator).last;
+      final audioBytes = await file.readAsBytes();
+      final audioType = MediaType('audio', _getAudioMimeType(audioFilePath));
+      final inferredDurationMs =
+          (((fileSize - 44) / 32000.0) * 1000).round().clamp(1, 3600000);
+      final effectiveDurationMs = (durationMs != null && durationMs > 0)
+          ? durationMs
+          : inferredDurationMs;
 
       final request = http.MultipartRequest('POST', Uri.parse(_voiceChatUrl));
 
-      // Add audio file
-      request.files.add(await http.MultipartFile.fromPath(
+      // Send under both keys for backend compatibility (some flows expect file, others audio).
+      request.files.add(http.MultipartFile.fromBytes(
         'audio',
-        audioFilePath,
-        contentType: MediaType('audio', _getAudioMimeType(audioFilePath)),
+        audioBytes,
+        filename: fileName,
+        contentType: audioType,
+      ));
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        audioBytes,
+        filename: fileName,
+        contentType: audioType,
+      ));
+      request.files.add(http.MultipartFile.fromBytes(
+        'voice',
+        audioBytes,
+        filename: fileName,
+        contentType: audioType,
       ));
 
       // Add session ID
       request.fields['sessionId'] = sessionId;
+      request.fields['filename'] = fileName;
+      request.fields['durationMs'] = effectiveDurationMs.toString();
+      request.fields['duration'] = effectiveDurationMs.toString();
+      request.fields['durationSeconds'] =
+          (effectiveDurationMs / 1000.0).toStringAsFixed(3);
+      request.fields['mimeType'] = 'audio/${_getAudioMimeType(audioFilePath)}';
 
       _logger.i('Sending voice request to n8n...');
       final streamedResponse =
@@ -754,7 +784,7 @@ class AIChatService {
     _voiceChatUrl =
         'http://$newAddress:${port ?? MqttConfig.n8nPort}/run/voice';
     _logger.i(
-      '🔄 Broker endpoint updated to: $newAddress (all services will use this host)');
+        '🔄 Broker endpoint updated to: $newAddress (all services will use this host)');
   }
 
   /// Get current broker address

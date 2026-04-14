@@ -256,7 +256,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     }
   }
 
-  Future<void> _stopVoiceRecording() async {
+  Future<void> _stopVoiceRecording([int? uiDurationMs]) async {
     final chatProvider = context.read<AIChatProvider>();
     final voiceService = chatProvider.voiceService;
     final authProvider = context.read<AuthProvider>();
@@ -272,6 +272,9 @@ class _AIChatScreenState extends State<AIChatScreen>
     });
 
     if (result != null) {
+      final effectiveDurationMs =
+          result.durationMs > 0 ? result.durationMs : (uiDurationMs ?? 1);
+
       // Get user ID
       final userId = authProvider.currentUser?.uid ?? 'debug-user';
 
@@ -281,7 +284,7 @@ class _AIChatScreenState extends State<AIChatScreen>
         // Full voice-to-voice mode: send audio, receive audio
         await chatProvider.sendVoiceChatMessage(
           result.filePath,
-          result.durationMs,
+          effectiveDurationMs,
           userId,
         );
       } else {
@@ -302,7 +305,7 @@ class _AIChatScreenState extends State<AIChatScreen>
         // Send voice message
         await chatProvider.sendVoiceMessage(
           result.filePath,
-          result.durationMs,
+          effectiveDurationMs,
           transcription,
           userId,
         );
@@ -516,6 +519,15 @@ class _AIChatScreenState extends State<AIChatScreen>
         children: [
           Column(
             children: [
+              Consumer<AIChatProvider>(
+                builder: (context, chatProvider, _) {
+                  return BackCameraPreviewCard(
+                    visible: chatProvider.isBackCameraPreviewVisible,
+                    streamUrl: chatProvider.backCameraPreviewUrl,
+                  );
+                },
+              ),
+
               // Messages list
               Expanded(
                 child: Consumer<AIChatProvider>(
@@ -567,30 +579,6 @@ class _AIChatScreenState extends State<AIChatScreen>
                     );
                   },
                 ),
-              ),
-
-              Consumer<AIChatProvider>(
-                builder: (context, chatProvider, _) {
-                  final isTyping = _messageController.text.trim().isNotEmpty;
-                  final keyboardOpen =
-                      MediaQuery.of(context).viewInsets.bottom > 0;
-                  final isVoiceMode =
-                      chatProvider.voiceMode != VoiceMode.textOnly;
-                  return BackCameraPreviewCard(
-                    enabled: chatProvider.isBackCameraPreviewEnabled,
-                    visible: chatProvider.isBackCameraPreviewVisible,
-                    streamUrl: chatProvider.backCameraPreviewUrl,
-                    compact: (isTyping || keyboardOpen) &&
-                        !isVoiceMode &&
-                        !_isRecordingVoice,
-                    onToggle: (enabled) {
-                      chatProvider.setBackCameraPreviewEnabled(enabled);
-                    },
-                    onToggleVisibility: (visible) {
-                      chatProvider.setBackCameraPreviewVisible(visible);
-                    },
-                  );
-                },
               ),
 
               // Input area
@@ -964,7 +952,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     if (_isRecordingVoice) {
       return VoiceRecorderWidget(
         onCancel: _cancelVoiceRecording,
-        onSend: (_) => _stopVoiceRecording(),
+        onSend: (durationMs) => _stopVoiceRecording(durationMs),
         onDurationUpdate: (duration) {
           // Duration tracking removed as _recordingDuration was unused
           setState(() {});
@@ -1141,6 +1129,47 @@ class _AIChatScreenState extends State<AIChatScreen>
                   ),
                 ),
                 const SizedBox(width: 12),
+                Consumer<AIChatProvider>(
+                  builder: (context, chatProvider, _) {
+                    final enabled = chatProvider.isBackCameraPreviewEnabled;
+                    return Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: enabled
+                            ? Colors.green.withOpacity(0.15)
+                            : (isDark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade200),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: enabled
+                              ? Colors.green.withOpacity(0.55)
+                              : textColor.withOpacity(0.18),
+                        ),
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: enabled
+                            ? 'Stop back camera stream'
+                            : 'Start back camera stream',
+                        icon: Icon(
+                          enabled ? Iconsax.video_slash : Iconsax.video,
+                          size: 17,
+                          color: enabled
+                              ? Colors.green.shade700
+                              : textColor.withOpacity(0.75),
+                        ),
+                        onPressed: () async {
+                          final next = !enabled;
+                          await chatProvider.setBackCameraPreviewEnabled(next);
+                          chatProvider.setBackCameraPreviewVisible(next);
+                        },
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
 
                 // Action button based on state
                 Consumer<AIChatProvider>(
